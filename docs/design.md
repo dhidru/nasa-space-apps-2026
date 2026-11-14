@@ -204,7 +204,7 @@ decision in an ADR (`docs/adr/`).
 |---|---|---|
 | Hosting | GitHub Pages: free and always on | Free tiers often sleep, so the first request can take 30–60 s |
 | Science code | Python, plus a second TypeScript copy for the browser | One Python copy |
-| Data sent to the browser | About 10–20 MB of Horizons per region, plus about 2.6 MB of positions | Results only |
+| Data sent to the browser | About 3.7 MB of Horizons per region (delta + gzip, data contract §6.1), plus about 2.6 MB of positions | Results only |
 | Main risk | The two copies disagree (tests catch this) | The server is down or asleep during judging |
 
 Precomputing the Sun and Earth positions is cheap in either case: 10-minute

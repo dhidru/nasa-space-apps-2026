@@ -14,6 +14,7 @@ angular sampling roughly even.
 
 from __future__ import annotations
 
+import gzip
 import math
 
 import numba
@@ -108,3 +109,22 @@ def compute_horizons(x_m, y_m, terrain_height_m, near: DemGrid, far: DemGrid, *,
 def quantize_horizons(horizons_deg: np.ndarray) -> np.ndarray:
     """To the horizons.bin encoding: little-endian int16 hundredths of a degree (data-contract §6.1)."""
     return np.round(np.asarray(horizons_deg, dtype=np.float64) * 100.0).astype("<i2")
+
+
+def encode_horizons(q: np.ndarray) -> bytes:
+    """Pack quantized Horizons for horizons.bin.gz (data-contract §6.1).
+
+    Along each row (site), the first value is kept and every later one becomes the
+    difference from its neighbour; then the whole array is gzipped. Stored values
+    lie within +/-9000, so the differences fit in int16. mtime=0 keeps the output
+    byte-for-byte repeatable.
+    """
+    q = np.asarray(q, dtype="<i2")
+    delta = np.diff(q, axis=1, prepend=np.zeros((q.shape[0], 1), dtype="<i2")).astype("<i2")
+    return gzip.compress(delta.tobytes(), compresslevel=9, mtime=0)
+
+
+def decode_horizons(blob: bytes, shape) -> np.ndarray:
+    """Inverse of encode_horizons: int16 hundredths of a degree, shape [n_sites, n_azimuths]."""
+    delta = np.frombuffer(gzip.decompress(blob), dtype="<i2").reshape(shape)
+    return np.cumsum(delta, axis=1, dtype=np.int32).astype("<i2")

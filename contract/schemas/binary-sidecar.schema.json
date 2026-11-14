@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Sidecar for a raw little-endian C-order binary array (.bin)",
+  "title": "Sidecar for a little-endian C-order binary array (.bin, or .bin.gz when packed)",
   "$comment": "shape and axes must have the same length; contract/validate.py checks this and the .bin file size",
   "type": "object",
   "required": ["schema_version", "mock", "file", "dtype", "byte_order", "shape", "axes", "units", "scale"],
@@ -23,7 +23,9 @@
     "frame": {"const": "MOON_ME"},
     "aberration_correction": {"type": "string"},
     "start_utc": {"$ref": "#/$defs/utc"},
-    "step_s": {"type": "integer", "minimum": 1}
+    "step_s": {"type": "integer", "minimum": 1},
+    "compression": {"const": "gzip"},
+    "delta_axis": {"type": "string"}
   },
   "$defs": {
     "utc": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"}

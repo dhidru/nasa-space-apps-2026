@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from pipeline.build import build_dataset
+from pipeline.horizon import decode_horizons
 from pipeline.lola import DemGrid
 from pipeline.projection import lonlat_to_xy
 from pipeline.regions import REGIONS, Outline
@@ -53,7 +54,8 @@ def test_built_dataset_passes_the_contract_validator(tmp_path):
     folder = tmp_path / "regions" / "mons-mouton"
     sites = json.loads((folder / "sites.json").read_text())
     hz_meta = json.loads((folder / "horizons.json").read_text())
-    hz = np.fromfile(folder / hz_meta["file"], dtype="<i2").reshape(hz_meta["shape"])
+    assert hz_meta["file"] == "horizons.bin.gz" and hz_meta["compression"] == "gzip"
+    hz = decode_horizons((folder / hz_meta["file"]).read_bytes(), hz_meta["shape"])
     assert len(sites["sites"]) >= 6  # the synthetic outline is about 1.2 km x 0.4 km
     assert hz.shape == (len(sites["sites"]), 1440)
     assert sites["observer_height_m"] == 2 and hz_meta["observer_height_m"] == 2

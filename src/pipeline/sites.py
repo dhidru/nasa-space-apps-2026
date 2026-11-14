@@ -5,7 +5,7 @@ Site centers sit on a global 200 m lattice at odd multiples of 100 m, so the
 its center is inside the region outline. Row 0 is the lattice row with the
 largest y; ids are r<row>c<col>, counted from the top-left of the region's
 lattice bounding box. The returned order (row-major) is the row order of
-horizons.bin.
+horizons.bin.gz.
 """
 
 from __future__ import annotations

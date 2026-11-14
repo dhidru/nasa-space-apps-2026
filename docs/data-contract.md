@@ -85,7 +85,7 @@ regions/<region-id>/
   outline.geojson                    Region outline (section 5.2)
   basemap.png, basemap.json          Region hillshade (section 5.5)
   sites.json                         Site grid (section 5.3)
-  horizons.bin, horizons.json        Horizons (section 6.1)
+  horizons.bin.gz, horizons.json     Horizons, delta-encoded and gzipped (section 6.1)
   results/
     ranking/<landing-time>.json          Ranking (section 7.1)
     site-detail/<landing-time>/<site-id>.json   Site detail (section 7.2)
@@ -97,7 +97,7 @@ regions/<region-id>/
 
 If we choose a server, the three `results/` documents become API responses with
 the same JSON. If we choose a static site, the browser builds them from
-`sites.json`, `horizons.bin` and `ephemeris/`. Either way the pages read the
+`sites.json`, `horizons.bin.gz` and `ephemeris/`. Either way the pages read the
 same documents.
 
 ## 5. Static files (JSON / GeoJSON / PNG)
@@ -131,7 +131,7 @@ Fields:
     a region.
   - `x_m`, `y_m`, `lat_deg`, `lon_deg`
   - `terrain_height_m`
-- **The order of `sites[]` is the row order of `horizons.bin`.**
+- **The order of `sites[]` is the row order of the Horizons (`horizons.bin.gz`).**
 
 ### 5.4 Site-to-site distance
 
@@ -164,9 +164,18 @@ Common sidecar fields:
 - `scale`: multiply the stored value by this to get the value in `units`
 
 Both NumPy (`np.fromfile(...).reshape(shape)`) and browser typed arrays
-(`new Int16Array(buffer)`) can read these files directly.
+(`new Int16Array(buffer)`) can read these files directly, unless the sidecar
+has the optional fields below.
 
-### 6.1 Horizons: `horizons.bin`
+Optional sidecar fields for packed files (only the Horizons use them):
+- `compression`: `gzip`. The file is a gzip stream; unpack it first.
+- `delta_axis`: the name of the innermost axis (`azimuth`). Along that axis,
+  the first value of each row is stored as is and every later value as the
+  difference from the one before it. Rebuild the values with a running sum
+  per row. Neighbouring values are close, so the differences are small and
+  compress well.
+
+### 6.1 Horizons: `horizons.bin.gz`
 
 | Field | Value |
 |---|---|
@@ -175,11 +184,19 @@ Both NumPy (`np.fromfile(...).reshape(shape)`) and browser typed arrays
 | `units`, `scale` | `deg`, `0.01`: stored value 125 means 1.25° |
 | `azimuth_start_deg`, `azimuth_step_deg` | `0`, `0.25`: column k is the Horizon Elevation at azimuth k × 0.25° |
 | `observer_height_m` | `2` |
+| `compression`, `delta_axis` | `gzip`, `azimuth` |
 
 - Rows follow the order of `sites.json`.
 - Between columns, use linear interpolation. It wraps, so column 1439 is next
   to column 0.
-- Size is about 16 MB for 5,625 sites.
+- Size: 18.4 MB unpacked for Mons Mouton's 6,400 sites, about 3.7 MB as stored
+  (gzip alone would give 10.1 MB).
+- **Reading it in the browser:** `fetch` the file as bytes, unpack it with the
+  built-in `DecompressionStream("gzip")`, view it as an `Int16Array`, then take
+  the running sum along each row of 1,440. If a host sends the file with
+  `Content-Encoding: gzip`, the browser has already unpacked it: the bytes then
+  don't start with the gzip header `1f 8b`, so skip the unpack step.
+- **Reading it in Python:** `pipeline.horizon.decode_horizons`.
 
 ### 6.2 Sun/Earth positions: `ephemeris/positions-<YYYY>.bin`
 
@@ -309,7 +326,7 @@ generates:
   center.
 - **Placeholder base-map PNGs.**
 
-Every file has `"mock": true`. The `.bin` files are git-ignored because of their
+Every file has `"mock": true`. The `.bin` and `.bin.gz` files are git-ignored because of their
 size, so rerun the script to get them. The JSON and PNG files are committed so
 the design side can start without running anything.
 

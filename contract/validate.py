@@ -6,12 +6,13 @@ Usage (from the repo root, with jsonschema installed: pip install -r requirement
 
 It checks:
 - every JSON file against its schema in contract/schemas/
-- each .bin file's size against its sidecar's shape and dtype
+- each .bin file's size (unpacked, for .bin.gz) against its sidecar's shape and dtype
 - cross-file consistency (site counts, top-10 spacing, ranking order)
 """
 
 from __future__ import annotations
 
+import gzip
 import json
 import math
 import sys
@@ -71,8 +72,18 @@ def main(root: Path) -> int:
                 errors.append(f"{rel}: missing {bin_path.name}")
             else:
                 want = math.prod(doc["shape"]) * DTYPE_SIZE[doc["dtype"]]
-                if bin_path.stat().st_size != want:
-                    errors.append(f"{rel}: {bin_path.name} is {bin_path.stat().st_size} bytes, expected {want}")
+                if doc.get("compression") == "gzip":
+                    try:
+                        size = len(gzip.decompress(bin_path.read_bytes()))
+                    except (OSError, EOFError) as e:
+                        errors.append(f"{rel}: {bin_path.name} is not a valid gzip stream ({e})")
+                        size = want
+                else:
+                    size = bin_path.stat().st_size
+                if size != want:
+                    errors.append(f"{rel}: {bin_path.name} is {size} bytes unpacked, expected {want}")
+                if "delta_axis" in doc and doc["delta_axis"] != doc["axes"][-1]:
+                    errors.append(f"{rel}: delta_axis must be the innermost axis {doc['axes'][-1]!r}")
 
     # Cross-file checks per region with site data.
     regions = load(root / "regions.json")

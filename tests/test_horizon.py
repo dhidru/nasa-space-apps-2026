@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from pipeline.horizon import compute_horizons, quantize_horizons
+from pipeline.horizon import compute_horizons, decode_horizons, encode_horizons, quantize_horizons
 from pipeline.lola import DemGrid
 from pipeline.projection import R_M, lonlat_to_xy
 
@@ -84,3 +84,24 @@ def test_quantize_to_contract_int16_hundredths():
     q = quantize_horizons(np.array([[1.254, -0.0869, -90.0, 90.0]], dtype=np.float32))
     assert q.dtype == np.dtype("<i2")
     assert q.tolist() == [[125, -9, -9000, 9000]]
+
+
+def test_encode_decode_round_trip_is_exact():
+    rng = np.random.default_rng(0)
+    q = rng.integers(-9000, 9001, size=(5, 1440)).astype("<i2")  # worst case: neighbours 180 deg apart
+    blob = encode_horizons(q)
+    assert blob[:2] == b"\x1f\x8b"  # a gzip stream (data-contract §6.1)
+    out = decode_horizons(blob, q.shape)
+    assert out.dtype == np.dtype("<i2") and np.array_equal(out, q)
+
+
+def test_encoding_is_delta_along_azimuth():
+    import gzip
+    q = np.array([[100, 103, 101], [-5, -5, 20]], dtype="<i2")
+    stored = np.frombuffer(gzip.decompress(encode_horizons(q)), dtype="<i2").reshape(2, 3)
+    assert stored.tolist() == [[100, 3, -2], [-5, 0, 25]]  # first value as is, then differences per row
+
+
+def test_encoding_is_byte_for_byte_repeatable():
+    q = np.arange(2 * 1440, dtype="<i2").reshape(2, 1440)
+    assert encode_horizons(q) == encode_horizons(q)  # no timestamp in the gzip header, so rebuilds diff cleanly

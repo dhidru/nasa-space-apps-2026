@@ -8,13 +8,14 @@ Uses only the Python standard library. Run from the repo root:
 
     python contract/mock/generate_mock.py
 
-Output goes to contract/mock/data/. The .bin files are git-ignored because of
+Output goes to contract/mock/data/. The .bin and .bin.gz files are git-ignored because of
 their size; rerun the script to get them.
 """
 
 from __future__ import annotations
 
 import array
+import gzip
 import json
 import math
 import random
@@ -125,6 +126,19 @@ def write_bin(path: Path, arr: array.array) -> None:
         arr.byteswap()
     with path.open("wb") as f:
         arr.tofile(f)
+
+
+def write_packed_horizons(path: Path, h: array.array, n_az: int) -> None:
+    """horizons.bin.gz: per-row deltas along azimuth, then gzip (data-contract §6.1)."""
+    delta = array.array("h", h)
+    for i in range(len(h) // n_az):
+        for k in range(1, n_az):
+            j = i * n_az + k
+            delta[j] = h[j] - h[j - 1]
+    if sys.byteorder != "little":
+        delta.byteswap()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(gzip.compress(delta.tobytes(), compresslevel=9, mtime=0))
 
 
 def write_png_gray(path: Path, width: int, height: int, pixels: bytearray) -> None:
@@ -497,12 +511,13 @@ def main() -> None:
 
     print("horizons ...")
     horizons = build_horizons(sites, cx, cy)
-    write_bin(folder / "horizons.bin", horizons)
+    write_packed_horizons(folder / "horizons.bin.gz", horizons, N_AZ)
     write_json(folder / "horizons.json", {
-        "schema_version": SCHEMA_VERSION, "mock": True, "file": "horizons.bin", "dtype": "int16",
+        "schema_version": SCHEMA_VERSION, "mock": True, "file": "horizons.bin.gz", "dtype": "int16",
         "byte_order": "little", "shape": [len(sites), N_AZ], "axes": ["site", "azimuth"], "units": "deg",
         "scale": 0.01, "azimuth_start_deg": 0, "azimuth_step_deg": AZ_STEP_DEG,
-        "observer_height_m": OBSERVER_HEIGHT_M, "region_id": DEMO_REGION})
+        "observer_height_m": OBSERVER_HEIGHT_M, "region_id": DEMO_REGION,
+        "compression": "gzip", "delta_axis": "azimuth"})
 
     print("ephemeris ...")
     build_ephemeris(cx, cy)

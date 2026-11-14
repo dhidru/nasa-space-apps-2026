@@ -1,7 +1,7 @@
 """Build the static data files of docs/data-contract.md §4 from the source datasets.
 
 Writes regions.json, the home and region base maps, every region outline, and
-for each region with site data: sites.json and horizons.bin/.json. Sun/Earth
+for each region with site data: sites.json and horizons.bin.gz/.json. Sun/Earth
 positions are written by pipeline.ephemeris. The results/ documents (ranking,
 site detail, Landing Windows) are not built here yet.
 
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .horizon import compute_horizons, quantize_horizons
+from .horizon import compute_horizons, encode_horizons, quantize_horizons
 from .lola import DemGrid, open_lola
 from .projection import xy_to_lonlat
 from .regions import NASA_SOURCE, REGIONS, Outline, load_outlines
@@ -138,12 +138,13 @@ def write_region_sites(folder: Path, outline: Outline, near: DemGrid, far: DemGr
     hz = compute_horizons([s.x_m for s in sites], [s.y_m for s in sites], [s.terrain_height_m for s in sites],
                           near, far, observer_height_m=OBSERVER_HEIGHT_M, **kw)
     q = quantize_horizons(hz)
-    q.tofile(folder / "horizons.bin")
+    (folder / "horizons.bin.gz").write_bytes(encode_horizons(q))
     _write_json(folder / "horizons.json", {
-        "schema_version": SCHEMA_VERSION, "mock": False, "file": "horizons.bin", "dtype": "int16",
+        "schema_version": SCHEMA_VERSION, "mock": False, "file": "horizons.bin.gz", "dtype": "int16",
         "byte_order": "little", "shape": list(q.shape), "axes": ["site", "azimuth"], "units": "deg",
         "scale": 0.01, "azimuth_start_deg": 0, "azimuth_step_deg": 360.0 / kw["n_azimuths"],
         "observer_height_m": OBSERVER_HEIGHT_M, "region_id": outline.region_id,
+        "compression": "gzip", "delta_axis": "azimuth",
     })
     return len(sites)
 

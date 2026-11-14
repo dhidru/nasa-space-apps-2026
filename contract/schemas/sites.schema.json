@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Site grid (sites.json). Order of sites[] = row order of horizons.bin",
+  "title": "Site grid (sites.json). Order of sites[] = row order of horizons.bin.gz",
   "type": "object",
   "required": ["schema_version", "mock", "region_id", "grid_spacing_m", "site_radius_m", "observer_height_m", "sites"],
   "additionalProperties": false,
