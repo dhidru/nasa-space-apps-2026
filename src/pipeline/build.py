@@ -2,8 +2,8 @@
 
 Writes regions.json, the home and region base maps, every region outline, and
 for each region with site data: sites.json and horizons.bin.gz/.json. Sun/Earth
-positions are written by pipeline.ephemeris. The results/ documents (ranking,
-site detail, Landing Windows) are not built here yet.
+positions are written by pipeline.ephemeris, and the results/ documents (ranking,
+site detail, Landing Windows) by pipeline.results.
 
     python -m pipeline.build [OUT_DIR]      # default: data/processed/site-data
 """

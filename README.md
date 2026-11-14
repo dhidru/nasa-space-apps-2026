@@ -58,7 +58,8 @@ python -m venv .venv
 committed in `data/processed/site-data/` (about 11 MB): all 9 region outlines and
 base maps, the Mons Mouton site grid and Horizons, and Sun/Earth positions for
 the Supported Span. It has the same layout as the mock data in
-`contract/mock/data/`, except that the `results/` files aren't built yet.
+`contract/mock/data/`, including the `results/` documents for one Landing Time
+(2027-03-01T00:00Z): the ranking, site details and Landing Windows for the top 10.
 After a rebuild, commit the changed files there.
 
 The source datasets go in `data/raw/` (git-ignored). Their licenses are in
@@ -74,7 +75,9 @@ Run these from `src/`:
 4. `python -m pipeline.fetch lola20 mons-mouton`: only the rows of the LOLA 20 m DEM around the region (~100 MB).
 5. `python -m pipeline.build`: regions, outlines, base maps, sites and Horizons into `data/processed/site-data/` (a few minutes).
 6. `python -m pipeline.ephemeris ../data/processed/site-data/ephemeris 2026 2027`: Sun and Earth positions for the Supported Span.
-7. `python ../contract/validate.py ../data/processed/site-data`: check the output against the data contract.
+7. `python -m pipeline.results --landing-time 2027-03-01T00:00:00Z`: Clearance, ranking, site details and
+   Landing Windows into `regions/mons-mouton/results/` (seconds; repeat `--landing-time` for more).
+8. `python ../contract/validate.py ../data/processed/site-data`: check the output against the data contract.
 
 Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks that need the downloaded data.
 
