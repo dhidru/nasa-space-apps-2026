@@ -11,7 +11,7 @@ One of the nine candidate areas near the lunar south pole that NASA named for cr
 _Avoid_: Artemis site, landing area, zone
 
 **Demo Region**:
-Mons Mouton Plateau, the Landing Region we compute first and use for the demo.
+Mons Mouton, the Landing Region we compute first and use for the demo.
 _Avoid_: Test region, pilot region
 
 **Landing Site**:

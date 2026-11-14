@@ -26,6 +26,7 @@ from .regions import NASA_SOURCE, REGIONS, Outline, load_outlines
 from .sites import build_site_grid
 
 SCHEMA_VERSION = 1
+DEMO_REGION = "mons-mouton"  # design.md §3
 SITE_SPACING_M = 200.0
 SITE_RADIUS_M = 100.0
 OBSERVER_HEIGHT_M = 2.0
@@ -192,7 +193,7 @@ def main(out: Path) -> None:
     far = open_lola(RAW / "lola" / "ldem_80s_80m.lbl", RAW / "lola" / "ldem_80s_80m.img")
     band = next((RAW / "lola").glob("ldem_80s_20m_lines*.img"))
     near = open_lola(RAW / "lola" / "ldem_80s_20m.lbl", band)
-    build_dataset(out, outlines, far=far, near=near, site_regions={"mons-mouton-plateau"})
+    build_dataset(out, outlines, far=far, near=near, site_regions={DEMO_REGION})
 
 
 if __name__ == "__main__":

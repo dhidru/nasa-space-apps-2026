@@ -277,6 +277,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Ran a design interview with the team, researched candidate data sources (not yet used), and wrote the glossary, the design doc and the "don't look at other teams' projects" rule | `GLOSSARY.md`, `docs/design.md`, `CLAUDE.md` |
 | 2026-11-14 | Claude Code | Wrote the data contract, the JSON Schemas, the synthetic mock-data generator and the validator, then generated and validated the mock data | `docs/data-contract.md`, `contract/`, `requirements-dev.txt`, `.gitignore` |
 | 2026-11-14 | Claude Code | Verified the licenses of the USGS outlines, LOLA DEMs, NAIF kernels and the pipeline libraries; wrote their attribution entries and conventions cards; wrote the first pipeline stages (projection, LOLA loader, region outlines, site grid, Horizon ray-marcher, ephemeris, build) with tests; downloaded the SPICE kernels and LOLA 80 m DEM | `ATTRIBUTIONS.md`, `docs/data-contract.md`, `src/pipeline/`, `tests/`, `pyproject.toml`, `requirements*.txt`, `README.md` |
+| 2026-11-14 | Claude Code | Downloaded the USGS outlines (after the team solved the CAPTCHA), filled in their conventions card, switched the Demo Region to Mons Mouton at the team's request, regenerated the mock data, downloaded the 20 m DEM band and ran the first real build (6,400 sites) | `docs/`, `GLOSSARY.md`, `README.md`, `contract/mock/`, `src/pipeline/build.py`, `tests/test_build.py` |
 
 ## Media (images, icons, fonts, video, audio)
 

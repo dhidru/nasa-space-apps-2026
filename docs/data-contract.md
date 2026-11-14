@@ -288,9 +288,9 @@ python contract/validate.py contract/mock/data
 Output goes to `contract/mock/data/`, in the layout of section 4. What it
 generates:
 - **All 9 regions** in `regions.json`, with **placeholder** centers and outlines.
-  These are not the real NASA locations. Only `mons-mouton-plateau` has
-  `has_site_data: true`.
-- **Mons Mouton Plateau sites:** a 15 × 15 km square of sites (75 × 75 = 5,625)
+  These are not the real NASA locations. Only `mons-mouton` (the Demo
+  Region) has `has_site_data: true`.
+- **Mons Mouton sites:** a 15 × 15 km square of sites (75 × 75 = 5,625)
   at a placeholder location near 85°S.
 - **Synthetic Horizons** from a handful of made-up "mountains", so the heatmap
   has realistic spatial patterns.
@@ -395,9 +395,9 @@ card. Nothing else in the pipeline reads a source file directly.
 - **Conversion on load:** check the `.prj`, wrap longitudes to −180–180°
   (a no-op for this file), map the `Region` names to our region ids, and
   project vertices to section-2 x/y.
-- **Note:** Mons Mouton Plateau is 76.9 × 57.9 km (4,451.8 km²), much larger
-  than the 15 × 15 km assumed in design.md §4. The 8 other regions are 16–30 km
-  squares.
+- **Note:** Mons Mouton Plateau is 76.9 × 57.9 km (4,451.8 km²). That is why
+  the Demo Region became Mons Mouton (16 × 16 km); see design.md §3. The other
+  regions are 20–30 km squares.
 
 ### NAIF SPICE kernels (DE440)
 - **File(s):** `de440s.bsp` (planetary SPK, 31 MB), `moon_pa_de440_200625.bpc`

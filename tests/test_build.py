@@ -39,7 +39,7 @@ def test_built_dataset_passes_the_contract_validator(tmp_path):
     outlines = {r.region_id: square_outline(r.region_id, -160.0 + 40.0 * i, -86.0) for i, r in enumerate(REGIONS)}
     far = bumpy_dem(400.0)
     near = bumpy_dem(100.0, half_width=200_000.0)
-    build_dataset(tmp_path, outlines, far=far, near=near, site_regions={"mons-mouton-plateau"},
+    build_dataset(tmp_path, outlines, far=far, near=near, site_regions={"mons-mouton"},
                   horizon_kw={"n_azimuths": 1440, "near_max_m": 1_000.0, "far_max_m": 5_000.0},
                   home_pixel_m=2_000.0)
 
@@ -48,9 +48,9 @@ def test_built_dataset_passes_the_contract_validator(tmp_path):
     regions = json.loads((tmp_path / "regions.json").read_text())
     assert regions["mock"] is False
     flags = {r["id"]: r["has_site_data"] for r in regions["regions"]}
-    assert flags["mons-mouton-plateau"] is True and sum(flags.values()) == 1
+    assert flags["mons-mouton"] is True and sum(flags.values()) == 1
 
-    folder = tmp_path / "regions" / "mons-mouton-plateau"
+    folder = tmp_path / "regions" / "mons-mouton"
     sites = json.loads((folder / "sites.json").read_text())
     hz_meta = json.loads((folder / "horizons.json").read_text())
     hz = np.fromfile(folder / hz_meta["file"], dtype="<i2").reshape(hz_meta["shape"])

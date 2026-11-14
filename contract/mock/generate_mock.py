@@ -29,7 +29,7 @@ SCHEMA_VERSION = 1
 R_M = 1_737_400.0  # reference sphere radius, meters
 OUT = Path(__file__).resolve().parent / "data"
 
-DEMO_REGION = "mons-mouton-plateau"
+DEMO_REGION = "mons-mouton"
 GRID_N = 75  # 75 x 75 sites
 GRID_SPACING_M = 200.0
 SITE_RADIUS_M = 100.0

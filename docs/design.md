@@ -31,20 +31,26 @@ a specific Artemis mission number.
 - These are the 9 NASA candidate regions: Peak near Cabeus B, Haworth, Malapert
   Massif, Mons Mouton Plateau, Mons Mouton, Nobile Rim 1, Nobile Rim 2, de
   Gerlache Rim 2, and Slater Plain.
-- The **Demo Region** is **Mons Mouton Plateau**. We compute it first, and the
-  demo uses it. If there's time, we run the pipeline for the other 8.
+- The **Demo Region** is **Mons Mouton** (a 16 × 16 km square). We compute it
+  first, and the demo uses it. If there's time, we run the pipeline for the
+  other 8.
+- We first chose Mons Mouton Plateau, but its USGS outline turned out to be
+  76.9 × 57.9 km (about 111,000 sites, a 320 MB Horizons file and about 50 min
+  of compute). The team switched to Mons Mouton on 2026-11-14 because it fits
+  the sizes below and sits right next to the plateau. The other regions are
+  20–30 km squares, except the plateau.
 - Regions without computed site data still open their region map, with a
   hillshade and outline. A banner says "Site analysis for this region is coming
   soon." The demo never shows a disabled or broken page.
-- Region outlines and grids come from the USGS Artemis candidate navigational
-  grids (CC0). Their license still has to be verified and added to
-  ATTRIBUTIONS.md before we use them.
+- Region outlines come from the USGS Artemis III candidate navigational grids
+  release (CC0, verified; see ATTRIBUTIONS.md).
 
 ## 4. Landing Sites
 
 - A site is a circle with a **100 m radius**.
 - Site centers sit on a **200 m grid** inside the region, so neighboring circles
-  touch but don't overlap. That's about 5,600 sites per region.
+  touch but don't overlap. That's about 6,400 sites for Mons Mouton and about
+  10,000 for a 20 km region.
 - MVP: each site is scored at its center point, at an **Observer Height of 2 m**
   above the terrain.
 
@@ -63,9 +69,8 @@ a specific Artemis mission number.
   from the pole, so it covers all regions, which lie within 6° of the pole.
 - Fallback if time is short: use only the 80 m DEM first, then add the 20 m
   near field.
-- The heavy computation (ray tracing about 5,600 sites × 1,440 azimuths) runs
-  offline, for example with Numba. Build it end to end for Mons Mouton Plateau
-  first.
+- The heavy computation (ray tracing about 6,400 sites × 1,440 azimuths) runs
+  offline, for example with Numba. Build it end to end for Mons Mouton first.
 
 ### Sun and Earth positions
 
@@ -188,7 +193,7 @@ outlined.
 
 ### Open: static site vs. server
 
-We'll decide once the Mons Mouton Plateau pipeline works, then record the
+We'll decide once the Mons Mouton pipeline works, then record the
 decision in an ADR (`docs/adr/`).
 
 | | Static site (clearance in the browser) | Python server (clearance on a server) |
