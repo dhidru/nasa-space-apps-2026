@@ -60,4 +60,4 @@ _Space Apps asks teams to disclose AI tool usage. Describe it here._
 
 ## License
 
-[MIT](LICENSE)
+[Apache License 2.0](LICENSE)
