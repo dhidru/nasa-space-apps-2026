@@ -1,13 +1,24 @@
-# NASA Space Apps Challenge 2026
+# NASA Space Apps Challenge 2026: Lunar Landing Site Navigator
 
 Our team's project for the [NASA International Space Apps Challenge 2026](https://www.spaceappschallenge.org/).
 
 ## Challenge
 
-**Challenge name:** _TBD_
-**Challenge link:** _TBD_
+**Challenge name:** Lunar Landing Site Navigator
+**Challenge link:** https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/
+**Difficulty:** Intermediate / Advanced
+**Subjects:** Human Exploration, Moon, Software, Space Exploration
 
-_One-paragraph summary of the problem we're solving._
+Missions to the Moon's south pole have hard limits on lighting and communication.
+Small changes in landing site or date can change how much sunlight reaches the
+solar arrays and whether Earth is above the horizon for direct-to-Earth
+communication. Tools that compute these, such as JPL Horizons, LROC QuickMap and
+Moon Trek, are powerful but hard to use for quick comparisons. The challenge is
+to build an intuitive tool that lets mission planners, educators and the public
+compare landing sites and dates quickly. It should show where the Sun and Earth
+are relative to the local horizon, and give power and communication metrics such
+as solar elevation, sunlight duration, Earth visibility windows, and time left
+until sunset or Earthset.
 
 ## Our Solution
 

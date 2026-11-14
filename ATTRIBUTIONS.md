@@ -108,6 +108,7 @@ _None yet._
 | 2026-11-14 | Claude Code | Created the repo scaffold, README template, .gitignore and folder layout | `README.md`, `.gitignore`, folders |
 | 2026-11-14 | Claude Code | Switched the license to Apache 2.0 and created this attributions file | `LICENSE`, `ATTRIBUTIONS.md`, `CLAUDE.md` |
 | 2026-11-14 | Claude Code | Added the "ask before pushing" rule to the project rules | `CLAUDE.md` |
+| 2026-11-14 | Claude Code | Wrote the README challenge summary (paraphrased from the challenge page) and listed candidate resources | `README.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
@@ -115,7 +116,30 @@ _None yet._
 
 ## Information Sources (articles, papers, docs, websites)
 
-_None yet._
+### Space Apps 2026 challenge: "Lunar Landing Site Navigator"
+- **Type:** Information
+- **Used for:** The problem statement. The README challenge summary is our own
+  paraphrase, not copied text.
+- **Source:** https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/
+  (the team provided the URL and page text; the site blocked an automated link check)
+- **Accessed:** 2026-11-14
+- **License / permission:** Challenge material provided to participants by NASA Space Apps
+- **Requirements:** Paraphrase rather than copy, and link the original.
+- **Status:** ✅ (paraphrased and linked; checked by Claude Code, 2026-11-14)
+- **Citation:** NASA International Space Apps Challenge. "Lunar Landing Site Navigator." 2026 Challenges. https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/
+
+## Candidate Resources (not yet used, licenses not yet verified)
+
+These are the resources the challenge suggests. Before any of them is used,
+check its license or terms and move it to the right section above.
+
+| Resource | Provider | What we might use it for | URL | Status |
+| -------- | -------- | ------------------------ | --- | ------ |
+| JPL Horizons System | NASA/JPL (Caltech) | Sun and Earth positions (azimuth and elevation) from lunar surface sites | https://ssd.jpl.nasa.gov/horizons/ | ⚠️ Not verified |
+| LROC QuickMap | Arizona State University / LRO | Exploring terrain at south-pole sites | https://quickmap.lroc.asu.edu/ | ⚠️ Not verified |
+| Moon Trek | NASA/JPL (Solar System Treks) | 3D terrain context and topography | https://trek.nasa.gov/moon/ | ⚠️ Not verified |
+| LOLA topography (DEMs) | NASA GSFC / LRO, via PDS | Horizon profiles that include terrain | https://pds-geosciences.wustl.edu/missions/lro/lola.htm | ⚠️ Not verified |
+| CSA Moon Exploration | Canadian Space Agency | Background and educational content | https://www.asc-csa.gc.ca/eng/astronomy/moon-exploration/ | ⚠️ Not verified (Government of Canada content, which has its own terms) |
 
 ## Project License Text
 
