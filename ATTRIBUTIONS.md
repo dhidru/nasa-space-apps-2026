@@ -280,6 +280,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Downloaded the USGS outlines (after the team solved the CAPTCHA), filled in their conventions card, switched the Demo Region to Mons Mouton at the team's request, regenerated the mock data, downloaded the 20 m DEM band and ran the first real build (6,400 sites) | `docs/`, `GLOSSARY.md`, `README.md`, `contract/mock/`, `src/pipeline/build.py`, `tests/test_build.py` |
 | 2026-11-14 | Claude Code | Cut the time span to the Supported Span (2026-11-14 to 2027-11-14) at the team's request: Landing Windows now search that fixed span; updated the design doc, glossary, data contract, schema title, mock generator and README, and regenerated the mock Landing Windows | `docs/`, `GLOSSARY.md`, `README.md`, `contract/`, `src/pipeline/ephemeris.py` |
 | 2026-11-14 | Claude Code | Measured Horizon compression options on the real data and, at the team's request, switched the Horizons to a delta-along-azimuth + gzip format (`horizons.bin.gz`, 18.4 → 3.7 MB): contract, schema, encoder/decoder with tests, build, mock generator and validator | `docs/`, `contract/`, `src/pipeline/`, `tests/`, `.gitignore` |
+| 2026-11-14 | Claude Code | Un-ignored and committed the real pipeline output (`data/processed/site-data/`, ~11 MB) so the design side can use it, and noted it in the README | `.gitignore`, `README.md`, `data/processed/site-data/` |
 
 ## Media (images, icons, fonts, video, audio)
 

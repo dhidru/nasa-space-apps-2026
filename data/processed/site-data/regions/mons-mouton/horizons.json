@@ -1,0 +1,1 @@
+{"schema_version":1,"mock":false,"file":"horizons.bin.gz","dtype":"int16","byte_order":"little","shape":[6400,1440],"axes":["site","azimuth"],"units":"deg","scale":0.01,"azimuth_start_deg":0,"azimuth_step_deg":0.25,"observer_height_m":2.0,"region_id":"mons-mouton","compression":"gzip","delta_axis":"azimuth"}

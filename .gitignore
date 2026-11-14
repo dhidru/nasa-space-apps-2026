@@ -26,6 +26,8 @@ data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+# The real pipeline output is committed so the design side can use it (~11 MB).
+!data/processed/site-data/
 *.nc
 *.hdf
 *.h5

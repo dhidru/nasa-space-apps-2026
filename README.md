@@ -54,6 +54,13 @@ python -m venv .venv
 
 ### Data pipeline (Demo Region: Mons Mouton)
 
+**You don't need to run the pipeline to use the real data.** A built copy is
+committed in `data/processed/site-data/` (about 11 MB): all 9 region outlines and
+base maps, the Mons Mouton site grid and Horizons, and Sun/Earth positions for
+the Supported Span. It has the same layout as the mock data in
+`contract/mock/data/`, except that the `results/` files aren't built yet.
+After a rebuild, commit the changed files there.
+
 The source datasets go in `data/raw/` (git-ignored). Their licenses are in
 [ATTRIBUTIONS.md](ATTRIBUTIONS.md) and their conventions cards in
 [docs/data-contract.md §9](docs/data-contract.md#9-conventions-cards-for-source-datasets).
@@ -76,7 +83,7 @@ Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks 
 ```
 src/            Application / analysis source code
 data/raw/       Original downloaded datasets (large files git-ignored)
-data/processed/ Cleaned / derived data
+data/processed/ Pipeline output; site-data/ is committed for the front end
 notebooks/      Exploration notebooks
 docs/           Write-ups, diagrams, presentation material
 assets/         Images, logos, media for the demo

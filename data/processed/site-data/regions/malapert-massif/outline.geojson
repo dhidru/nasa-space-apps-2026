@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-11000.0,132000.0],[10000.0,132000.0],[10000.0,111000.0],[-11000.0,111000.0],[-11000.0,132000.0]]]},"properties":{"schema_version":1,"mock":false,"region_id":"malapert-massif","crs":"lunar-south-polar-stereographic-m"}}]}

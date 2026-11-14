@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "mock": false,
+  "file": "positions-2026.bin",
+  "dtype": "float32",
+  "byte_order": "little",
+  "shape": [
+    52560,
+    2,
+    3
+  ],
+  "axes": [
+    "time",
+    "body",
+    "xyz"
+  ],
+  "units": "km",
+  "scale": 1,
+  "bodies": [
+    "sun",
+    "earth"
+  ],
+  "frame": "MOON_ME",
+  "aberration_correction": "LT+S",
+  "start_utc": "2026-01-01T00:00:00Z",
+  "step_s": 600
+}

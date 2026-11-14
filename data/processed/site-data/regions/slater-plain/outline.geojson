@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[60002.5,-40002.5],[79997.5,-40002.5],[79997.5,-59997.5],[60002.5,-59997.5],[60002.5,-40002.5]]]},"properties":{"schema_version":1,"mock":false,"region_id":"slater-plain","crs":"lunar-south-polar-stereographic-m"}}]}
