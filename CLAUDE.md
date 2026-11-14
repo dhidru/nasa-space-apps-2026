@@ -26,6 +26,15 @@ code snippet, tool, API, image, icon, font, media file, article, paper, or websi
 
 The project itself is licensed under Apache 2.0. Flag anything incompatible with that.
 
+## Originality: don't look at other teams' work
+
+Other Space Apps 2026 teams are solving this same challenge and publish their
+repos. Don't open, read, search or reuse any other team's project (GitHub repos,
+demos or write-ups for this challenge), even when a search result points to one.
+Build from primary sources only: NASA/USGS/PDS data, official library docs, and
+papers. If a search turns up another team's project, skip it and don't follow
+the link.
+
 ## Pushing to GitHub
 
 When a feature or change is finished:
