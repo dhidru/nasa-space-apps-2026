@@ -369,25 +369,35 @@ card. Nothing else in the pipeline reads a source file directly.
 
 ### USGS Artemis III region outlines (`A3_9regions-lonlat-simplified.zip`)
 - **File(s):** `A3_9regions-lonlat-simplified.zip` (637,136 bytes) from
-  release DOI 10.5066/P1MEQ6UK. It contains a shapefile of the 9 region outlines.
+  release DOI 10.5066/P1MEQ6UK, downloaded 2026-11-14 through the ScienceBase
+  CAPTCHA. It contains a polygon shapefile (`.shp/.shx/.dbf/.prj/.cpg`), a
+  `.geojson` copy, a preview `.jpg` and a QGIS `.qmd`. We read only the
+  shapefile. Fields: `OBJECTID`, `Region`, `Area_km2`, `RegionCode`,
+  `Shape_Leng`, `Shape_Area`. There are 9 records.
 - **Source / license:** https://www.sciencebase.gov/catalog/item/671a6fa8d34efed5620f89f8 · CC0 · see ATTRIBUTIONS.md
 - **Frame:** the release requires the DE421 mean-Earth frame ("The datum
   utilized must be the Jet Propulsion Laboratory (JPL) Development Ephemeris
   (DE) 421 in the Mean Earth (ME) …"). That is our MOON_ME.
-- **Projection:** none; geographic longitude/latitude, per the file name. The
-  release's FGDC metadata gives `Moon (2015) - Sphere`, radius 1,737,400 m,
-  in decimal degrees. **Not yet confirmed against the file**, which is behind a
-  CAPTCHA and hasn't been downloaded. `pipeline.regions` refuses to load it
-  unless its `.prj` is geographic, in degrees, on a 1,737,400 m sphere. Record
-  the actual `.prj` here on first load.
+- **Projection:** none; geographic longitude/latitude. The `.prj` reads
+  `GEOGCS["GCS_Moon_2000",DATUM["D_Moon_2000",SPHEROID["Moon_2000_IAU_IAG",1737400.0,0.0]],PRIMEM["Reference_Meridian",0.0],UNIT["Degree",0.0174532925199433]]`.
+  The QGIS `.qmd` sidecar names WGS 84 (Earth); that is stale editor
+  metadata, and we follow the `.prj`.
 - **Units:** degrees.
-- **Ranges and signs:** to be read from the `.prj` and the coordinates on
-  first load (0–360° vs. −180–180°). The loader accepts either.
-- **Resolution:** simplified polygons (vertex spacing to be recorded on first load).
+- **Ranges and signs:** longitudes already in −180…180°, east-positive
+  (file bbox −77.47° to 135.00° E, −88.66° to −82.85° latitude).
+- **Resolution:** each region is one 4-corner polygon (5 vertices, closed).
+  Projected with section 2, each region's area matches the file's
+  `Area_km2` to 0.1 km², and the 20 km regions come out with 20.0 km sides.
+  So the corners were laid out in the same polar stereographic projection,
+  and straight edges on our map are the intended edges.
 - **Reference height / datum:** 1,737,400 m sphere (no heights in this file).
 - **No-data value:** not applicable.
-- **Conversion on load:** wrap longitudes to −180–180°, map NASA names to our
-  region ids, and project vertices to section-2 x/y.
+- **Conversion on load:** check the `.prj`, wrap longitudes to −180–180°
+  (a no-op for this file), map the `Region` names to our region ids, and
+  project vertices to section-2 x/y.
+- **Note:** Mons Mouton Plateau is 76.9 × 57.9 km (4,451.8 km²), much larger
+  than the 15 × 15 km assumed in design.md §4. The 8 other regions are 16–30 km
+  squares.
 
 ### NAIF SPICE kernels (DE440)
 - **File(s):** `de440s.bsp` (planetary SPK, 31 MB), `moon_pa_de440_200625.bpc`
