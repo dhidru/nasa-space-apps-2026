@@ -5,7 +5,7 @@ docs/data-contract.md §9). Vectors run from the Moon's center to the body, in
 km, with LT+S (light time + stellar aberration) correction, at 600 s steps of
 UTC from Jan 1 00:00:00 of each year.
 
-    python -m pipeline.ephemeris OUT_DIR 2026 2031
+    python -m pipeline.ephemeris OUT_DIR 2026 2027   # the Supported Span
 """
 
 from __future__ import annotations

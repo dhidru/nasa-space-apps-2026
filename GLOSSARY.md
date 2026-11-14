@@ -32,6 +32,10 @@ _Avoid_: Mission window, duration, period
 A stretch of Landing Times for one Landing Site in which every Surface Stay has Full Coverage.
 _Avoid_: Best time, launch window
 
+**Supported Span**:
+The range of Landing Times the tool covers: 2026-11-14 to 2027-11-14. The date picker and the Landing Window search both use it.
+_Avoid_: Time range, data range, next 12 months
+
 ### Geometry
 
 **Observer Height**:

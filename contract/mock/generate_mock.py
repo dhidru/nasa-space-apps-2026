@@ -43,8 +43,8 @@ TOP_SEPARATION_M = 2000.0
 MERGE_GAP_H = 24.0
 
 LANDING_TIME = datetime(2027, 3, 1, tzinfo=timezone.utc)
-SEARCH_START = LANDING_TIME
-SEARCH_END = datetime(2028, 3, 1, tzinfo=timezone.utc)  # exclusive
+SEARCH_START = datetime(2026, 11, 14, tzinfo=timezone.utc)  # Supported Span, data-contract §2
+SEARCH_END = datetime(2027, 11, 14, tzinfo=timezone.utc)  # exclusive
 EPHEMERIS_YEAR = 2027
 
 NASA_SOURCE = {

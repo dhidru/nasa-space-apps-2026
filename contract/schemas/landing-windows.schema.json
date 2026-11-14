@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Landing Windows for one Landing Site over a 12-month search",
+  "title": "Landing Windows for one Landing Site over the Supported Span",
   "type": "object",
   "required": ["schema_version", "mock", "region_id", "site_id", "search_start_utc", "search_end_utc", "step_s", "merge_gap_h", "top_n", "strip", "windows"],
   "additionalProperties": false,

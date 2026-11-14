@@ -38,6 +38,7 @@ is downloaded and its license is checked.
 | Elevation / Clearance | −90 to +90°, measured from the flat local horizontal. Negative Clearance means blocked |
 | Time | UTC, ISO 8601 with a `Z` suffix, to the second: `2027-03-01T00:00:00Z` |
 | Time step | 600 s. Landing Times snap to the 10-minute UTC grid (:00, :10, …) |
+| Supported Span | Landing Times in `[2026-11-14T00:00:00Z, 2027-11-14T00:00:00Z)`. The last Surface Stay ends `2027-11-20T23:50:00Z`, so positions cover the UTC years 2026 and 2027 |
 
 Field names carry their unit as a suffix:
 - `_deg`: degrees
@@ -253,8 +254,9 @@ One document per site and Landing Time.
 
 One document per site.
 
-- `search_start_utc`, `search_end_utc`: the range of Landing Times searched, 12
-  months
+- `search_start_utc`, `search_end_utc`: the range of Landing Times searched.
+  This is always the Supported Span (section 2), whatever Landing Time is
+  picked
 - **All `end_utc` values here are exclusive:** a range is `[start, end)`. This
   applies to `search_end_utc`, runs and windows.
 - `merge_gap_h` (24)
@@ -301,7 +303,7 @@ generates:
   - Both are the same for every site. Real ones differ slightly between sites.
 - **One Landing Time:** `2027-03-01T00:00:00Z`.
 - **Full results for that Landing Time:** a ranking, site details for the top
-  10, and Landing Windows for the top 10 over 2027-03-01 to 2028-03-01.
+  10, and Landing Windows for the top 10 over the Supported Span.
 - **Binaries:** horizons and one year (2027) of positions. The mock positions are
   derived from the same synthetic Sun and Earth motion, as seen from the region
   center.
@@ -414,7 +416,7 @@ card. Nothing else in the pipeline reads a source file directly.
   from UTC with the leap-second kernel.
 - **Ranges and signs:** `de440s.bsp` covers 1849-12-26 to 2150-01-22 (from
   NAIF's `aa_summaries.txt`); `moon_pa_de440_200625.bpc` covers 1549-12-31 to
-  2650-01-25. Both cover our span of 2026–2031.
+  2650-01-25. Both cover our Supported Span (2026–2027).
 - **Resolution:** continuous; we sample every 600 s.
 - **Reference height / datum:** vectors run from the Moon's center of mass
   (observer `MOON`) to the body, with `LT+S` aberration correction.

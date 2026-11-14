@@ -66,7 +66,7 @@ Run these from `src/`:
 3. `python -m pipeline.fetch lola80`: LOLA 80 m DEM (116 MB).
 4. `python -m pipeline.fetch lola20 mons-mouton`: only the rows of the LOLA 20 m DEM around the region (~100 MB).
 5. `python -m pipeline.build`: regions, outlines, base maps, sites and Horizons into `data/processed/site-data/` (a few minutes).
-6. `python -m pipeline.ephemeris ../data/processed/site-data/ephemeris 2026 2031`: Sun and Earth positions.
+6. `python -m pipeline.ephemeris ../data/processed/site-data/ephemeris 2026 2027`: Sun and Earth positions for the Supported Span.
 7. `python ../contract/validate.py ../data/processed/site-data`: check the output against the data contract.
 
 Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks that need the downloaded data.

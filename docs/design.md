@@ -24,7 +24,9 @@ a specific Artemis mission number.
 3. **Review the ranked sites.** We show a heatmap of all sites and a top-10 list.
    Clicking a site opens the site view.
 4. **Find Landing Windows for a site (secondary).** For a chosen site, we scan
-   Landing Times over the next 12 months and list the best Landing Windows.
+   every Landing Time in the Supported Span and list the best Landing Windows.
+   The search always covers the whole span, so it can return dates before the
+   chosen Landing Time or before today.
 
 ## 3. Landing Regions
 
@@ -88,9 +90,11 @@ a specific Artemis mission number.
   captures Earth parallax of up to about 0.26° across the Moon.
 - Not modeled: refraction (there's no atmosphere) and the sizes of the Sun and
   Earth disks. Line of Sight is judged at each body's **center**.
-- Time span: **2026-11-14 through the end of 2031**. The date picker only allows
-  Landing Times whose Surface Stay fits inside this span. To extend it, rerun
-  the pipeline.
+- Supported Span: Landing Times from **2026-11-14 to 2027-11-14** (decided by
+  the team on 2026-11-14, cut down from 2026–2031 to keep the data small). The
+  date picker only allows Landing Times in this span. The last Surface Stay ends
+  on 2027-11-21, so positions are needed for 2026 and 2027 only. To move the
+  span, change it in the data contract (§2) and rerun the pipeline.
 
 ### Sampling in time
 
@@ -138,8 +142,8 @@ The heatmap still shows every site.
 
 ### Landing Windows (secondary feature)
 
-- For one site, test every Landing Time over the next 12 months at the 10-minute
-  step.
+- For one site, test every Landing Time in the Supported Span (2026-11-14 to
+  2027-11-14) at the 10-minute step, whatever Landing Time is picked.
 - A Landing Window is a run of consecutive Landing Times that all give Full
   Coverage.
 - Merge windows separated by less than **24 hours** (a setting).
@@ -173,8 +177,8 @@ outlined.
   - The gap between the two lines is shaded green where the body is in Line of
     Sight and red where it is blocked.
 - **Stats table:** the metrics from section 5 for each body.
-- **"Find Landing Windows" button:** opens a 12-month color strip (green = Full
-  Coverage, amber = Partial, gray = outside the supported span) above the
+- **"Find Landing Windows" button:** opens a color strip over the Supported Span
+  (green = Full Coverage, amber = Partial, gray = outside the Supported Span) above the
   top-10 window list. Clicking a window sets the Landing Time.
 
 ## 8. Architecture
@@ -200,11 +204,12 @@ decision in an ADR (`docs/adr/`).
 |---|---|---|
 | Hosting | GitHub Pages: free and always on | Free tiers often sleep, so the first request can take 30–60 s |
 | Science code | Python, plus a second TypeScript copy for the browser | One Python copy |
-| Data sent to the browser | About 10–20 MB of Horizons per region, plus about 6 MB of positions | Results only |
+| Data sent to the browser | About 10–20 MB of Horizons per region, plus about 2.6 MB of positions | Results only |
 | Main risk | The two copies disagree (tests catch this) | The server is down or asleep during judging |
 
 Precomputing the Sun and Earth positions is cheap in either case: 10-minute
-steps over 5 years come to about 6 MB.
+steps come to about 1.3 MB per year, and the Supported Span needs two yearly
+files (2026 and 2027).
 
 ## 9. Data contract
 
