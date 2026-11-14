@@ -25,3 +25,13 @@ code snippet, tool, API, image, icon, font, media file, article, paper, or websi
    (GPL or AGPL), before adding it.
 
 The project itself is licensed under Apache 2.0. Flag anything incompatible with that.
+
+## Pushing to GitHub
+
+When a feature or change is finished:
+
+1. Commit it locally with a clear message.
+2. **Ask the team whether to push it to GitHub** (`origin`, https://github.com/dhidru/nasa-space-apps-2026).
+   Give a short summary of what would be pushed: the commits and the files changed.
+3. Don't push until someone on the team says yes. If they say not yet, remind
+   them about the unpushed commits after the next finished feature.

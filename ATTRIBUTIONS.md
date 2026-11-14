@@ -107,6 +107,7 @@ _None yet._
 | ---- | ---- | ----------- | -------------- |
 | 2026-11-14 | Claude Code | Created the repo scaffold, README template, .gitignore and folder layout | `README.md`, `.gitignore`, folders |
 | 2026-11-14 | Claude Code | Switched the license to Apache 2.0 and created this attributions file | `LICENSE`, `ATTRIBUTIONS.md`, `CLAUDE.md` |
+| 2026-11-14 | Claude Code | Added the "ask before pushing" rule to the project rules | `CLAUDE.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
