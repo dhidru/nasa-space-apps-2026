@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-52296.6,398.8],[-37296.6,398.8],[-37296.6,15398.8],[-52296.6,15398.8],[-52296.6,398.8]]]},"properties":{"schema_version":1,"mock":true,"region_id":"de-gerlache-rim-2","crs":"lunar-south-polar-stereographic-m"}}]}

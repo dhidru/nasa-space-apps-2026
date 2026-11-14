@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sidecar for a raw little-endian C-order binary array (.bin)",
+  "$comment": "shape and axes must have the same length; contract/validate.py checks this and the .bin file size",
+  "type": "object",
+  "required": ["schema_version", "mock", "file", "dtype", "byte_order", "shape", "axes", "units", "scale"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "mock": {"type": "boolean"},
+    "file": {"type": "string"},
+    "dtype": {"enum": ["int16", "float32"]},
+    "byte_order": {"const": "little"},
+    "shape": {"type": "array", "items": {"type": "integer", "minimum": 1}},
+    "axes": {"type": "array", "items": {"type": "string"}},
+    "units": {"type": "string"},
+    "scale": {"type": "number"},
+    "azimuth_start_deg": {"type": "number"},
+    "azimuth_step_deg": {"type": "number"},
+    "observer_height_m": {"type": "number"},
+    "region_id": {"type": "string"},
+    "bodies": {"type": "array", "items": {"enum": ["sun", "earth"]}},
+    "frame": {"const": "MOON_ME"},
+    "aberration_correction": {"type": "string"},
+    "start_utc": {"$ref": "#/$defs/utc"},
+    "step_s": {"type": "integer", "minimum": 1}
+  },
+  "$defs": {
+    "utc": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"}
+  }
+}

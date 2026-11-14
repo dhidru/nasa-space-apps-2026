@@ -51,7 +51,23 @@ _None yet._
 
 ## Code & Libraries
 
-_None yet._
+### jsonschema (Python), with its required dependencies
+- **Type:** Code/Library (development dependency, in `requirements-dev.txt`)
+- **Used for:** Checking data files against the data-contract schemas
+  (`contract/validate.py`). Not part of the shipped app.
+- **Source:** https://github.com/python-jsonschema/jsonschema (PyPI `jsonschema==4.26.0`)
+- **Accessed:** 2026-11-14
+- **License / permission:** All MIT. Each package's own LICENSE or COPYING file was read:
+  - jsonschema: [COPYING](https://github.com/python-jsonschema/jsonschema/blob/main/COPYING), © 2013 Julian Berman
+  - referencing: [COPYING](https://github.com/python-jsonschema/referencing/blob/main/COPYING), © 2022 Julian Berman
+  - jsonschema-specifications: [COPYING](https://github.com/python-jsonschema/jsonschema-specifications/blob/main/COPYING), © 2022 Julian Berman. It also bundles JSON Schema meta-schemas under a BSD-3-style license, © 2022 JSON Schema Specification Authors.
+  - rpds-py: [LICENSE](https://github.com/crate-py/rpds/blob/main/LICENSE), © 2023 Julian Berman
+  - attrs: [LICENSE](https://github.com/python-attrs/attrs/blob/main/LICENSE), © 2015 Hynek Schlawack and the attrs contributors
+  - typing_extensions: PSF-2.0. It's pulled in by `referencing`; checked from the installed package's license metadata and LICENSE file.
+  All are permissive and compatible with Apache 2.0. We don't redistribute them, because pip installs them.
+- **Requirements:** None while they're only installed with pip. If we ever vendor them, we must keep their notices.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Berman, J. *jsonschema* [Software, MIT License]. https://github.com/python-jsonschema/jsonschema
 
 ## Tools
 
@@ -75,6 +91,18 @@ _None yet._
 - **Requirements:** None for our use. We only run it and don't redistribute it.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** GitHub, Inc. *GitHub CLI* [Software]. https://github.com/cli/cli
+
+### Python 3.12 (CPython)
+- **Type:** Tool
+- **Used for:** Running the data pipeline, the mock data generator and the
+  validator. Installed locally with winget from python.org. Not distributed
+  with the project.
+- **Source:** https://www.python.org/ (installer `python-3.12.10-amd64.exe`)
+- **Accessed:** 2026-11-14
+- **License / permission:** [PSF License Agreement](https://docs.python.org/3/license.html)
+- **Requirements:** None for our use. We run it and don't redistribute it.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Python Software Foundation. *Python 3.12* [Software]. https://www.python.org/
 
 ### GitHub (hosting)
 - **Type:** Tool
@@ -126,6 +154,7 @@ _None yet._
 | 2026-11-14 | Claude Code | Wrote the README challenge summary (paraphrased from the challenge page) and listed candidate resources | `README.md`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Verified the license of Matt Pocock's skills (MIT), copied 27 of them into the repo and recorded the attribution | `.claude/skills/`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Ran a design interview with the team, researched candidate data sources (not yet used), and wrote the glossary, the design doc and the "don't look at other teams' projects" rule | `GLOSSARY.md`, `docs/design.md`, `CLAUDE.md` |
+| 2026-11-14 | Claude Code | Wrote the data contract, the JSON Schemas, the synthetic mock-data generator and the validator, then generated and validated the mock data | `docs/data-contract.md`, `contract/`, `requirements-dev.txt`, `.gitignore` |
 
 ## Media (images, icons, fonts, video, audio)
 

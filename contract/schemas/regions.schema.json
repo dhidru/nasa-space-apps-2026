@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Region registry (regions.json)",
+  "type": "object",
+  "required": ["schema_version", "mock", "source", "regions"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "mock": {"type": "boolean"},
+    "source": {
+      "type": "object",
+      "required": ["name", "url"],
+      "additionalProperties": false,
+      "properties": {"name": {"type": "string"}, "url": {"type": "string"}}
+    },
+    "regions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "display_name", "nasa_name", "former_names", "center", "has_site_data", "outline", "basemap"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+          "display_name": {"type": "string"},
+          "nasa_name": {"type": "string"},
+          "former_names": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "source_url"],
+              "additionalProperties": false,
+              "properties": {"name": {"type": "string"}, "source_url": {"type": "string"}}
+            }
+          },
+          "center": {
+            "type": "object",
+            "required": ["lat_deg", "lon_deg", "x_m", "y_m"],
+            "additionalProperties": false,
+            "properties": {
+              "lat_deg": {"type": "number", "minimum": -90, "maximum": 90},
+              "lon_deg": {"type": "number", "minimum": -180, "maximum": 180},
+              "x_m": {"type": "number"},
+              "y_m": {"type": "number"}
+            }
+          },
+          "has_site_data": {"type": "boolean"},
+          "outline": {"type": "string"},
+          "basemap": {"type": "string"}
+        }
+      }
+    }
+  }
+}

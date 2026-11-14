@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-133029.7,97831.9],[-118029.7,97831.9],[-118029.7,112831.9],[-133029.7,112831.9],[-133029.7,97831.9]]]},"properties":{"schema_version":1,"mock":true,"region_id":"peak-near-cabeus-b","crs":"lunar-south-polar-stereographic-m"}}]}

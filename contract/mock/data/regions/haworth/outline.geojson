@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-25408.3,94062.9],[-10408.3,94062.9],[-10408.3,109062.9],[-25408.3,109062.9],[-25408.3,94062.9]]]},"properties":{"schema_version":1,"mock":true,"region_id":"haworth","crs":"lunar-south-polar-stereographic-m"}}]}

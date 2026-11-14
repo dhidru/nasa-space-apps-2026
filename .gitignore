@@ -31,3 +31,6 @@ data/processed/*
 *.h5
 *.tif
 *.tiff
+
+# Mock binaries (regenerate with contract/mock/generate_mock.py)
+contract/mock/data/**/*.bin

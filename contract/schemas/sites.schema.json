@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Site grid (sites.json). Order of sites[] = row order of horizons.bin",
+  "type": "object",
+  "required": ["schema_version", "mock", "region_id", "grid_spacing_m", "site_radius_m", "observer_height_m", "sites"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "mock": {"type": "boolean"},
+    "region_id": {"type": "string"},
+    "grid_spacing_m": {"type": "number", "exclusiveMinimum": 0},
+    "site_radius_m": {"type": "number", "exclusiveMinimum": 0},
+    "observer_height_m": {"type": "number", "minimum": 0},
+    "sites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["site_id", "x_m", "y_m", "lat_deg", "lon_deg", "terrain_height_m"],
+        "additionalProperties": false,
+        "properties": {
+          "site_id": {"type": "string", "pattern": "^r[0-9]{3}c[0-9]{3}$"},
+          "x_m": {"type": "number"},
+          "y_m": {"type": "number"},
+          "lat_deg": {"type": "number", "minimum": -90, "maximum": 90},
+          "lon_deg": {"type": "number", "minimum": -180, "maximum": 180},
+          "terrain_height_m": {"type": "number"}
+        }
+      }
+    }
+  }
+}

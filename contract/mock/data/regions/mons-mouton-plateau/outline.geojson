@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[68356.5,123887.4],[83356.5,123887.4],[83356.5,138887.4],[68356.5,138887.4],[68356.5,123887.4]]]},"properties":{"schema_version":1,"mock":true,"region_id":"mons-mouton-plateau","crs":"lunar-south-polar-stereographic-m"}}]}

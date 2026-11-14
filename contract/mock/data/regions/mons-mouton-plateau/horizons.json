@@ -1,0 +1,1 @@
+{"schema_version":1,"mock":true,"file":"horizons.bin","dtype":"int16","byte_order":"little","shape":[5625,1440],"axes":["site","azimuth"],"units":"deg","scale":0.01,"azimuth_start_deg":0,"azimuth_step_deg":0.25,"observer_height_m":2.0,"region_id":"mons-mouton-plateau"}

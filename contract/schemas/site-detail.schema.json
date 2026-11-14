@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Detail for one Landing Site and Landing Time (sky plot, time charts, stats)",
+  "type": "object",
+  "required": ["schema_version", "mock", "region_id", "site_id", "landing_time_utc", "stay_end_utc", "step_s", "n_samples", "coverage", "worst_case_min_clearance_deg", "horizon", "series", "stats"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "mock": {"type": "boolean"},
+    "region_id": {"type": "string"},
+    "site_id": {"type": "string"},
+    "landing_time_utc": {"$ref": "#/$defs/utc"},
+    "stay_end_utc": {"$ref": "#/$defs/utc"},
+    "step_s": {"type": "integer", "minimum": 1},
+    "n_samples": {"type": "integer", "minimum": 2},
+    "coverage": {"enum": ["full", "partial"]},
+    "worst_case_min_clearance_deg": {"type": "number"},
+    "horizon": {
+      "type": "object",
+      "required": ["azimuth_start_deg", "azimuth_step_deg", "elevation_deg"],
+      "additionalProperties": false,
+      "properties": {
+        "azimuth_start_deg": {"const": 0},
+        "azimuth_step_deg": {"type": "number"},
+        "elevation_deg": {"type": "array", "items": {"type": "number"}, "minItems": 1440, "maxItems": 1440}
+      }
+    },
+    "series": {
+      "type": "object",
+      "required": ["time_utc", "sun", "earth"],
+      "additionalProperties": false,
+      "properties": {
+        "time_utc": {"type": "array", "items": {"$ref": "#/$defs/utc"}},
+        "sun": {"$ref": "#/$defs/body_series"},
+        "earth": {"$ref": "#/$defs/body_series"}
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["sun", "earth"],
+      "additionalProperties": false,
+      "properties": {
+        "sun": {"$ref": "#/$defs/body_stats"},
+        "earth": {"$ref": "#/$defs/body_stats"}
+      }
+    }
+  },
+  "$defs": {
+    "utc": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+    "body_series": {
+      "type": "object",
+      "required": ["azimuth_deg", "elevation_deg", "horizon_elevation_deg"],
+      "additionalProperties": false,
+      "properties": {
+        "azimuth_deg": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 360}},
+        "elevation_deg": {"type": "array", "items": {"type": "number", "minimum": -90, "maximum": 90}},
+        "horizon_elevation_deg": {"type": "array", "items": {"type": "number", "minimum": -90, "maximum": 90}}
+      }
+    },
+    "body_stats": {
+      "type": "object",
+      "required": ["min_elevation_deg", "mean_elevation_deg", "max_elevation_deg", "min_clearance_deg", "mean_clearance_deg", "max_clearance_deg", "los_fraction", "los_duration_h", "first_los_loss_utc"],
+      "additionalProperties": false,
+      "properties": {
+        "min_elevation_deg": {"type": "number"},
+        "mean_elevation_deg": {"type": "number"},
+        "max_elevation_deg": {"type": "number"},
+        "min_clearance_deg": {"type": "number"},
+        "mean_clearance_deg": {"type": "number"},
+        "max_clearance_deg": {"type": "number"},
+        "los_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+        "los_duration_h": {"type": "number", "minimum": 0},
+        "first_los_loss_utc": {"oneOf": [{"$ref": "#/$defs/utc"}, {"type": "null"}]}
+      }
+    }
+  }
+}

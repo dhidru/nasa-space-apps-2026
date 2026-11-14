@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[153719.4,35698.6],[168719.4,35698.6],[168719.4,50698.6],[153719.4,50698.6],[153719.4,35698.6]]]},"properties":{"schema_version":1,"mock":true,"region_id":"nobile-rim-2","crs":"lunar-south-polar-stereographic-m"}}]}
