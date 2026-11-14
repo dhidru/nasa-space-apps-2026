@@ -86,6 +86,21 @@ _None yet._
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** GitHub, Inc. https://github.com
 
+### Matt Pocock's agent skills (`mattpocock-skills`)
+- **Type:** Tool (Claude Code agent skills: Markdown instructions plus a few shell templates)
+- **Used for:** Development workflow skills for Claude Code (grilling, spec and
+  ticket flows, TDD, code review, domain modelling and more). We copied the 27
+  skills listed in the upstream `.claude-plugin/plugin.json` into
+  `.claude/skills/`, unmodified. We left out the upstream `in-progress/` and
+  `misc/` skills. Developer tooling only, not part of the submitted app.
+- **Source:** https://github.com/mattpocock/skills (commit `5863806dd4e15c63174bee4e7515a4256792ecfa`, 2026-11-12)
+- **Accessed:** 2026-11-14
+- **License / permission:** MIT ([LICENSE](https://github.com/mattpocock/skills/blob/main/LICENSE)), Copyright (c) 2026 Matt Pocock. MIT is compatible with our Apache 2.0 license. No other licenses were found in the copied files.
+- **Requirements:** Keep the copyright and permission notice. A copy is at
+  `.claude/skills/LICENSE-mattpocock-skills`.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Pocock, M. (2026). *mattpocock/skills: Agent skills for real engineering* [Software, MIT License]. https://github.com/mattpocock/skills
+
 ## AI Tools
 
 ### Claude Code (Anthropic)
@@ -109,6 +124,7 @@ _None yet._
 | 2026-11-14 | Claude Code | Switched the license to Apache 2.0 and created this attributions file | `LICENSE`, `ATTRIBUTIONS.md`, `CLAUDE.md` |
 | 2026-11-14 | Claude Code | Added the "ask before pushing" rule to the project rules | `CLAUDE.md` |
 | 2026-11-14 | Claude Code | Wrote the README challenge summary (paraphrased from the challenge page) and listed candidate resources | `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Verified the license of Matt Pocock's skills (MIT), copied 27 of them into the repo and recorded the attribution | `.claude/skills/`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
