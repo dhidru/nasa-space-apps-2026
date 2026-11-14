@@ -18,7 +18,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from .lola import read_label
+from .lola import lines_covering, read_label
 
 RAW = Path(__file__).resolve().parents[2] / "data" / "raw"
 
@@ -89,11 +89,8 @@ def fetch_lola20_band(y_min_m: float, y_max_m: float) -> None:
     """Download only the lines of LDEM_80S_20M whose pixel centers span [y_min, y_max]."""
     lbl = RAW / "lola" / "ldem_80s_20m.lbl"
     _get(LOLA_BASE + "ldem_80s_20m.lbl", lbl)
-    label = read_label(lbl)
-    scale, line_off = float(label["MAP_SCALE"]), float(label["LINE_PROJECTION_OFFSET"])
-    n_lines, record = int(label["LINES"]), int(label["RECORD_BYTES"])
-    first = max(0, int((line_off - y_max_m / scale) // 1))
-    last = min(n_lines, int(-(-(line_off - y_min_m / scale) // 1)) + 1)
+    first, last = lines_covering(lbl, y_min_m, y_max_m)
+    record = int(read_label(lbl)["RECORD_BYTES"])
     img = RAW / "lola" / f"ldem_80s_20m_lines{first}-{last}.img"
     _get(LOLA_BASE + "ldem_80s_20m.img", img, (first * record, last * record))
     img.with_suffix(".band.json").write_text(json.dumps({"first_line": first, "n_lines": last - first}))

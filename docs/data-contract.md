@@ -376,8 +376,10 @@ card. Nothing else in the pipeline reads a source file directly.
   (DE) 421 in the Mean Earth (ME) …"). That is our MOON_ME.
 - **Projection:** none; geographic longitude/latitude, per the file name. The
   release's FGDC metadata gives `Moon (2015) - Sphere`, radius 1,737,400 m,
-  in decimal degrees. **Before first use, confirm against the shapefile's own
-  `.prj` and record it here.**
+  in decimal degrees. **Not yet confirmed against the file**, which is behind a
+  CAPTCHA and hasn't been downloaded. `pipeline.regions` refuses to load it
+  unless its `.prj` is geographic, in degrees, on a 1,737,400 m sphere. Record
+  the actual `.prj` here on first load.
 - **Units:** degrees.
 - **Ranges and signs:** to be read from the `.prj` and the coordinates on
   first load (0–360° vs. −180–180°). The loader accepts either.

@@ -14,6 +14,7 @@ A band has a sidecar `<name>.band.json` = {"first_line": .., "n_lines": ..}.
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -67,6 +68,15 @@ def _check(label: dict[str, str], key: str, expected: str) -> None:
     got = label.get(key)
     if got is None or got.upper() != expected:
         raise ValueError(f"{key} is {got!r}; this loader only handles {expected!r}")
+
+
+def lines_covering(label_path: Path, y_min_m: float, y_max_m: float) -> tuple[int, int]:
+    """[first, end) of the image lines whose centers bracket y in [y_min_m, y_max_m]."""
+    label = read_label(label_path)
+    scale, line_off = float(label["MAP_SCALE"]), float(label["LINE_PROJECTION_OFFSET"])
+    first = max(0, math.floor(line_off - y_max_m / scale))
+    end = min(int(label["LINES"]), math.ceil(line_off - y_min_m / scale) + 1)
+    return first, end
 
 
 def open_lola(label_path: Path, img_path: Path) -> DemGrid:

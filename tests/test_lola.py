@@ -91,3 +91,13 @@ def test_rejects_unexpected_projection(tiny):
     (tiny / "bad.lbl").write_text(LABEL.replace('"POLAR STEREOGRAPHIC"', '"EQUIRECTANGULAR"'))
     with pytest.raises(ValueError, match="POLAR STEREOGRAPHIC"):
         open_lola(tiny / "bad.lbl", tiny / "tiny.img")
+
+
+def test_lines_covering_a_y_range(tiny):
+    from pipeline.lola import lines_covering
+
+    # Line centers are at y = 250, 150, 50, -50, -150, -250 (line 0 at the top).
+    # y = 160 lies between lines 0 and 1, y = -60 between lines 3 and 4: lines 0..4 bracket the
+    # range, so bilinear sampling works at both ends. The end is exclusive.
+    assert lines_covering(tiny / "tiny.lbl", -60.0, 160.0) == (0, 5)
+    assert lines_covering(tiny / "tiny.lbl", -1e6, 1e6) == (0, 6)

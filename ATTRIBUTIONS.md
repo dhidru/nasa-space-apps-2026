@@ -296,6 +296,19 @@ _None yet._
 - **Status:** ✅ (paraphrased and linked; checked by Claude Code, 2026-11-14)
 - **Citation:** NASA International Space Apps Challenge. "Lunar Landing Site Navigator." 2026 Challenges. https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/
 
+### NASA news release 24-136, "NASA Provides Update on Artemis III Moon Landing Regions" (2024-10-28)
+- **Type:** Information
+- **Used for:** The list and names of the 9 Landing Regions. `src/pipeline/regions.py` and the mock
+  generator write its title and URL into `regions.json` → `source`. We use only the region names
+  (facts) and a link; no text or images are copied.
+- **Source:** https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/
+- **Accessed:** 2026-11-14
+- **License / permission:** NASA web content; see the [NASA Images and Media Usage Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/).
+  Region names are facts, and we link the release.
+- **Requirements:** Don't use NASA logos or imply NASA endorsement.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** NASA (2024, October 28). *NASA Provides Update on Artemis III Moon Landing Regions* [News release 24-136]. https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/
+
 ## Candidate Resources (not yet used, licenses not yet verified)
 
 These are the resources the challenge suggests. Before any of them is used,

@@ -59,3 +59,16 @@ def test_built_dataset_passes_the_contract_validator(tmp_path):
     assert sites["observer_height_m"] == 2 and hz_meta["observer_height_m"] == 2
     assert (hz > -9000).all() and (hz < 9000).all()
     assert (tmp_path / "home" / "basemap.png").read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_hillshade_lights_slopes_facing_the_upper_left():
+    from pipeline.build import hillshade
+
+    n, pixel = 50, 20.0
+    xs = pixel * np.arange(n)
+    X, Y = np.meshgrid(xs, xs[::-1])  # row 0 is the largest y
+    # z = x - y rises to the east and south, so the slope faces north-west (map upper left).
+    facing_nw = hillshade(0.3 * (X - Y), pixel)
+    facing_se = hillshade(0.3 * (Y - X), pixel)
+    flat = hillshade(np.zeros_like(X), pixel)
+    assert facing_nw[25, 25] > flat[25, 25] > facing_se[25, 25]

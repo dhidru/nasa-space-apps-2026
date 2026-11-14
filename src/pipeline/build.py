@@ -49,14 +49,18 @@ def _r(v: float, nd: int = 3) -> float:
 
 # ------------------------------------------------------------------ base maps
 
-def hillshade(heights: np.ndarray, pixel_m: float, azimuth_deg: float = 315.0, altitude_deg: float = 35.0) -> np.ndarray:
-    """uint8 hillshade; row 0 is the top (largest y); light from map azimuth 315 (upper left)."""
+HILLSHADE_LIGHT_AZIMUTH_DEG = 315.0  # map direction, clockwise from map up (+y): the upper left
+HILLSHADE_LIGHT_ALTITUDE_DEG = 35.0
+
+
+def hillshade(heights: np.ndarray, pixel_m: float) -> np.ndarray:
+    """uint8 hillshade; row 0 is the top (largest y); lit from the map's upper left."""
     dzdx = np.gradient(heights, pixel_m, axis=1)
     dzdy = -np.gradient(heights, pixel_m, axis=0)  # rows run toward -y
-    slope = np.arctan(np.hypot(dzdx, dzdy))
-    aspect = np.arctan2(dzdy, -dzdx)
-    az, alt = np.radians(azimuth_deg), np.radians(altitude_deg)
-    v = np.sin(alt) * np.cos(slope) + np.cos(alt) * np.sin(slope) * np.cos(az - aspect)
+    # Brightness = unit surface normal (-dz/dx, -dz/dy, 1) . unit light vector.
+    az, alt = np.radians(HILLSHADE_LIGHT_AZIMUTH_DEG), np.radians(HILLSHADE_LIGHT_ALTITUDE_DEG)
+    light = (np.sin(az) * np.cos(alt), np.cos(az) * np.cos(alt), np.sin(alt))
+    v = (-dzdx * light[0] - dzdy * light[1] + light[2]) / np.sqrt(dzdx**2 + dzdy**2 + 1.0)
     return np.clip(40 + 200 * v, 0, 255).astype(np.uint8)
 
 
