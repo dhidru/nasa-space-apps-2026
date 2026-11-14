@@ -1,0 +1,27 @@
+# Project rules: NASA Space Apps Challenge 2026
+
+## Licensing, permissions & attribution (mandatory)
+
+Space Apps requires that we have permission to use every resource and that we
+credit it properly. For **every** external resource (dataset, library or package,
+code snippet, tool, API, image, icon, font, media file, article, paper, or website):
+
+1. **Before using it,** find its license or terms of use from the primary source
+   (the official LICENSE file, dataset page, or terms page). Confirm that it
+   allows our use: modification, redistribution in a public repo, and use in a
+   competition submission.
+2. **If the license is missing, unclear, or restrictive,** don't use the resource.
+   Tell the user and record it in `ATTRIBUTIONS.md` as ⚠️ or ❌.
+3. **Add an entry to `ATTRIBUTIONS.md`** with the template in that file: source
+   URL, access date, license with a link, requirements, status, and citation.
+   Use the provider's preferred citation format when they give one (for
+   example, a dataset DOI).
+4. **Meet the license's requirements.** Keep copyright headers in copied code,
+   add required NOTICE text, and don't use NASA logos or insignia.
+5. **Log AI assistance** in the "AI usage log" table in `ATTRIBUTIONS.md` for
+   each meaningful contribution.
+6. **Adding a dependency** (pip, npm, etc.) counts as using a resource. Check its
+   license, including notable transitive dependencies with copyleft licenses
+   (GPL or AGPL), before adding it.
+
+The project itself is licensed under Apache 2.0. Flag anything incompatible with that.

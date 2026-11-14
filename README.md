@@ -25,6 +25,9 @@ _What we built, how it works, and why it matters._
 | ------------------ | ------ | -------------- |
 | _TBD_              | _TBD_  | _TBD_          |
 
+License checks and citations for every dataset, library, tool and source are
+in [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+
 ## Tech Stack
 
 _Languages, frameworks, libraries, tools._
@@ -46,6 +49,8 @@ data/processed/ Cleaned / derived data
 notebooks/      Exploration notebooks
 docs/           Write-ups, diagrams, presentation material
 assets/         Images, logos, media for the demo
+ATTRIBUTIONS.md Licenses, permissions & citations for all external resources
+CLAUDE.md       Project rules for the AI assistant (licensing & attribution)
 ```
 
 ## Team
@@ -56,7 +61,8 @@ assets/         Images, logos, media for the demo
 
 ## Use of AI
 
-_Space Apps asks teams to disclose AI tool usage. Describe it here._
+We use Claude Code (Anthropic) as an AI coding assistant. Every AI contribution is
+logged in the [AI usage log](ATTRIBUTIONS.md#ai-usage-log).
 
 ## License
 
