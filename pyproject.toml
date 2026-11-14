@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+    "slow: needs downloaded data or SPICE kernels in data/raw/ (run with -m slow)",
+]
+addopts = "-m 'not slow'"

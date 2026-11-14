@@ -331,4 +331,81 @@ entry in [ATTRIBUTIONS.md](../ATTRIBUTIONS.md) at the same time.
 - **Conversion on load:** <what our loader does to reach section 2>
 ```
 
-_No cards yet. The data side adds them as datasets are adopted._
+The loaders in `src/pipeline/` implement the "Conversion on load" line of each
+card. Nothing else in the pipeline reads a source file directly.
+
+### LOLA LDEM_80S_20M and LDEM_80S_80M (PDS3 GDR, product version V2.0)
+- **File(s):** `ldem_80s_20m.img` (1,848,320,000 bytes, 30,400 × 30,400) and
+  `ldem_80s_80m.img` (115,520,000 bytes, 7,600 × 7,600), each with a `.lbl`
+  label. We may download only a band of whole rows of the 20 m file; the
+  pipeline records which rows (see `pipeline.lola`).
+- **Source / license:** https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ · see ATTRIBUTIONS.md
+- **Frame:** `COORDINATE_SYSTEM_NAME = "MEAN EARTH/POLAR AXIS OF DE421"`. Our
+  MOON_ME (NAIF `moon_de440_250416.tf`) is aligned with it to within about
+  0.5 m over 2000–2040, so no rotation is needed.
+- **Projection:** `MAP_PROJECTION_TYPE = "POLAR STEREOGRAPHIC"`,
+  `CENTER_LATITUDE = -90`, `CENTER_LONGITUDE = 0`,
+  `MAP_PROJECTION_ROTATION = 0.0`, sphere `A_AXIS_RADIUS = 1737.4 km`,
+  `POSITIVE_LONGITUDE_DIRECTION = "EAST"`, planetocentric latitude. The PDS4
+  label (`ldem_80s_20m.xml`) gives the upper-left corner as x = −304,000 m,
+  y = +304,000 m, so line 0 is the top (largest y).
+  Pixel centers (0-based line `l`, sample `s`): `x = (s − SAMPLE_PROJECTION_OFFSET) · MAP_SCALE`,
+  `y = (LINE_PROJECTION_OFFSET − l) · MAP_SCALE`. Both offsets are 15199.5 for 20 m and
+  3799.5 for 80 m. This is the same projection as section 2, so x/y carry over unchanged.
+- **Units:** int16 DN, `SAMPLE_TYPE = LSB_INTEGER`, `SAMPLE_BITS = 16`.
+  `HEIGHT = DN · SCALING_FACTOR` with `SCALING_FACTOR = 0.5`, `UNIT = METER`.
+- **Ranges and signs:** `DERIVED_MINIMUM = -14594`, `DERIVED_MAXIMUM = 14054`
+  (20 m), i.e. −7,297 to +7,027 m. Longitude is east-positive.
+- **Resolution:** `MAP_SCALE` = 20 m/px and 80 m/px. The 80°S–90°S coverage is a
+  608 km square centered on the pole.
+- **Reference height / datum:** heights are relative to the 1,737,400 m sphere
+  (`OFFSET = 1737400.`, `PLANETARY_RADIUS = DN · SCALING_FACTOR + OFFSET`).
+  This is the same datum as section 2.
+- **No-data value:** none. The labels have no `MISSING_CONSTANT`; the grids are
+  interpolated everywhere (GMT `surface`). The labels call the source data
+  "preliminary".
+- **Conversion on load:** multiply DN by 0.5 to get meters. Map pixels to x/y
+  with the formula above. No change of frame, datum or longitude sign.
+
+### USGS Artemis III region outlines (`A3_9regions-lonlat-simplified.zip`)
+- **File(s):** `A3_9regions-lonlat-simplified.zip` (637,136 bytes) from
+  release DOI 10.5066/P1MEQ6UK. It contains a shapefile of the 9 region outlines.
+- **Source / license:** https://www.sciencebase.gov/catalog/item/671a6fa8d34efed5620f89f8 · CC0 · see ATTRIBUTIONS.md
+- **Frame:** the release requires the DE421 mean-Earth frame ("The datum
+  utilized must be the Jet Propulsion Laboratory (JPL) Development Ephemeris
+  (DE) 421 in the Mean Earth (ME) …"). That is our MOON_ME.
+- **Projection:** none; geographic longitude/latitude, per the file name. The
+  release's FGDC metadata gives `Moon (2015) - Sphere`, radius 1,737,400 m,
+  in decimal degrees. **Before first use, confirm against the shapefile's own
+  `.prj` and record it here.**
+- **Units:** degrees.
+- **Ranges and signs:** to be read from the `.prj` and the coordinates on
+  first load (0–360° vs. −180–180°). The loader accepts either.
+- **Resolution:** simplified polygons (vertex spacing to be recorded on first load).
+- **Reference height / datum:** 1,737,400 m sphere (no heights in this file).
+- **No-data value:** not applicable.
+- **Conversion on load:** wrap longitudes to −180–180°, map NASA names to our
+  region ids, and project vertices to section-2 x/y.
+
+### NAIF SPICE kernels (DE440)
+- **File(s):** `de440s.bsp` (planetary SPK, 31 MB), `moon_pa_de440_200625.bpc`
+  (lunar orientation PCK, 12 MB), `moon_de440_250416.tf` (lunar frame kernel,
+  19 KB), `naif0012.tls` (leap seconds, 5 KB).
+- **Source / license:** https://naif.jpl.nasa.gov/pub/naif/generic_kernels/ · see ATTRIBUTIONS.md
+- **Frame:** we ask SPICE for vectors in `MOON_ME`. In `moon_de440_250416.tf`,
+  "MOON_ME is an alias for the frame MOON_ME_DE440_ME421" (frame ID 31001 →
+  31009), which is "closely aligned with the lunar mean Earth/polar axis frame
+  associated with the planetary ephemeris DE421". The kernel gives the maximum
+  difference from DE421 ME as about 53.4 cm over 2000–2040.
+- **Projection:** not applicable (3D Cartesian vectors).
+- **Units:** km for positions. SPICE time is TDB seconds past J2000; we convert
+  from UTC with the leap-second kernel.
+- **Ranges and signs:** `de440s.bsp` covers 1849-12-26 to 2150-01-22 (from
+  NAIF's `aa_summaries.txt`); `moon_pa_de440_200625.bpc` covers 1549-12-31 to
+  2650-01-25. Both cover our span of 2026–2031.
+- **Resolution:** continuous; we sample every 600 s.
+- **Reference height / datum:** vectors run from the Moon's center of mass
+  (observer `MOON`) to the body, with `LT+S` aberration correction.
+- **No-data value:** not applicable.
+- **Conversion on load:** none. Only `pipeline.ephemeris` loads kernels, and
+  it writes vectors already in the section 6.2 format.

@@ -41,7 +41,66 @@ or permission lets us use it, and how to cite it.
 
 ## Data
 
-_None yet._
+Each dataset below also has a conventions card in
+[docs/data-contract.md §9](docs/data-contract.md#9-conventions-cards-for-source-datasets).
+
+### USGS Down Selected Artemis III Candidate Landing Site Navigational Grids (region outlines only)
+- **Type:** Data
+- **Used for:** Outlines of the 9 Landing Regions (`regions.json`,
+  `regions/<id>/outline.geojson`) and the area in which the pipeline places
+  Landing Sites. We use only the file `A3_9regions-lonlat-simplified.zip`
+  (637,136 bytes). We don't use the per-region navigational-grid zips.
+- **Source:** https://www.sciencebase.gov/catalog/item/671a6fa8d34efed5620f89f8 (DOI https://doi.org/10.5066/P1MEQ6UK).
+  The release states that the region outlines were sourced from LROC QuickMap.
+- **Accessed:** 2026-11-14
+- **License / permission:** CC0 1.0. The ScienceBase "Rights" field says the work "is marked with Creative Commons Zero v1.0 Universal"
+  (https://creativecommons.org/publicdomain/zero/1.0/). The FGDC metadata gives "None" for both use and access constraints.
+- **Requirements:** None under CC0. We cite it anyway, as the release asks.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** McClernan, M.T., 2024, Down Selected Artemis III Candidate Landing Site Navigational Grids: U.S. Geological Survey data release, https://doi.org/10.5066/P1MEQ6UK.
+
+### LRO LOLA Gridded Digital Elevation Models, south polar stereographic (PDS3 `LRO-L-LOLA-4-GDR-V1.0`)
+- **Type:** Data
+- **Used for:** Terrain for the Horizons, the site terrain heights and the
+  hillshade base maps. Products used: `LDEM_80S_20M` (20 m/px, near field and region
+  base map) and `LDEM_80S_80M` (80 m/px, far field and home base map), product
+  version V2.0, created 2017-06-15.
+- **Source:** NASA PDS Geosciences Node,
+  https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/
+  (`ldem_80s_20m.img` 1,848,320,000 bytes, `ldem_80s_80m.img` 115,520,000 bytes, with their `.lbl` labels).
+  Mission page: https://pds-geosciences.wustl.edu/missions/lro/lola.htm
+- **Accessed:** 2026-11-14
+- **License / permission:** NASA open data. The NASA Planetary Science Division
+  [Information and Data Management Policy](https://science.nasa.gov/wp-content/uploads/2023/05/PSDInformationDataManagementPolicy.pdf)
+  (supplement to SPD-41A, 2023) requires that archives "make scientific information publicly available without fee or
+  restriction of use". The PDS is the PSD archive. No product-specific restriction appears in the labels or the data set catalog.
+- **Requirements:** Cite the data set, following [PDS3 citation guidance](https://pds.nasa.gov/datastandards/pds3/citing-pds3-data.shtml).
+  Don't use NASA logos.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Neumann, G.A. (2010). *LRO Lunar Orbiter Laser Altimeter Gridded Digital Elevation Models*,
+  LRO-L-LOLA-4-GDR-V1.0 [Data set]. NASA Planetary Data System. https://doi.org/10.17189/1520642.
+  Products LDEM_80S_20M and LDEM_80S_80M (V2.0). The DOI comes from the PDS Geosciences DOI list; the
+  author and year come from the data set catalog's CITATION_DESC.
+
+### NAIF SPICE generic kernels (DE440 ephemeris, lunar orientation, leap seconds)
+- **Type:** Data
+- **Used for:** Sun and Earth positions in MOON_ME (`ephemeris/positions-<YYYY>.bin`), computed with SpiceyPy.
+  Files: `spk/planets/de440s.bsp` (31 MB, covers 1849-12-26 to 2150-01-22),
+  `pck/moon_pa_de440_200625.bpc` (12 MB), `fk/satellites/moon_de440_250416.tf` (19 KB),
+  `lsk/naif0012.tls` (5 KB). We use `de440s.bsp` instead of the 114 MB `de440.bsp` because it has the
+  same DE440 solution over a shorter span that covers ours.
+- **Source:** https://naif.jpl.nasa.gov/pub/naif/generic_kernels/
+- **Accessed:** 2026-11-14
+- **License / permission:** [NAIF rules](https://naif.jpl.nasa.gov/naif/rules.html): kernels on the NAIF server
+  "may be downloaded and used by anyone", and "Redistribution of SPICE kernels distributed by NAIF is permitted as long
+  as they have not been modified." "No fees or licensing are required."
+- **Requirements:** Don't modify the kernels. If we ever redistribute them, ship them unmodified. NAIF encourages
+  acknowledging SPICE in publications and tools.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:**
+  - Acton, C.H. (1996). Ancillary Data Services of NASA's Navigation and Ancillary Information Facility. *Planetary and Space Science*, 44(1), 65–70. https://doi.org/10.1016/0032-0633(95)00107-7
+  - Acton, C., Bachman, N., Semenov, B., Wright, E. (2017). A look toward the future in the handling of space science mission geometry. *Planetary and Space Science*. https://doi.org/10.1016/j.pss.2017.02.013 (as listed on https://naif.jpl.nasa.gov/naif/credit.html)
+  - Park, R.S., Folkner, W.M., Williams, J.G., Boggs, D.H. (2021). The JPL Planetary and Lunar Ephemerides DE440 and DE441. *The Astronomical Journal*, 161(3), 105. https://doi.org/10.3847/1538-3881/abd414
 
 > NASA data is generally free to use, but check each dataset's own page. Some
 > NASA-hosted data comes from partners (ESA, JAXA, commercial providers) under
@@ -68,6 +127,68 @@ _None yet._
 - **Requirements:** None while they're only installed with pip. If we ever vendor them, we must keep their notices.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** Berman, J. *jsonschema* [Software, MIT License]. https://github.com/python-jsonschema/jsonschema
+
+### NumPy
+- **Type:** Code/Library (pipeline dependency, in `requirements.txt`)
+- **Used for:** Arrays throughout the pipeline (`src/pipeline/`).
+- **Source:** https://github.com/numpy/numpy (PyPI `numpy==2.5.4`)
+- **Accessed:** 2026-11-14
+- **License / permission:** BSD-3-Clause ([LICENSE.txt](https://github.com/numpy/numpy/blob/main/LICENSE.txt)), © 2005-2026 NumPy Developers.
+  The Windows wheel also bundles OpenBLAS (BSD-3-Clause) and the gfortran runtime, which is
+  "GPL-3.0-or-later WITH GCC-exception-3.1" (read from the installed `numpy-2.5.4.dist-info/licenses/LICENSE.txt`).
+  The GCC Runtime Library Exception lets non-GPL programs use it, and we don't redistribute the wheel, so this is
+  compatible with our Apache 2.0 license.
+- **Requirements:** None while installed with pip.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Harris, C.R., Millman, K.J., van der Walt, S.J. et al. (2020). Array programming with NumPy. *Nature* 585, 357–362. https://doi.org/10.1038/s41586-020-2649-2
+
+### SpiceyPy (with the bundled NAIF CSPICE Toolkit)
+- **Type:** Code/Library (pipeline dependency, in `requirements.txt`)
+- **Used for:** Reading the SPICE kernels and computing Sun and Earth positions (`src/pipeline/ephemeris.py`).
+- **Source:** https://github.com/AndrewAnnex/SpiceyPy (PyPI `spiceypy==8.4.0`). The wheel contains `cspice.dll`.
+- **Accessed:** 2026-11-14
+- **License / permission:** SpiceyPy is MIT ([LICENSE](https://github.com/AndrewAnnex/SpiceyPy/blob/main/LICENSE)), © 2015-2024 Andrew Annex.
+  The bundled CSPICE follows the [NAIF rules](https://naif.jpl.nasa.gov/naif/rules.html): "No fees or licensing are required",
+  and using Toolkit modules inside a user-built tool is "entirely appropriate". Redistributing the unmodified Toolkit
+  as a mirror needs NAIF's written clearance. We don't redistribute it, because pip installs it.
+- **Requirements:** Don't vendor or mirror CSPICE. NAIF asks for acknowledgement (see the SPICE kernels entry above).
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Annex, A.M., Pearson, B., Seignovert, B. et al. (2020). SpiceyPy: a Pythonic Wrapper for the SPICE Toolkit. *Journal of Open Source Software*, 5(46), 2050. https://doi.org/10.21105/joss.02050
+
+### Numba (with llvmlite)
+- **Type:** Code/Library (pipeline dependency, in `requirements.txt`)
+- **Used for:** Compiling the Horizon ray-marching loop (`src/pipeline/horizon.py`).
+- **Source:** https://github.com/numba/numba (PyPI `numba==0.68.1`), https://github.com/numba/llvmlite (PyPI `llvmlite==0.50.0`)
+- **Accessed:** 2026-11-14
+- **License / permission:** Numba is BSD-2-Clause ([LICENSE](https://github.com/numba/numba/blob/main/LICENSE)), © 2012 Anaconda, Inc.
+  llvmlite is "BSD-2-Clause AND Apache-2.0 WITH LLVM-exception" ([LICENSE](https://github.com/numba/llvmlite/blob/main/LICENSE)),
+  © 2014 Anaconda Inc. The Apache-2.0 part covers the bundled LLVM.
+- **Requirements:** None while installed with pip.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Lam, S.K., Pitrou, A., Seibert, S. (2015). Numba: a LLVM-based Python JIT compiler. *Proc. Second Workshop on the LLVM Compiler Infrastructure in HPC*. https://doi.org/10.1145/2833157.2833162
+
+### pyshp
+- **Type:** Code/Library (pipeline dependency, in `requirements.txt`)
+- **Used for:** Reading the USGS region-outline shapefile (`src/pipeline/regions.py`).
+- **Source:** https://github.com/GeospatialPython/pyshp (PyPI `pyshp==3.1.8`)
+- **Accessed:** 2026-11-14
+- **License / permission:** MIT ([LICENSE.TXT](https://github.com/GeospatialPython/pyshp/blob/master/LICENSE.TXT)), © 2013 Joel Lawhead. It has no runtime dependencies.
+- **Requirements:** None while installed with pip.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Lawhead, J. *pyshp* [Software, MIT License]. https://github.com/GeospatialPython/pyshp
+
+### pytest, with its required dependencies
+- **Type:** Code/Library (development dependency, in `requirements-dev.txt`)
+- **Used for:** Running the pipeline tests (`tests/`). Not part of the shipped app.
+- **Source:** https://github.com/pytest-dev/pytest (PyPI `pytest==9.2.0`)
+- **Accessed:** 2026-11-14
+- **License / permission:** pytest is MIT ([LICENSE](https://github.com/pytest-dev/pytest/blob/main/LICENSE)), © 2004 Holger Krekel and others.
+  Its required dependencies, from their PyPI and installed license metadata, are all permissive:
+  iniconfig 2.3.1 (MIT), packaging 26.3 (Apache-2.0 OR BSD-2-Clause), pluggy 1.7.0 (MIT),
+  Pygments 2.21.0 (BSD-2-Clause), and colorama 0.4.6 (BSD-3-Clause, Windows only).
+- **Requirements:** None while installed with pip.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Krekel, H. et al. *pytest* [Software, MIT License]. https://github.com/pytest-dev/pytest
 
 ## Tools
 
@@ -155,6 +276,7 @@ _None yet._
 | 2026-11-14 | Claude Code | Verified the license of Matt Pocock's skills (MIT), copied 27 of them into the repo and recorded the attribution | `.claude/skills/`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Ran a design interview with the team, researched candidate data sources (not yet used), and wrote the glossary, the design doc and the "don't look at other teams' projects" rule | `GLOSSARY.md`, `docs/design.md`, `CLAUDE.md` |
 | 2026-11-14 | Claude Code | Wrote the data contract, the JSON Schemas, the synthetic mock-data generator and the validator, then generated and validated the mock data | `docs/data-contract.md`, `contract/`, `requirements-dev.txt`, `.gitignore` |
+| 2026-11-14 | Claude Code | Verified the licenses of the USGS outlines, LOLA DEMs, NAIF kernels and the pipeline libraries; wrote their attribution entries and conventions cards; wrote the first pipeline stages (projection, LOLA loader, region outlines, site grid, Horizon ray-marcher, ephemeris, build) with tests; downloaded the SPICE kernels and LOLA 80 m DEM | `ATTRIBUTIONS.md`, `docs/data-contract.md`, `src/pipeline/`, `tests/`, `pyproject.toml`, `requirements*.txt`, `README.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
@@ -184,7 +306,7 @@ check its license or terms and move it to the right section above.
 | JPL Horizons System | NASA/JPL (Caltech) | Sun and Earth positions (azimuth and elevation) from lunar surface sites | https://ssd.jpl.nasa.gov/horizons/ | ⚠️ Not verified |
 | LROC QuickMap | Arizona State University / LRO | Exploring terrain at south-pole sites | https://quickmap.lroc.asu.edu/ | ⚠️ Not verified |
 | Moon Trek | NASA/JPL (Solar System Treks) | 3D terrain context and topography | https://trek.nasa.gov/moon/ | ⚠️ Not verified |
-| LOLA topography (DEMs) | NASA GSFC / LRO, via PDS | Horizon profiles that include terrain | https://pds-geosciences.wustl.edu/missions/lro/lola.htm | ⚠️ Not verified |
+| LOLA topography (DEMs) | NASA GSFC / LRO, via PDS | Horizon profiles that include terrain | https://pds-geosciences.wustl.edu/missions/lro/lola.htm | ✅ Adopted: see "Data" above |
 | CSA Moon Exploration | Canadian Space Agency | Background and educational content | https://www.asc-csa.gc.ca/eng/astronomy/moon-exploration/ | ⚠️ Not verified (Government of Canada content, which has its own terms) |
 
 ## Project License Text

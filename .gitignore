@@ -34,3 +34,4 @@ data/processed/*
 
 # Mock binaries (regenerate with contract/mock/generate_mock.py)
 contract/mock/data/**/*.bin
+.pytest_cache/

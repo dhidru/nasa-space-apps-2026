@@ -48,8 +48,28 @@ _Languages, frameworks, libraries, tools._
 ```bash
 git clone https://github.com/dhidru/nasa-space-apps-2026.git
 cd nasa-space-apps-2026
-# setup steps go here
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt -r requirements-dev.txt   # macOS/Linux: .venv/bin/python
 ```
+
+### Data pipeline (Mons Mouton Plateau)
+
+The source datasets go in `data/raw/` (git-ignored). Their licenses are in
+[ATTRIBUTIONS.md](ATTRIBUTIONS.md) and their conventions cards in
+[docs/data-contract.md §9](docs/data-contract.md#9-conventions-cards-for-source-datasets).
+Run these from `src/`:
+
+1. Download `A3_9regions-lonlat-simplified.zip` by hand from the
+   [USGS ScienceBase page](https://www.sciencebase.gov/catalog/item/671a6fa8d34efed5620f89f8)
+   (it is behind a CAPTCHA) into `data/raw/usgs/`.
+2. `python -m pipeline.fetch small`: SPICE kernels (~44 MB), and unzips the outlines.
+3. `python -m pipeline.fetch lola80`: LOLA 80 m DEM (116 MB).
+4. `python -m pipeline.fetch lola20 mons-mouton-plateau`: only the rows of the LOLA 20 m DEM around the region (~100 MB).
+5. `python -m pipeline.build`: regions, outlines, base maps, sites and Horizons into `data/processed/site-data/` (a few minutes).
+6. `python -m pipeline.ephemeris ../data/processed/site-data/ephemeris 2026 2031`: Sun and Earth positions.
+7. `python ../contract/validate.py ../data/processed/site-data`: check the output against the data contract.
+
+Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks that need the downloaded data.
 
 ## Repository Layout
 
