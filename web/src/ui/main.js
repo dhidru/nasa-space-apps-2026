@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Three views, routed by the URL hash (the site view is a three.js slice of the region's 200 m grid):
-//   (empty)                 2D map of the south pole with the nine Artemis III regions
+//   (empty)                 2D map of the south pole with the nine Artemis IV regions
 //   #<region>               2D map of one region with its 200 m landing-site grid
 //   #<region>/<site>        3D topography of one grid site, with the Sun/Earth dashboard
 // Data and science come from src/science (the TypeScript port of the Python pipeline): regions, hillshades, site heights, Horizons,
@@ -576,7 +576,7 @@ el.form.addEventListener("submit", (e) => {
   const { lat, lon, errs } = readInputs();
   if (errs.length) { el.hint.textContent = errs.join(" "); return; }
   const f = cellFor(lat, lon);
-  if (!f) { el.hint.textContent = `${fmtLat(lat)}, ${fmtLon(lon)} is outside the nine Artemis III regions.`; return; }
+  if (!f) { el.hint.textContent = `${fmtLat(lat)}, ${fmtLon(lon)} is outside the nine Artemis IV regions.`; return; }
   if (site && f.cell.id === site.cell.id && f.region.id === site.region.id) apply();
   else go(`#${f.region.id}/${f.cell.id}`);
 });

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// 2D south polar map: the home view (all nine Artemis III regions) and the region view (200 m site grid).
+// 2D south polar map: the home view (all nine Artemis IV regions) and the region view (200 m site grid).
 // Map coordinates are polar stereographic metres (src/polar.js); SVG y is the negative of map y.
 // Hillshades, outlines and site heights come from the team's site-data (src/teamdata.js).
 
@@ -26,16 +26,19 @@ const BEZEL_PX = 30;                       // bezel width on screen
 const HOME_MARGIN_PX = 50;                 // room around the circle for the bezel and its labels
 const LAT_TICKS = [-88, -86, -84, -82];    // latitude ticks down the 180° meridian (keeps 0° clear for Earth)
 const lonText = (lon) => (lon === 180 ? "180°" : lon < 180 ? `${lon}°E` : `${360 - lon}°W`);
+/** Distance (screen px) between every region name and its square. */
+const LABEL_GAP_PX = 5;
 /**
- * Region names on the home map. These four are placed by hand-tuned rules because their squares crowd together:
- * a fixed side of the square, "center" = exactly centred on it, `gap` = exact distance in px, `lines` = two lines.
- * They are placed first, in this order; every other name is placed automatically around them (layoutRegionLabels).
+ * Region names on the home map with a fixed side of their square (`lines` = two lines). They are placed first, in
+ * this order, centred on the square when that spot is free, else slid along the same side; every other name is
+ * placed automatically around them (layoutRegionLabels).
  */
 const PINNED_LABELS = [
-  ["malapert-massif", { side: "above", align: "center", lines: true }],
-  ["haworth", { side: "above", align: "center" }],
-  ["mons-mouton", { side: "below", lines: true, gap: 5 }],
-  ["nobile-rim-1", { side: "right", gap: 5 }],   // same 5 px gap as Mons Mouton; wraps to two lines if boxed in
+  ["malapert-massif", { side: "above", lines: true }],
+  ["haworth", { side: "above" }],
+  ["mons-mouton", { side: "below", lines: true }],
+  ["nobile-rim-1", { side: "right" }],   // wraps to two lines if boxed in (Nobile Rim 2's square sits beside it)
+  ["slater-plain", { side: "above" }],
 ];
 const PINNED = new Map(PINNED_LABELS);
 /** "84.12° S, 35.40° E" for a map point. */
@@ -170,7 +173,7 @@ export class MapView {
     this.back.hidden = true;
     this.svg.replaceChildren();
     this.labels.replaceChildren();
-    this.svg.setAttribute("aria-label", "Map of the lunar south pole with the nine Artemis III candidate regions");
+    this.svg.setAttribute("aria-label", "Map of the lunar south pole with the nine Artemis IV candidate regions");
     const h = this.homeBasemap, [x0, y0, x1, y1] = h.extent_m;
     // The Moon, clipped to the 80° S circle; drawBezel() rings it with the longitude scale.
     svgEl("circle", { r: RIM_M }, svgEl("clipPath", { id: "moon-clip" }, svgEl("defs", {}, this.svg)));
@@ -237,7 +240,7 @@ export class MapView {
   }
   /**
    * Place the region names so none covers a square, another name, the pole or the latitude labels (home only).
-   * Works in screen pixels: PINNED_LABELS first (fixed side, alignment, gap), then the rest automatically. For an
+   * Works in screen pixels: PINNED_LABELS first (fixed side), then the rest automatically, all LABEL_GAP_PX from their squares. For an
    * automatic name, spots slide along all four sides of its square at growing distances and the closest clear one
    * wins; several orders are tried (seeded shuffles, so the layout is stable) and the tightest layout is kept.
    * A name more than 6 px from its square gets a leader line.
@@ -266,12 +269,13 @@ export class MapView {
     const spotFor = (L, placed) => {
       const { b, w, h, pin } = L, cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       let best = null, bestScore = Infinity;
-      for (const d of pin?.gap ? [pin.gap] : [3, 5, 8, 14, 22, 32, 46, 62]) {
-        const xs = [];
-        if (pin?.align === "center") xs.push(cx - w / 2);
-        else for (let x = b.x - w - 20; x <= b.x + b.w + 20; x += 2) xs.push(x);
+      // Every name sits LABEL_GAP_PX from its square; only an automatic name with no room there moves further out.
+      for (const d of pin ? [LABEL_GAP_PX] : [LABEL_GAP_PX, 8, 14, 22, 32, 46, 62]) {
+        const xs = [cx - w / 2], ys = [cy - h / 2]; // the centred spot first, then slides along the side
+        for (let x = b.x - w - 20; x <= b.x + b.w + 20; x += 1) xs.push(x);
+        for (let y = b.y - h + 3; y <= b.y + b.h - 3; y += 1) ys.push(y);
         const cands = [];
-        for (let y = b.y - h + 3; y <= b.y + b.h - 3; y += 2) cands.push([b.x + b.w + d, y, "right"], [b.x - d - w, y, "left"]);
+        for (const y of ys) cands.push([b.x + b.w + d, y, "right"], [b.x - d - w, y, "left"]);
         for (const x of xs) cands.push([x, b.y - d - h, "above"], [x, b.y + b.h + d, "below"]);
         for (const [x, y, side] of cands) {
           if (pin && side !== pin.side) continue;
@@ -280,7 +284,7 @@ export class MapView {
           const g = gap(r, b), score = g + (g > 6 ? 6 : 0) + (pin ? 0.3 : 0.05) * Math.hypot(x + w / 2 - cx, y + h / 2 - cy);
           if (score < bestScore) { bestScore = score; best = r; }
         }
-        if (pin && best) break; // pinned: the closest distance that fits
+        if (best) break; // the closest distance that fits
       }
       if (!best && pin) return { ...spotFor({ ...L, pin: null }, placed), unpinned: true }; // pinned side blocked: place automatically
       return best ? { r: best, score: bestScore } : { r: { x: b.x + b.w + 3, y: cy - h / 2, w, h }, score: 1e4 };
@@ -352,7 +356,7 @@ export class MapView {
   renderHomeCard() {
     this.filterBody.innerHTML = `
       <h2>Pick a Landing Region</h2>
-      <p class="hint">Pick one of the nine Artemis III regions to see its best Landing Sites.</p>
+      <p class="hint">Pick one of the nine Artemis IV regions to see its best Landing Sites.</p>
       <ol class="region-list">${this.regions.map((r) => {
         const [w, h] = sizeKm(r);
         return `<li><button type="button" data-id="${r.id}"><span>${r.name}${r.hasSiteData ? "" : ' <em class="soon">coming soon</em>'}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites</small></button></li>`;
@@ -509,7 +513,7 @@ export class MapView {
       <div class="cal-key">
         <span><i class="k-land"></i> Landing day (day 1)</span>
         <span><i class="k-stay"></i> Days 2–7 of the surface stay</span>
-        <span><i class="k-nostay"></i> No full 7-day window anywhere in the region (you can still pick it)</span>
+        <span><i class="k-nostay"></i> No full 7-day window anywhere in the region</span>
         <span class="cal-status">Checking which days have a full 7-day window…</span>
       </div>
       <div class="time-pick">
@@ -622,7 +626,7 @@ export class MapView {
         const cls = ["cal-day", nostay && "nostay", sel && "sel", stay && "stay",
           (sel || stay) && (n === 7 || col === 6 || d === nDays) && "band-end", stay && col === 0 && "band-start"].filter(Boolean).join(" ");
         const why = out ? "Outside the supported year"
-          : [sel && "Landing day", stay && `Day ${n} of the stay`, nostay && "No site in the region has a full 7-day window starting this day (you can still pick it)"].filter(Boolean).join(". ");
+          : [sel && "Landing day", stay && `Day ${n} of the stay`, nostay && "No site in the region has a full 7-day window starting this day"].filter(Boolean).join(". ");
         const label = fmt(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
         html += `<button type="button" class="${cls}" data-day="${day}"${stay ? ` data-n="${n}"` : ""}${out ? " disabled" : ""}`
           + ` aria-label="${label}${why ? `, ${why}` : ""}" title="${why || label}" aria-pressed="${sel}">${d}</button>`;
