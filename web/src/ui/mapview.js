@@ -358,6 +358,7 @@ export class MapView {
         <span class="utc">UTC</span>
       </div>
       <p class="filter-picked" aria-live="polite"></p>
+      <p class="dark-warn" role="note" hidden></p>
       <button type="button" class="filter-clear">Clear selection</button>`;
     const hour = this.filterBody.querySelector(".t-hour"), min = this.filterBody.querySelector(".t-min");
     hour.value = String(t.getUTCHours());
@@ -381,12 +382,11 @@ export class MapView {
     darkDays(r.id).then((days) => {
       if (this.region !== r) return;
       this.dark = new Set(days);
-      status(days.length ? `${days.length} dark ${days.length === 1 ? "day" : "days"} in the year, blacked out` : "No fully dark days in the year");
-      if (this.picked && this.dark.has(dayOf(this.getLanding()))) this.setPicked(false, r, grid); // a pick on a dark day is dropped
+      status(days.length ? `${days.length} dark ${days.length === 1 ? "day" : "days"} in the year, shown in black` : "No fully dark days in the year");
       this.drawCalendar();
     }).catch((err) => { console.error(err); status("Couldn't check for dark days"); });
   }
-  /** The month grid. Days outside the Supported Span and fully dark days can't be picked. */
+  /** The month grid. Days outside the Supported Span can't be picked; fully dark days are black but can be, with a warning. */
   drawCalendar() {
     const gridEl = this.filterBody.querySelector(".cal-grid");
     if (!gridEl) return;
@@ -403,9 +403,9 @@ export class MapView {
     let html = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<span class="cal-dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
     for (let d = 1; d <= nDays; d++) {
       const day = Date.UTC(y, mo, d), out = day < SPAN_START || day >= SPAN_END, dark = !out && !!this.dark?.has(day), sel = day === chosenDay;
-      const why = out ? "Outside the supported year" : dark ? "Dark all day: no sunlight anywhere in the region" : "";
+      const why = out ? "Outside the supported year" : dark ? "Dark all day: no sunlight anywhere in the region (you can still pick it)" : "";
       const label = fmt(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-      html += `<button type="button" class="cal-day${dark ? " dark" : ""}${sel ? " sel" : ""}" data-day="${day}"${out || dark ? " disabled" : ""}`
+      html += `<button type="button" class="cal-day${dark ? " dark" : ""}${sel ? " sel" : ""}" data-day="${day}"${out ? " disabled" : ""}`
         + ` aria-label="${label}${why ? `, ${why}` : ""}" title="${why || label}" aria-pressed="${sel}">${d}</button>`;
     }
     gridEl.innerHTML = html;
@@ -414,6 +414,11 @@ export class MapView {
       ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 16)} UTC</b>`
       : "No date chosen yet";
     this.filterBody.querySelector(".filter-clear").disabled = !this.picked;
+    const warn = this.filterBody.querySelector(".dark-warn");
+    warn.hidden = !(chosen && this.dark?.has(chosenDay));
+    if (!warn.hidden) warn.innerHTML = `<b>Warning: dark day.</b> On this day the Sun stays below the local terrain horizon (Sun Clearance ≤ 0°) `
+      + `at every site in the region, all day: the whole region is in shadow. A crew landing now would start with no direct sunlight `
+      + `for solar power or lighting until the Sun clears the horizon. Check the coverage colours and the top 10 for later in the stay.`;
   }
 
   /** Rank every site for the shared Landing Time and draw the top 10 (team science port, in a worker). */
