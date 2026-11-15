@@ -248,6 +248,17 @@ tbody tr.active td:first-child { box-shadow: inset 2px 0 0 var(--sun); }
 .stay { border-bottom: 1px solid var(--line); }
 .stay-body { padding: 10px 16px 14px; display: grid; gap: 10px; }
 .stay h3 { margin: 6px 0 0; font-size: 12.5px; font-weight: 700; }
+/* Landing Windows: folded until pressed */
+.stay-windows summary { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px;
+  cursor: pointer; list-style: none; background: #15181f; }
+.stay-windows summary::-webkit-details-marker { display: none; }
+.stay-windows summary::before { content: "▸"; color: var(--sun); transition: transform .15s; }
+.stay-windows[open] summary::before { transform: rotate(90deg); }
+.stay-windows summary:hover, .stay-windows summary:focus-visible { border-color: var(--sun); outline: none; }
+.stay-windows summary h3 { margin: 0; font-size: 13px; }
+.stay-windows summary::after { content: "Show"; margin-left: auto; font-size: 12px; color: var(--muted); }
+.stay-windows[open] summary::after { content: "Hide"; }
+.stay-windows > div { padding-top: 10px; }
 .stay .sub { font-weight: 400; color: var(--muted); font-size: 12px; }
 .stay .fine, .map-card .fine { color: var(--muted); font-size: 11.5px; margin: 0; }
 .stay .status { color: var(--muted); font-size: 12px; margin: 0; }
