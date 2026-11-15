@@ -4,7 +4,8 @@
  * files, span positions and ranking in memory so repeat requests are fast.
  */
 import { loadPositions, loadRegion, type Positions, type PositionsCache, type Region } from "./data";
-import { computeLandingWindows, computeRanking, computeSiteDetail, loadSpanPositions, type RankingDoc } from "./results";
+import { assembleRanking, computeLandingWindows, computeRanking, computeSiteDetail, loadSpanPositions, type RankingDoc } from "./results";
+import { StatsPool, Superseded } from "./pool";
 import { N_SAMPLES } from "./time";
 import { computeDarkDays } from "./darkness";
 import { bestLandingOnDay, computeNoFullStayDays, hourlySpan } from "./fullstay";
@@ -28,16 +29,36 @@ function getRegion(id: string): Promise<Region> {
   return region.data;
 }
 
-async function ranking(regionId: string, landing: number, id: number): Promise<RankingDoc> {
+// Helper workers for rankings (src/science/pool.ts), leaving a core for the page and one for the scanner.
+// Without nested workers (or with one core) a ranking runs here, as before.
+const POOL_SIZE = Math.min(6, (navigator.hardwareConcurrency || 4) - 2);
+const pool = typeof Worker !== "undefined" && POOL_SIZE >= 2 ? new StatsPool(POOL_SIZE) : null;
+// Rankings being computed. Only the newest one matters to the page (it shows one Landing Time at a time),
+// so starting a ranking for another key stops the others: stepping through times doesn't queue up stale work.
+const inflight = new Map<string, { doc: Promise<RankingDoc>; cancelled: boolean; listeners: number[] }>();
+
+function ranking(regionId: string, landing: number, id: number): Promise<RankingDoc> {
   const key = `${regionId}|${landing}`;
   const hit = rankings.get(key);
-  if (hit) return hit;
-  const r = await getRegion(regionId);
-  const positions = await loadPositions(read, landing, N_SAMPLES, positionsCache);
-  const doc = computeRanking(r, positions, landing, (fraction) => post({ id, type: "progress", fraction }));
-  if (rankings.size >= 4) rankings.delete(rankings.keys().next().value!);
-  rankings.set(key, doc);
-  return doc;
+  if (hit) return Promise.resolve(hit);
+  const running = inflight.get(key);
+  if (running && !running.cancelled) { running.listeners.push(id); return running.doc; }
+  for (const other of inflight.values()) other.cancelled = true;
+  const job = { cancelled: false, listeners: [id], doc: null as unknown as Promise<RankingDoc> };
+  const progress = (fraction: number) => { for (const l of job.listeners) post({ id: l, type: "progress", fraction }); };
+  job.doc = (async () => {
+    const r = await getRegion(regionId);
+    const positions = await loadPositions(read, landing, N_SAMPLES, positionsCache);
+    if (job.cancelled) throw new Superseded();
+    const doc = pool
+      ? assembleRanking(r, landing, await pool.stats(r, positions, () => job.cancelled, progress))
+      : computeRanking(r, positions, landing, progress);
+    if (rankings.size >= 4) rankings.delete(rankings.keys().next().value!);
+    rankings.set(key, doc);
+    return doc;
+  })().finally(() => { if (inflight.get(key) === job) inflight.delete(key); });
+  inflight.set(key, job);
+  return job.doc;
 }
 
 function post(msg: WorkerResponse): void {

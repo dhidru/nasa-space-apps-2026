@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-/* Layout: dashboard grid. Controls left, 3D view centre with the timeline under it, site comparison right.
+/* Layout: dashboard grid. Controls left (fixed height, no scrolling), 3D view centre, site comparison right.
    Below 1100 px everything stacks and the page scrolls. Deliberately one dark theme; system fonts only. */
 :root {
   color-scheme: dark;
@@ -38,12 +38,11 @@ h1, h2, h3 { font-family: var(--f-head); }
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   display: grid;
   grid-template-columns: var(--side-w) minmax(0, 1fr) 360px;
-  grid-template-rows: minmax(0, 1fr) 220px;
-  grid-template-areas: "controls stage sites" "controls timeline sites";
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "controls stage sites";
 }
-.controls { grid-area: controls; border-right: 1px solid var(--line); scrollbar-gutter: stable; }
+.controls { grid-area: controls; border-right: 1px solid var(--line); overflow: hidden; }
 .stage { grid-area: stage; position: relative; min-height: 0; }
-.timeline { grid-area: timeline; border-top: 1px solid var(--line); }
 .sites { grid-area: sites; border-left: 1px solid var(--line); }
 
 #globe { position: absolute; inset: 0; }
@@ -85,7 +84,6 @@ dt { font-size: 12px; color: var(--muted); }
 dd { margin: 0; font: 12.5px var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
 dd b { font-weight: 500; color: var(--sun); }
 
-.view { padding: 12px 16px 14px; display: grid; gap: 10px; }
 .toggle { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--fg); }
 .toggle input { width: auto; accent-color: var(--sun); }
 .range-head { display: flex; justify-content: space-between; }
@@ -93,7 +91,7 @@ dd b { font-weight: 500; color: var(--sun); }
 
 /* compass */
 /* Hover menus over the 3D view (src/ui/viewmenu.js): Shading and Slice around the site */
-.view-bar { position: absolute; z-index: 6; left: 14px; top: 14px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 130px); }
+.view-bar { position: absolute; z-index: 6; left: 14px; top: 14px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 122px); }
 .view-menu { position: relative; }
 .view-menu-btn { display: flex; align-items: baseline; gap: 6px; padding: 7px 12px; border-radius: 6px; background: rgba(14,16,21,.9); border: 1px solid var(--line-strong);
   font: 600 13.5px var(--f-ui); color: var(--fg); }
@@ -109,6 +107,12 @@ dd b { font-weight: 500; color: var(--sun); }
 .view-menu-item:hover, .view-menu-item:focus-visible { background: var(--sun-dim); color: var(--sun); outline: none; }
 .view-menu-item[aria-checked="true"] { color: var(--sun); font-weight: 600; }
 .view-menu-item[aria-checked="true"]::before { content: "✓ "; }
+/* Vertical exaggeration: a slider styled like the menu buttons beside it. */
+.view-range { display: flex; flex-direction: row; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 6px; background: rgba(14,16,21,.9);
+  border: 1px solid var(--line-strong); font: 13.5px var(--f-ui); letter-spacing: 0; text-transform: none; color: var(--fg); }
+.view-range:focus-within { border-color: var(--sun); }
+.view-range input { width: 70px; accent-color: var(--sun); }
+.view-range output { font-family: var(--f-mono); font-size: 12.5px; min-width: 3ch; text-align: right; }
 .view-menu-select { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 /* Orientation window over the 3D view (src/ui/inset.js) */
 .inset { position: absolute; z-index: 5; right: 14px; bottom: 14px; margin: 0; padding: 6px; border-radius: 8px; background: rgba(10,11,14,.88);
@@ -128,25 +132,6 @@ dd b { font-weight: 500; color: var(--sun); }
 .compass .c-n { fill: var(--muted); font-size: 9px; }
 .c-sun { fill: var(--sun); }
 .c-earth { fill: var(--night); }
-
-/* timeline */
-.timeline header { padding: 10px 16px 6px; border-bottom: 0; }
-.legend { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 11.5px; color: var(--muted); }
-.lg { display: inline-flex; align-items: center; gap: 6px; }
-.lg::before { content: ""; width: 14px; height: 3px; border-radius: 2px; background: currentColor; }
-.lg-sun { color: var(--sun); }
-.lg-earth { color: var(--night); }
-.lg-dark::before { height: 10px; background: var(--night-dim); }
-.tl-read { font-family: var(--f-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-#chart { flex: 1; min-height: 120px; width: 100%; display: block; cursor: crosshair; touch-action: pan-y; }
-.tl-dark { fill: var(--shade); }
-.tl-grid { stroke: #1d2028; stroke-width: 1; }
-.tl-zero { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; }
-.tl-label { fill: var(--faint); font: 10px var(--f-mono); }
-.tl-sun { fill: none; stroke: var(--sun); stroke-width: 1.8; }
-.tl-earth { fill: none; stroke: var(--night); stroke-width: 1.5; }
-.tl-now { stroke: var(--fg); stroke-width: 1.5; }
-.tl-hover { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; }
 
 /* sites */
 .table-wrap { overflow-x: auto; padding: 4px 8px 0; }
@@ -182,10 +167,9 @@ tbody tr.active td:first-child { box-shadow: inset 2px 0 0 var(--sun); }
   body { overflow: auto; }
   .app { position: static; display: flex; flex-direction: column; }
   .stage { order: 1; height: 62vh; min-height: 340px; }
-  .timeline { order: 3; height: 240px; }
   .sites { order: 4; border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
   .controls { order: 2; border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
-  .panel header, form, .readout, .view, .sites-actions, .sites .hint {
+  .panel header, form, .readout, .sites-actions, .sites .hint {
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
   .compass { width: 72px; height: 72px; }
@@ -302,3 +286,23 @@ button.link { background: none; border: none; color: var(--sun); padding: 0; tex
 .site-id { margin: 0 0 -4px; font: 11px var(--f-mono); color: var(--muted); }
 .windows-list tr.best td { background: rgba(87,196,106,.10); }
 .best-badge { display: inline-block; font: 600 10.5px var(--f-ui); color: #0e1015; background: var(--sun); border-radius: 3px; padding: 0 4px; margin-right: 2px; }
+
+/* Site view left pane: a fixed height with no scrolling, so it is packed tighter than the map's pane.
+   If a short window still can't fit it, src/ui/main.js (fitControls) scales the pane down to fit. */
+.controls > header { padding: 10px 16px 8px; }
+.controls form { padding: 10px 16px; gap: 7px; }
+.controls input:not([type=range]):not([type=checkbox]), .controls select { padding-top: 6px; padding-bottom: 6px; }
+.controls > * { zoom: var(--fit, 1); }
+.controls .hint { line-height: 1.25; }
+#siteCal .cal-day { aspect-ratio: 1.5; }
+#siteCal .cal-day.sel::after { bottom: 1px; font-size: 7px; }
+.controls .steps button { padding: 4px 0; }
+.controls .actions button { padding: 6px 12px; }
+.controls .side-slope { padding: 8px 16px 10px; }
+.controls .readout { padding: 10px 16px 12px; gap: 6px; border-bottom: 0; }
+.controls dl { row-gap: 2px; }
+.controls label { gap: 3px; }
+.controls label .unit { text-transform: none; letter-spacing: 0; white-space: nowrap; }
+@media (min-width: 1101px) { .panel.controls { overflow: hidden; } }
+.controls .row label { grid-template-columns: auto 1fr; column-gap: 4px; align-items: baseline; }
+.controls .row label > :is(input, .masked) { grid-column: 1 / -1; }

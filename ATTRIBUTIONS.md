@@ -244,7 +244,7 @@ Each dataset below also has a conventions card in
 
 ### Web app UI (`web/src/ui`), with three.js and Astronomy Engine
 - **Type:** Code/Library
-- **Used for:** The site's UI in `web/src/ui` (maps, 3D terrain view, readouts, timeline, Surface Stay panel), running
+- **Used for:** The site's UI in `web/src/ui` (maps, 3D terrain view, readouts, Surface Stay panel), running
   on the science code in `web/src/science`. The UI started as the Lunar Site Viewer, written by a team member with
   Claude from a Claude design chat; its files are MIT-licensed (`web/src/ui/LICENSE`), which is compatible with our
   Apache 2.0. three.js draws the 3D terrain; Astronomy Engine gives Sun/Earth directions outside 2026–2027.
@@ -435,6 +435,8 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Region map grid follows the published sites (Haworth's colours were one column off), border traces the site cells, straight 7-day band on both calendars, one-line calendar key, shorter notes | `web/src/ui/polar.js`, `web/src/ui/teamdata.js`, `web/src/ui/main.js`, `web/src/ui/mapview.js`, `web/src/ui/toplist.js`, `web/src/ui/map.css`, `web/src/app/sitegrid.test.ts` |
 | 2026-11-15 | Claude Code | Header tagline removed; site view drops the Artemis IV regions table, Save current spot and Over the 7-day stay; Landing Windows folded until opened | `web/index.html`, `web/src/ui/main.js`, `web/src/ui/sites.js`, `web/src/ui/style.css` |
 | 2026-11-15 | Claude Code | Team name "Hidden Planners" in the top-right of the map header | `web/index.html`, `web/src/ui/map.css` |
+| 2026-11-15 | Claude Code | Sped up rankings when the Landing Time changes: fused stats loop, helper-worker pool, newer rankings cancel stale ones | `web/src/science/geometry.ts`, `results.ts`, `worker.ts`, `pool.ts`, `statsWorker.ts` |
+| 2026-11-15 | Claude Code | Site view: removed the Sun & Earth elevation timeline, moved Vertical exaggeration into the 3D view's top bar as a slider, made the left pane fixed-height with no scrolling (scales to fit short windows) | `web/index.html`, `web/src/ui/main.js`, `web/src/ui/metrics.js`, `web/src/ui/style.css`, `web/src/ui/chart.js` (removed), `web/README.md` |
 
 ## Media (images, icons, fonts, video, audio)
 

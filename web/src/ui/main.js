@@ -15,10 +15,9 @@ import "./style.css";
 import "./map.css";
 import { D, ephemeris, latlon, enu, horizontal, phaseName, fromSite, useTeamPositions } from "./ephemeris.js";
 import { MoonData } from "./data.js";
-import { SYNODIC_DAYS, sampleEphemeris, siteSeries, visibility, discAbove } from "./metrics.js";
+import { visibility, discAbove } from "./metrics.js";
 import { regionSites } from "./sites.js";
 import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadTeamRegion, loadAllPositions, siteTracks } from "./teamdata.js";
-import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView, setBreadcrumbs } from "./mapview.js";
 import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
@@ -34,7 +33,6 @@ import { skyPlot, timeCharts, windowsView, stayTitle, stayVerdict, stayRange } f
 
 const BASE = `${import.meta.env.BASE_URL}tiles`;
 const START_DATE = "2026-11-18T12:00:00Z";
-const CHART_STEP_H = 1;    // sampling for the timeline
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -45,7 +43,6 @@ const el = {
   oElev: $("oElev"), oSlope: $("oSlope"), oSlopeLabel: $("oSlopeLabel"), oRobust: $("oRobust"), oWalk: $("oWalk"),
   shade: $("shade"), slice: $("slice"), exag: $("exag"), exagOut: $("exagOut"), loading: $("loading"),
   cSun: $("cSun"), cEarth: $("cEarth"),
-  chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
   oRank: $("oRank"), top10: $("top10"), topValue: $("topValue"), topWhen: $("topWhen"), topStatus: $("topStatus"), topList: $("topList"),
   stay: $("stay"), stayTitle: $("stayTitle"), stayVerdict: $("stayVerdict"), siteId: $("siteId"), stayRange: $("stayRange"), stayStatus: $("stayStatus"),
   stayDetail: $("stayDetail"), stayWindows: $("stayWindows"), stayWindowsBox: $("stayWindowsBox"),
@@ -64,7 +61,6 @@ const fmtDark = (h) => (h >= 48 ? `${(h / 24).toFixed(1)} d` : `${Math.round(h)}
 let polarMeta, mapView, data, dataReady, view, curDem;
 let state = null, site = null; // site = {region, cell} in the site view
 const demCache = new Map();        // region id -> Promise<dem>
-let chartSeries = [];
 
 let REGIONS = [];                  // the nine regions from the team's regions.json
 // Landing Time (UTC ms, 10-minute grid, inside the Supported Span) shared by the region map and the site view:
@@ -236,7 +232,6 @@ function renderCrumbs() {
   ]);
   el.siteId.hidden = false;
   el.siteId.textContent = `Grid site ${site.cell.id}`;
-  el.tlSite.textContent = siteRank ? `${site.region.name} (${siteRank})` : `${site.region.name} · ${site.cell.id}`;
 }
 /** Esc goes up one level: site view -> region map -> all regions (not while typing in a field). */
 window.addEventListener("keydown", (e) => {
@@ -387,7 +382,6 @@ async function apply() {
   markNoStayDays(site.region);
   syncUrl();
   updateTopTen();
-  setTimeout(updateTimeline, 30);
 }
 
 /** Cross out the region's No-Full-Stay Days on the site view's calendar (once per region). */
@@ -508,26 +502,6 @@ function renderTopList(top, cur, tr) {
   el.topValue.textContent = k >= 0 ? `#${k + 1} of ${top.length}` : `${top.length} sites`;
 }
 
-/* ---------- timeline ---------- */
-function updateTimeline() {
-  if (!state) return;
-  if (site) renderCrumbs(); else el.tlSite.textContent = `${fmtLat(state.lat)}, ${fmtLon(state.lon)}`;
-  const samples = sampleEphemeris(state.date, SYNODIC_DAYS, CHART_STEP_H);
-  chartSeries = siteSeries(data, state.lat, state.lon, samples, site && site.team);
-  renderChart();
-}
-function renderChart() {
-  if (!state || el.app.hidden) return;
-  drawTimeline(el.chart, chartSeries, state.date, {
-    onPick: (t) => { setInputs(null, null, t); apply(); },
-    onHover: (p) => {
-      el.tlRead.textContent = p
-        ? `${fmtUTC(p.t)} · Sun ${p.sunEl.toFixed(1)}°${p.sunVis < 0.5 ? " (hidden)" : ""} · Earth ${p.earthEl.toFixed(1)}°${p.earthVis < 0.5 ? " (hidden)" : ""}`
-        : "Hover to read · click to jump";
-    },
-  });
-}
-
 /* ---------- boot ---------- */
 async function boot() {
   const res = await fetch(`${BASE}/polar/meta.json`);
@@ -609,8 +583,26 @@ el.exag.addEventListener("input", () => {
   el.exagOut.textContent = `${v}×`;
   if (view) view.setExag(v);
 });
-let resizeTimer;
-window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderChart, 150); });
+
+// The site view's left pane has a fixed height and doesn't scroll: when a short window can't fit it, scale its
+// contents down (--fit, see style.css). Below 1100 px the page stacks and scrolls instead, so it stays at 1.
+const controls = document.querySelector(".controls");
+const stacked = matchMedia("(max-width: 1100px)");
+function fitControls() {
+  controls.style.setProperty("--fit", "1");
+  if (el.app.hidden || stacked.matches) return;
+  // Zoom doesn't shrink borders and rounding exactly in proportion, so correct a few times.
+  let fit = 1;
+  for (let k = 0; k < 4 && controls.scrollHeight > controls.clientHeight && fit > 0.6; k++) {
+    fit = Math.max(0.6, (fit * controls.clientHeight) / controls.scrollHeight - 0.002);
+    controls.style.setProperty("--fit", String(fit));
+  }
+}
+let fitFrame = 0;
+const queueFit = () => { clearTimeout(fitFrame); fitFrame = setTimeout(fitControls, 0); };
+const fitObserver = new ResizeObserver(queueFit);
+fitObserver.observe(controls);
+for (const c of controls.children) fitObserver.observe(c);
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
