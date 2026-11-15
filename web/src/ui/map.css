@@ -278,3 +278,7 @@
 /* Calendar key on one line. */
 .mapview:not(.home) .cal-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 .mapview:not(.home) .cal-key .cal-status { flex-basis: 100%; }
+
+/* Team name, top right of the map header */
+.map-head .team-name { margin: 0 0 0 auto; padding: 5px 12px; border: 1px solid var(--line-strong); border-radius: 99px;
+  font: 700 14px var(--f-ui); letter-spacing: .04em; color: var(--sun); white-space: nowrap; }
