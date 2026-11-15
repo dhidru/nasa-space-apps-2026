@@ -149,6 +149,13 @@ Fields:
     center. `pipeline.slope` adds it after `pipeline.build`. The front end treats
     a missing value as "not computed". The mock values are approximate (central
     differences at 9 points of the circle).
+  - `eva_walkable_fraction` (optional): the site's EVA Walkable Share, 0–1,
+    rounded down to 4 decimals (so it's 1 only when all the ground is walkable): the share of the 20 m pixels whose centers are within
+    2 km of the site center with a 100 m-scale slope (as for `landing_slope_deg`)
+    under 20°, NASA's EVA limit. NASA gives no scale for that limit; 100 m is our
+    choice. `pipeline.slope` adds it with `landing_slope_deg`. The front end
+    treats a missing value as "not computed". The mock values are approximate
+    (central differences on a 250 m grid inside the 2 km circle).
 - **The order of `sites[]` is the row order of the Horizons (`horizons.bin.gz`).**
 
 ### 5.4 Site-to-site distance

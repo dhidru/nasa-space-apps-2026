@@ -312,8 +312,10 @@ the design work doesn't wait on the pipeline.
   Landing Slope in `sites.json` (data-contract §5.3), computed from our 20 m DEM
   and checked against the LOLA slope map (landing-criteria.md §3). The top 10
   can be limited to sites under 10° or 8°.
-- EVA slope: the share of ground within 2 km that's under 20° (NASA's EVA
-  limit, landing-criteria.md §2).
+- ~~EVA slope: the share of ground within 2 km that's under 20° (NASA's EVA
+  limit, landing-criteria.md §2).~~ Done: `pipeline.slope` also stores each
+  site's EVA Walkable Share in `sites.json` (data-contract §5.3); the map
+  readout, the site overview and both top-10 lists show it.
 - ~~Timing robustness column: the share of the Supported Span with Full
   Coverage (landing-criteria.md §2).~~ Done: `pipeline.robustness` stores it in
   `sites.json` (data-contract §5.3); the map readout, the site overview and both

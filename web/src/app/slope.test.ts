@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RankingEntry } from "../science/results";
-import { slopeLabel, topWithinSlope } from "./slope";
+import { slopeLabel, topWithinSlope, walkableLabel } from "./slope";
 
 // Four sites on a line, best first: a and b are 1 km apart (closer than the 2 km top-10 separation).
 const ids = ["a", "b", "c", "d"];
@@ -37,5 +37,20 @@ describe("slopeLabel", () => {
   });
   it("shows a dash when the value wasn't computed", () => {
     expect(slopeLabel(undefined)).toBe("—");
+  });
+});
+
+describe("walkableLabel", () => {
+  it("is a percentage rounded down, so a site with any steep ground never reads 100 %", () => {
+    expect(walkableLabel(1)).toBe("100 %");
+    expect(walkableLabel(0.9999)).toBe("99 %");
+    expect(walkableLabel(0.614)).toBe("61 %");
+    expect(walkableLabel(0)).toBe("0 %");
+  });
+  it("says \"< 1 %\" rather than \"0 %\" when a little ground is walkable", () => {
+    expect(walkableLabel(0.004)).toBe("< 1 %");
+  });
+  it("shows a dash when the value wasn't computed", () => {
+    expect(walkableLabel(undefined)).toBe("—");
   });
 });

@@ -7,7 +7,7 @@ import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
 import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
 import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
-import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, topUnderSlope, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
+import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}, parent) => {
@@ -293,7 +293,7 @@ export class MapView {
         <dt>Longitude</dt><dd data-k="lon">—</dd>
         <dt>Elevation</dt><dd data-k="h">—</dd>
         <dt data-k="sl">Slope (200 m)</dt><dd data-k="s">—</dd>
-        ${r.hasSiteData ? `<dt>Rank</dt><dd data-k="rank">—</dd><dt title="${ROBUSTNESS_TITLE}">Timing robustness</dt><dd data-k="robust">—</dd>` : ""}
+        ${r.hasSiteData ? `<dt>Rank</dt><dd data-k="rank">—</dd><dt title="${ROBUSTNESS_TITLE}">Timing robustness</dt><dd data-k="robust">—</dd><dt title="${WALKABLE_TITLE}">EVA walkable (2 km)</dt><dd data-k="walk">—</dd>` : ""}
       </dl>
       ${r.hasSiteData ? `
       <section class="map-top">
@@ -394,6 +394,7 @@ export class MapView {
       if (list) fillTopList(list, top, {
         robustnessOf: team ? (id) => team.robustnessOf(id) : undefined,
         slopeOf: team ? (id) => team.slopeOf(id) : undefined,
+        walkableOf: team ? (id) => team.walkableOf(id) : undefined,
         onPick: (e) => this.onSite(r.id, e.site_id),
         onHover: (e) => { const cell = grid.byId(e.site_id); if (cell) { this.markCell(cell, this.hoverRect); this.renderCell(cell); } },
       });
@@ -422,7 +423,10 @@ export class MapView {
       if (!team) set("h", `${Math.round(this.dem.at(cell.x, cell.y)).toLocaleString()} m`);
       if (teamSlope === undefined) set("s", `${this.dem.slope(cell.x, cell.y).toFixed(1)}°`);
     } else { if (!team) set("h", "loading…"); if (teamSlope === undefined) set("s", "loading…"); }
-    if (this.teamSiteData) set("robust", robustnessLabel(this.teamSiteData.robustnessOf(cell.id)));
+    if (this.teamSiteData) {
+      set("robust", robustnessLabel(this.teamSiteData.robustnessOf(cell.id)));
+      set("walk", walkableLabel(this.teamSiteData.walkableOf(cell.id)));
+    }
     const e = this.rankData && this.rankData.byId.get(cell.id);
     set("rank", e ? `${e.rank.toLocaleString()} of ${this.rankData.doc.sites.length.toLocaleString()}${this.topIds.has(cell.id) ? " · top 10" : ""} · ${coverageLabel(e)}` : this.region && this.region.hasSiteData ? "scoring…" : "—");
   }

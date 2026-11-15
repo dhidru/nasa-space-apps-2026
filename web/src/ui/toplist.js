@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 // The top-10 Landing Sites list, shared by the region map card (mapview.js) and the 3D site view (main.js):
-// a header row and one button per site, with coverage, worst-case Clearance, Timing Robustness and Landing Slope;
+// a header row and one button per site, with coverage, worst-case Clearance, Timing Robustness, Landing Slope and
+// EVA Walkable Share;
 // and the Landing Slope limit selector that both show above it.
-import { coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, SLOPE_LIMITS_DEG } from "./ranking.js";
+import { coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, SLOPE_LIMITS_DEG, walkableLabel, WALKABLE_TITLE } from "./ranking.js";
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const CLEARANCE_TITLE = "Worst-case minimum Clearance over the stay (Sun or Earth)";
 
 const HEAD = `<span></span><span></span><span>Site</span><span>Coverage over the stay</span>`
   + `<span class="num" title="${esc(CLEARANCE_TITLE)}">Worst</span><span class="num" title="${esc(ROBUSTNESS_TITLE)}">Year</span>`
-  + `<span class="num" title="${esc(SLOPE_TITLE)}">Slope</span>`;
+  + `<span class="num" title="${esc(SLOPE_TITLE)}">Slope</span><span class="num" title="${esc(WALKABLE_TITLE)}">EVA</span>`;
 
 /** A <label> with a <select> of the top-10 Landing Slope limits; `limitDeg` (number or null for any) is selected. */
 export function slopeLimitHtml(limitDeg) {
@@ -24,10 +25,11 @@ export const slopeLimitOf = (select) => (select.value === "" ? null : Number(sel
 /**
  * Fill `list` (an <ol class="top-list">) with `entries` (ranking entries, best first) and put a column header
  * just above it.
- * @param {{ robustnessOf?: (siteId: string) => number|undefined, slopeOf?: (siteId: string) => number|undefined, activeId?: string,
+ * @param {{ robustnessOf?: (siteId: string) => number|undefined, slopeOf?: (siteId: string) => number|undefined,
+ *           walkableOf?: (siteId: string) => number|undefined, activeId?: string,
  *           onPick: (entry: object) => void, onHover?: (entry: object) => void }} opts
  */
-export function fillTopList(list, entries, { robustnessOf, slopeOf, activeId, onPick, onHover }) {
+export function fillTopList(list, entries, { robustnessOf, slopeOf, walkableOf, activeId, onPick, onHover }) {
   let head = list.previousElementSibling;
   if (!head || !head.classList.contains("top-head")) {
     head = document.createElement("div");
@@ -44,7 +46,8 @@ export function fillTopList(list, entries, { robustnessOf, slopeOf, activeId, on
       + `<span class="lb">${label}</span>`
       + `<span class="cl" title="${esc(CLEARANCE_TITLE)}">${e.worst_case_min_clearance_deg.toFixed(2)}°</span>`
       + `<span class="robust" title="${esc(ROBUSTNESS_TITLE)}">${robustnessLabel(robustnessOf?.(e.site_id))}</span>`
-      + `<span class="slope" title="${esc(SLOPE_TITLE)}">${slopeLabel(slopeOf?.(e.site_id))}</span></button>`;
+      + `<span class="slope" title="${esc(SLOPE_TITLE)}">${slopeLabel(slopeOf?.(e.site_id))}</span>`
+      + `<span class="walk" title="${esc(WALKABLE_TITLE)}">${walkableLabel(walkableOf?.(e.site_id))}</span></button>`;
     const b = li.querySelector("button");
     b.addEventListener("click", () => onPick(e));
     if (onHover) b.addEventListener("pointerenter", () => onHover(e));

@@ -75,3 +75,7 @@ _Avoid_: Reliability, availability, uptime
 **Landing Slope**:
 The steepest ground slope anywhere in a Landing Site's 100 m circle, each slope measured over a 100 m patch (NASA's 100 m scale). NASA's landing limit is under 10°. It doesn't depend on the Landing Time.
 _Avoid_: Site slope, gradient, steepness
+
+**EVA Walkable Share**:
+The share of the ground within 2 km of a Landing Site's center whose slope, measured over a 100 m patch, is under 20°, NASA's limit for moonwalks (EVA). It doesn't depend on the Landing Time.
+_Avoid_: EVA slope, traversability, walkability score

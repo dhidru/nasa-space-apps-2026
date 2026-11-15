@@ -18,7 +18,7 @@ import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView } from "./mapview.js";
 import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
-import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
+import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
 import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
 
 
@@ -33,7 +33,7 @@ const el = {
   form: $("form"), lat: $("lat"), lon: $("lon"), date: $("date"), time: $("time"),
   now: $("now"), hint: $("hint"), chip: $("chip"), when: $("when"),
   oSunEl: $("oSunEl"), oSunAz: $("oSunAz"), oLst: $("oLst"), oSub: $("oSub"), oEarth: $("oEarth"), oPhase: $("oPhase"),
-  oElev: $("oElev"), oSlope: $("oSlope"), oSlopeLabel: $("oSlopeLabel"), oRobust: $("oRobust"),
+  oElev: $("oElev"), oSlope: $("oSlope"), oSlopeLabel: $("oSlopeLabel"), oRobust: $("oRobust"), oWalk: $("oWalk"),
   shade: $("shade"), slice: $("slice"), exag: $("exag"), exagOut: $("exagOut"), loading: $("loading"),
   cSun: $("cSun"), cEarth: $("cEarth"),
   chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
@@ -44,6 +44,7 @@ const el = {
 };
 $("oRobustLabel").title = ROBUSTNESS_TITLE;
 el.oSlopeLabel.title = SLOPE_TITLE;
+$("oWalkLabel").title = WALKABLE_TITLE;
 
 const compass16 = (az) => ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][Math.round(az / 22.5) % 16];
 const fmtLat = (v) => `${Math.abs(v).toFixed(2)}° ${v >= 0 ? "N" : "S"}`;
@@ -85,7 +86,7 @@ async function teamFor(region, cell) {
   if (!region.hasSiteData) return null;
   const tr = await teamSitesFor(region.id), h = tr.heightOf(cell.id);
   if (h === undefined) return null;
-  return { h, robustness: tr.robustnessOf(cell.id), slope: tr.slopeOf(cell.id), tracks: (vectors) => siteTracks(tr, cell.id, vectors) };
+  return { h, robustness: tr.robustnessOf(cell.id), slope: tr.slopeOf(cell.id), walkable: tr.walkableOf(cell.id), tracks: (vectors) => siteTracks(tr, cell.id, vectors) };
 }
 /** Sun/Earth azimuth, elevation and Clearance at one instant from the team's track(), or null without km vectors. */
 function teamNow(team, eph) {
@@ -319,6 +320,7 @@ async function apply() {
   el.oSlope.textContent = team?.slope !== undefined ? slopeLabel(team.slope) : `${dem.slope(cell.x, cell.y).toFixed(1)}°`;
   el.oSlopeLabel.textContent = team?.slope !== undefined ? "Landing slope" : "Slope (site)";
   el.oRobust.textContent = team ? robustnessLabel(team.robustness) : "— (no team site data)";
+  el.oWalk.textContent = team ? walkableLabel(team.walkable) : "— (no team site data)";
   const sun = sunVector(sunH.az, sunH.el, cell.lon);
   view.setSun(sun, 1);
   el.hint.textContent = HINT;
@@ -420,6 +422,7 @@ function renderTopList(top, cur, tr) {
   fillTopList(el.topList, top, {
     robustnessOf: tr ? (id) => tr.robustnessOf(id) : undefined,
     slopeOf: tr ? (id) => tr.slopeOf(id) : undefined,
+    walkableOf: tr ? (id) => tr.walkableOf(id) : undefined,
     activeId: cur.cell.id,
     onPick: (e) => go(`#${cur.region.id}/${e.site_id}`),
   });

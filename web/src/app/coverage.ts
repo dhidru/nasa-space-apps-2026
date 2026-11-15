@@ -10,11 +10,14 @@ export function pct(fraction: number): string {
 export const ROBUSTNESS_TITLE =
   "Timing Robustness: the share of Landing Times in the Supported Span (one year) whose Surface Stay has Full Coverage";
 
-/** Timing Robustness as a percentage, rounded down; "< 1 %" rather than "0 %" for a rare site, "—" if not computed. */
-export function robustnessLabel(fraction: number | undefined): string {
+/** A per-site share (0–1) as a percentage, rounded down; "< 1 %" rather than "0 %" for a tiny share, "—" if not computed. */
+export function shareLabel(fraction: number | undefined): string {
   if (fraction === undefined) return "—";
   return fraction > 0 && fraction < 0.01 ? "< 1 %" : pct(fraction);
 }
+
+/** Timing Robustness as a percentage (shareLabel). */
+export const robustnessLabel = shareLabel;
 
 /** "Full coverage" or "Partial (Sun x %, Earth y %)". */
 export function coverageLabel(e: RankingEntry): string {

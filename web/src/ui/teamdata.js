@@ -43,7 +43,8 @@ export function loadRegionBasemap(region) {
 
 /**
  * A region's sites and Horizons, via loadRegion. Adds heightOf(siteId): terrain height (m), and
- * robustnessOf(siteId): Timing Robustness (0–1, data-contract §5.3), and slopeOf(siteId): Landing Slope (deg, §5.3),
+ * robustnessOf(siteId): Timing Robustness (0–1, data-contract §5.3), slopeOf(siteId): Landing Slope (deg, §5.3),
+ * and walkableOf(siteId): EVA Walkable Share (0–1, §5.3),
  * each undefined if the pipeline didn't compute it.
  * `region.siteIndex` maps site ids to rows; Horizons are decoded once.
  */
@@ -62,6 +63,10 @@ export async function loadTeamRegion(regionId) {
     slopeOf(siteId) {
       const i = region.siteIndex.get(siteId);
       return i === undefined || !region.landingSlopeDeg ? undefined : region.landingSlopeDeg[i];
+    },
+    walkableOf(siteId) {
+      const i = region.siteIndex.get(siteId);
+      return i === undefined || !region.evaWalkableFraction ? undefined : region.evaWalkableFraction[i];
     },
   };
 }

@@ -24,6 +24,8 @@ export interface Region {
   timingRobustness: Float64Array | null;
   /** Landing Slope per site in degrees (data-contract §5.3), or null if sites.json doesn't have it for every site. */
   landingSlopeDeg: Float64Array | null;
+  /** EVA Walkable Share per site, 0–1 (data-contract §5.3), or null if sites.json doesn't have it for every site. */
+  evaWalkableFraction: Float64Array | null;
 }
 
 export interface SiteRecord {
@@ -35,6 +37,7 @@ export interface SiteRecord {
   terrain_height_m: number;
   timing_robustness_fraction?: number;
   landing_slope_deg?: number;
+  eva_walkable_fraction?: number;
 }
 
 export interface SitesDoc {
@@ -70,6 +73,8 @@ export function makeRegion(doc: SitesDoc, horizons: Horizons): Region {
     timingRobustness: doc.sites.every((s) => s.timing_robustness_fraction !== undefined)
       ? col((s) => s.timing_robustness_fraction!) : null,
     landingSlopeDeg: doc.sites.every((s) => s.landing_slope_deg !== undefined) ? col((s) => s.landing_slope_deg!) : null,
+    evaWalkableFraction: doc.sites.every((s) => s.eva_walkable_fraction !== undefined)
+      ? col((s) => s.eva_walkable_fraction!) : null,
   };
 }
 

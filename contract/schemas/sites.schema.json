@@ -25,7 +25,8 @@
           "lon_deg": {"type": "number", "minimum": -180, "maximum": 180},
           "terrain_height_m": {"type": "number"},
           "timing_robustness_fraction": {"type": "number", "minimum": 0, "maximum": 1},
-          "landing_slope_deg": {"type": "number", "minimum": 0, "maximum": 90}
+          "landing_slope_deg": {"type": "number", "minimum": 0, "maximum": 90},
+          "eva_walkable_fraction": {"type": "number", "minimum": 0, "maximum": 1}
         }
       }
     }

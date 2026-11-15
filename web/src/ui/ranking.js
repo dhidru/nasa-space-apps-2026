@@ -8,7 +8,7 @@ import { science } from "../science/client.ts";
 export { snapLandingTime, formatUtc, parseUtc, compactUtc, SPAN_START, SPAN_END, STAY_STEPS, STEP_MS, STEP_S, HOUR_MS, DAY_MS } from "../science/time.ts";
 export { coverageLabel, coverageColor, pct, robustnessLabel, ROBUSTNESS_TITLE, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb, SUN_COLOR, EARTH_COLOR, LOS_COLOR, BLOCKED_COLOR } from "../app/coverage.ts";
 export { DEFAULT_LANDING, parseRoute, formatRoute } from "../app/route.ts";
-export { slopeLabel, underSlopeLimit, SLOPE_TITLE, SLOPE_LIMITS_DEG, DEFAULT_SLOPE_LIMIT_DEG } from "../app/slope.ts";
+export { slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, SLOPE_LIMITS_DEG, DEFAULT_SLOPE_LIMIT_DEG } from "../app/slope.ts";
 import { topWithinSlope } from "../app/slope.ts";
 
 function lru(map, key, make, limit) {

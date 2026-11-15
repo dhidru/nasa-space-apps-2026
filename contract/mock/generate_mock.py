@@ -282,7 +282,8 @@ def build_sites(cx: float, cy: float) -> list[dict]:
             sites.append({"site_id": f"r{row:03d}c{col:03d}", "x_m": r(x, 1), "y_m": r(y, 1),
                           "lat_deg": r(lat, 6), "lon_deg": r(lon, 6),
                           "terrain_height_m": r(terrain_height(x, y, cx, cy), 1),
-                          "landing_slope_deg": r(mock_landing_slope(x, y, cx, cy), 2)})
+                          "landing_slope_deg": r(mock_landing_slope(x, y, cx, cy), 2),
+                          "eva_walkable_fraction": r(mock_eva_walkable_fraction(x, y, cx, cy), 4)})
     return sites
 
 
@@ -293,10 +294,27 @@ def mock_landing_slope(x: float, y: float, cx: float, cy: float) -> float:
     for k in range(9):
         px = x + (60 * math.cos(k * math.pi / 4) if k else 0.0)
         py = y + (60 * math.sin(k * math.pi / 4) if k else 0.0)
-        gx = (terrain_height(px + 50, py, cx, cy) - terrain_height(px - 50, py, cx, cy)) / 100
-        gy = (terrain_height(px, py + 50, cx, cy) - terrain_height(px, py - 50, cx, cy)) / 100
-        worst = max(worst, math.degrees(math.atan(math.hypot(gx, gy))))
+        worst = max(worst, slope_100m_deg(px, py, cx, cy))
     return worst
+
+
+def slope_100m_deg(x: float, y: float, cx: float, cy: float) -> float:
+    """Ground slope (deg) at x/y from 100 m central differences of the mock terrain."""
+    gx = (terrain_height(x + 50, y, cx, cy) - terrain_height(x - 50, y, cx, cy)) / 100
+    gy = (terrain_height(x, y + 50, cx, cy) - terrain_height(x, y - 50, cx, cy)) / 100
+    return math.degrees(math.atan(math.hypot(gx, gy)))
+
+
+def mock_eva_walkable_fraction(x: float, y: float, cx: float, cy: float) -> float:
+    """Approximate EVA Walkable Share (data-contract §5.3): the share of points on a 250 m grid within 2 km
+    whose 100 m central-difference slope is under 20 deg. The real pipeline uses every 20 m DEM pixel."""
+    n = walkable = 0
+    for i in range(-8, 9):
+        for j in range(-8, 9):
+            if math.hypot(i, j) * 250 <= 2000:
+                n += 1
+                walkable += slope_100m_deg(x + i * 250, y + j * 250, cx, cy) < 20
+    return walkable / n
 
 
 def build_horizons(sites: list[dict], cx: float, cy: float) -> array.array:

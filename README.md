@@ -82,7 +82,8 @@ Run these from `src/`:
 6. `python -m pipeline.ephemeris ../data/processed/site-data/ephemeris 2026 2027`: Sun and Earth positions for the Supported Span.
 7. `python -m pipeline.robustness`: Timing Robustness of every site, added to each region's `sites.json`
    (about 35 min for all 8 regions; `--region ID` for one). Rerun it after step 5, which rewrites `sites.json`.
-8. `python -m pipeline.slope`: Landing Slope of every site, added to each region's `sites.json` (seconds).
+8. `python -m pipeline.slope`: Landing Slope and EVA Walkable Share of every site, added to each region's
+   `sites.json` (about 90 s for all 8 regions).
    Rerun it after step 5 too.
 9. `python -m pipeline.results --landing-time 2027-03-01T00:00:00Z`: Clearance, ranking, site details and
    Landing Windows into `regions/mons-mouton/results/` (seconds; repeat `--landing-time` for more). These are
