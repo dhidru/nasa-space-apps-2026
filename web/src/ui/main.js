@@ -363,7 +363,7 @@ async function updateTopTen() {
     renderTopList(top, cur, tr);
     const me = r.byId.get(cur.cell.id);
     el.oRank.textContent = me ? `${me.rank.toLocaleString()} of ${r.doc.sites.length.toLocaleString()}${top.some((e) => e.site_id === me.site_id) ? " · top 10" : ""} · ${coverageLabel(me)}` : "—";
-    view.setMarks(top.map((e) => ({ cell: grid.byId(e.site_id), color: coverageColor(e) })).filter((m) => m.cell));
+    view.setMarks(top.map((e, i) => ({ cell: grid.byId(e.site_id), color: coverageColor(e), rank: i + 1 })).filter((m) => m.cell));
     updateStay(cur, me, token);
   } catch (e) {
     if (token !== topToken) return;

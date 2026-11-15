@@ -16,8 +16,6 @@ const svgEl = (tag, attrs = {}, parent) => {
   if (parent) parent.appendChild(n);
   return n;
 };
-const fmtLat = (v) => `${Math.abs(v).toFixed(3)}° ${v >= 0 ? "N" : "S"}`;
-const fmtLon = (v) => `${Math.abs(v).toFixed(3)}° ${v >= 0 ? "E" : "W"}`;
 
 // Label anchors (map metres) and text alignment, placed by hand so the clustered regions stay readable.
 const LABELS = {
@@ -283,21 +281,19 @@ export class MapView {
   renderRegionCard(r, grid, bm) {
     const [w, h] = sizeKm(r);
     this.card.innerHTML = `
-      <h2>${r.name}</h2>
-      <p class="sub">${w.toFixed(0)} × ${h.toFixed(0)} km · ${grid.count.toLocaleString()} sites</p>
-      <p class="hint">Each square is one 200 m Landing Site. Hover to read it, click to see it in 3D.</p>
+      <h2>${r.name} <span class="sub">${w.toFixed(0)} × ${h.toFixed(0)} km · ${grid.count.toLocaleString()} sites</span></h2>
       <dl class="cell-read" id="cellRead">
-        <dt>Site</dt><dd data-k="id">—</dd>
-        <dt>Latitude</dt><dd data-k="lat">—</dd>
-        <dt>Longitude</dt><dd data-k="lon">—</dd>
+        <dt>Site</dt><dd data-k="id" class="placeholder">hover a square</dd>
         <dt>Elevation</dt><dd data-k="h">—</dd>
-        <dt data-k="sl">Slope (200 m)</dt><dd data-k="s">—</dd>
-        ${r.hasSiteData ? `<dt>Rank</dt><dd data-k="rank">—</dd><dt title="${ROBUSTNESS_TITLE}">Timing robustness</dt><dd data-k="robust">—</dd><dt title="${WALKABLE_TITLE}">EVA walkable (2 km)</dt><dd data-k="walk">—</dd>` : ""}
+        <dt data-k="sl">Slope</dt><dd data-k="s">—</dd>
+        ${r.hasSiteData ? `<dt title="${ROBUSTNESS_TITLE}">Timing</dt><dd data-k="robust">—</dd><dt title="${WALKABLE_TITLE}">EVA walk</dt><dd data-k="walk">—</dd><dt class="wide">Rank</dt><dd class="wide" data-k="rank">—</dd>` : ""}
       </dl>
       ${r.hasSiteData ? `
       <section class="map-top">
-        <label class="landing">Landing Time <span class="unit">UTC · 7-day Surface Stay</span>
-          <input type="datetime-local" step="600" min="${formatUtc(SPAN_START).slice(0, 16)}" max="${formatUtc(SPAN_END - STEP_MS).slice(0, 16)}" value="${formatUtc(this.getLanding()).slice(0, 16)}">
+        <span class="landing-head">Landing Time <span class="unit">UTC · 7-day stay</span></span>
+        <div class="time-row">
+        <label class="landing">
+          <input type="datetime-local" aria-label="Landing Time (UTC)" step="600" min="${formatUtc(SPAN_START).slice(0, 16)}" max="${formatUtc(SPAN_END - STEP_MS).slice(0, 16)}" value="${formatUtc(this.getLanding()).slice(0, 16)}">
         </label>
         <div class="steps" role="group" aria-label="Step the Landing Time">
           <button type="button" data-step="-86400000" title="One day earlier">−1 d</button>
@@ -305,19 +301,17 @@ export class MapView {
           <button type="button" data-step="3600000" title="One hour later">+1 h</button>
           <button type="button" data-step="86400000" title="One day later">+1 d</button>
         </div>
+        </div>
         <div class="legend">
-          <span><i style="background:${rgb(FULL_HIGH)}"></i> Sun and Earth in view all week</span>
-          <span><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Blocked part of the week</span>
+          <span title="The Sun and Earth stay in view for the whole 7-day stay"><i style="background:${rgb(FULL_HIGH)}"></i> In view all week</span>
+          <span title="The Sun or Earth is blocked by terrain for part of the stay"><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Blocked at times</span>
           <span><i class="outlined"></i> Top 10</span>
           <span><i class="steep"></i> Too steep</span>
         </div>
-        <h3>Top 10 Landing Sites</h3>
-        ${slopeLimitHtml(this.getSlopeLimit())}
+        <div class="top-title"><h3>Top 10 sites</h3>${slopeLimitHtml(this.getSlopeLimit())}</div>
         <p class="hint top-status"></p>
         <ol class="top-list"></ol>
-      </section>` : ""}
-      <button type="button" class="back">← All regions</button>`;
-    this.card.querySelector(".back").addEventListener("click", () => this.onHome());
+      </section>` : ""}`;
     const input = this.card.querySelector(".landing input");
     const setT = (t) => {
       this.setLanding(t);
@@ -405,15 +399,14 @@ export class MapView {
     if (!cell || this.mode !== "region") return;
     const set = (k, v) => { const n = this.card.querySelector(`[data-k="${k}"]`); if (n) n.textContent = v; };
     set("id", cell.id);
-    set("lat", fmtLat(cell.lat));
-    set("lon", fmtLon(cell.lon));
+    this.card.querySelector('[data-k="id"]')?.classList.remove("placeholder");
     const teamH = this.teamSiteData ? this.teamSiteData.heightOf(cell.id) : undefined;
     const team = teamH !== undefined;
     if (team) set("h", `${Math.round(teamH).toLocaleString()} m`);
     const teamSlope = this.teamSiteData ? this.teamSiteData.slopeOf(cell.id) : undefined;
     if (teamSlope !== undefined) set("s", slopeLabel(teamSlope));
     const label = this.card.querySelector('[data-k="sl"]');
-    if (label) { label.textContent = teamSlope !== undefined ? "Landing slope" : "Slope (200 m)"; label.title = teamSlope !== undefined ? SLOPE_TITLE : ""; }
+    if (label) label.title = teamSlope !== undefined ? SLOPE_TITLE : "Slope over 200 m";
     if (this.dem) {
       if (!team) set("h", `${Math.round(this.dem.at(cell.x, cell.y)).toLocaleString()} m`);
       if (teamSlope === undefined) set("s", `${this.dem.slope(cell.x, cell.y).toFixed(1)}°`);

@@ -24,8 +24,8 @@ const HEAD = `<span></span><span></span><span>Site</span><span>Coverage</span>`
 /** A <label> with a <select> of the top-10 Landing Slope limits; `limitDeg` (number or null for any) is selected. */
 export function slopeLimitHtml(limitDeg) {
   const opt = (v, text) => `<option value="${v ?? ""}"${v === limitDeg ? " selected" : ""}>${text}</option>`;
-  return `<label class="slope-limit" title="${esc(SLOPE_TITLE)}">Landing slope <select>`
-    + SLOPE_LIMITS_DEG.map((v) => opt(v, `under ${v}°${v === 10 ? " (NASA limit)" : ""}`)).join("")
+  return `<label class="slope-limit" title="${esc(SLOPE_TITLE)}">Max slope <select>`
+    + SLOPE_LIMITS_DEG.map((v) => opt(v, `${v}°${v === 10 ? " (NASA limit)" : ""}`)).join("")
     + `${opt(null, "any")}</select></label>`;
 }
 /** The limit chosen in a select made by slopeLimitHtml: a number of degrees, or null for any. */
