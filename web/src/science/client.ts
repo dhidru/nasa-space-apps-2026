@@ -44,6 +44,11 @@ class ScienceClient {
   windows(regionId: string, siteId: string): Promise<LandingWindowsDoc> {
     return this.call({ type: "windows", regionId, siteId });
   }
+
+  /** Start (UTC ms) of each day in the Supported Span with no sunlight anywhere in the region. */
+  darkDays(regionId: string): Promise<number[]> {
+    return this.call({ type: "darkDays", regionId });
+  }
 }
 
 export const science = new ScienceClient();

@@ -82,13 +82,6 @@
 .map-top .top-list button, .map-top .top-head { gap: 6px; }
 .map-top .top-head > span:nth-child(4), .map-top .top-list .lb { display: none; }
 .map-top .slope-limit select { font-size: 11.5px; }
-.map-top .landing-head { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.map-top .landing-head .unit { margin-left: 4px; }
-.map-top .time-row { display: flex; gap: 4px; align-items: stretch; }
-.map-top .time-row .landing { flex: 1; min-width: 0; }
-.map-top .time-row input { width: 100%; padding: 4px 6px; font-size: 12px; }
-.map-top .time-row .steps { gap: 3px; }
-.map-top .time-row .steps button { flex: none; padding: 0 6px; }
 .cell-read dd.placeholder { color: var(--faint); font: 11.5px var(--f-ui); }
 .map-top .top-list { padding: 0; }
 .map-top .top-head { padding: 0 9px; } /* button padding + border, with no list padding */
@@ -107,3 +100,43 @@
   background: rgba(14,16,21,.85); border: 1px solid var(--line); font: 12px var(--f-mono); color: var(--muted); pointer-events: none; }
 .flight-notice.error { border-color: var(--dusk); color: var(--fg); }
 @media (prefers-reduced-motion: reduce) { .mapview, .clears-on-flight { transition: none; } }
+
+/* ---------- filter pane on the region map (top left): back button, Landing date and time ---------- */
+.map-filter { position: absolute; z-index: 3; left: 12px; top: 12px; width: 296px; max-height: calc(100% - 24px); overflow-y: auto;
+  display: grid; gap: 10px; align-content: start; padding: 12px 14px 14px; border: 1px solid var(--line-strong); border-radius: 8px;
+  background: rgba(14,16,21,.94); box-shadow: 0 6px 24px rgba(0,0,0,.45); font: 15px/1.4 var(--f-ui); color: var(--fg); }
+.mapview.flying .map-filter { pointer-events: none; }
+/* back: greyed out until hovered or focused */
+.map-back { justify-self: start; padding: 6px 12px; border-radius: 99px; font: 600 14px var(--f-ui); background: transparent;
+  color: var(--faint); border: 1px solid var(--line); opacity: .7; transition: color .15s, border-color .15s, opacity .15s, background .15s; }
+.map-back:hover, .map-back:focus-visible { opacity: 1; color: var(--fg); border-color: var(--sun); background: var(--sun-dim); }
+.filter-body { display: grid; gap: 10px; }
+.filter-body h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.filter-note { margin: 0; font-size: 14px; color: var(--muted); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+.cal-month { font-weight: 700; font-size: 15px; }
+.cal-nav { padding: 2px 12px; font-size: 20px; line-height: 1.2; }
+.cal-nav:disabled { opacity: .3; cursor: default; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-dow { text-align: center; font-size: 12.5px; font-weight: 600; color: var(--muted); padding-bottom: 2px; }
+.cal-day { aspect-ratio: 1; padding: 0; font: 600 14px var(--f-ui); font-variant-numeric: tabular-nums; border-radius: 6px; background: #1a1e26; border-color: var(--line); }
+.cal-day:hover:not(:disabled) { border-color: var(--sun); color: var(--sun); }
+.cal-day.sel { background: var(--sun); border-color: var(--sun); color: var(--sun-ink); }
+.cal-day:disabled { cursor: not-allowed; background: transparent; border-color: transparent; color: var(--faint); opacity: .45; }
+.cal-day.dark:disabled { background: #000; border-color: #000; color: #4a4e57; opacity: 1; text-decoration: line-through; }
+.cal-key { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.cal-key i { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; border-radius: 3px; background: #000; border: 1px solid var(--line-strong); }
+.time-pick { display: flex; align-items: flex-end; gap: 6px; }
+.time-pick label { font-size: 12.5px; flex: 1; }
+.time-pick select { font: 600 16px var(--f-ui); font-variant-numeric: tabular-nums; padding: 7px 8px; }
+.time-pick .colon { font-size: 18px; font-weight: 700; padding-bottom: 7px; }
+.time-pick .utc { font-size: 14px; color: var(--muted); padding-bottom: 9px; }
+.filter-picked { margin: 0; font-size: 14px; color: var(--muted); }
+.filter-picked b { color: var(--fg); }
+.filter-clear { justify-self: start; font-size: 14px; }
+.filter-clear:disabled { opacity: .4; cursor: default; }
+.pick-prompt { margin: 0; padding: 10px 12px; border: 1px dashed var(--line-strong); border-radius: 6px; font-size: 14px; color: var(--muted); }
+.pick-prompt b { color: var(--sun); }
+@media (max-width: 800px) {
+  .map-filter { width: min(296px, calc(100% - 24px)); max-height: 60%; }
+}

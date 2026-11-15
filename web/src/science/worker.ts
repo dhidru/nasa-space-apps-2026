@@ -6,6 +6,7 @@
 import { loadPositions, loadRegion, type Positions, type PositionsCache, type Region } from "./data";
 import { computeLandingWindows, computeRanking, computeSiteDetail, loadSpanPositions, type RankingDoc } from "./results";
 import { N_SAMPLES } from "./time";
+import { computeDarkDays } from "./darkness";
 import { fetchSiteData } from "./fetchSiteData";
 import type { WorkerRequest, WorkerResponse } from "./protocol";
 
@@ -61,6 +62,12 @@ ctx.onmessage = async (ev: MessageEvent<WorkerRequest>) => {
         const r = await getRegion(req.regionId);
         span ??= loadSpanPositions(read, positionsCache);
         post({ id: req.id, type: "windows", doc: computeLandingWindows(r, await span, req.siteId) });
+        break;
+      }
+      case "darkDays": {
+        const r = await getRegion(req.regionId);
+        span ??= loadSpanPositions(read, positionsCache);
+        post({ id: req.id, type: "darkDays", doc: computeDarkDays(r, await span) });
         break;
       }
     }
