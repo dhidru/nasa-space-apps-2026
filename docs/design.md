@@ -179,7 +179,10 @@ outlined.
 ### Site view
 
 - **Sky plot:** the site's 360° Horizon, with the Sun's and Earth's paths over
-  the Surface Stay drawn on it.
+  the Surface Stay drawn on it. It's drawn as a panorama (azimuth across,
+  elevation up), not a zenith-centered polar plot. Near the pole both bodies
+  stay within a few degrees of the horizon, and a polar plot would squash
+  them into its outer ring.
 - **Time charts:** two stacked panels, **Sun in yellow** and **Earth in blue**.
   - Each panel shows the body's elevation line and the *terrain line under that
     body*: the Horizon Elevation at the body's azimuth at each moment.
