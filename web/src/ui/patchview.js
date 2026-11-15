@@ -33,10 +33,12 @@ export function sunVector(azDeg, elDeg, lonDeg) {
 }
 
 export class PatchView {
-  constructor(container, { onHover, onPick } = {}) {
+  /** `inset` (optional): an OrientationInset (src/ui/inset.js), kept in step with the slice and the camera. */
+  constructor(container, { onHover, onPick, inset } = {}) {
     this.container = container;
     this.onHover = onHover;
     this.onPick = onPick;
+    this.inset = inset;
     this.exag = 1;
     this.mode = "sun"; // sun | relief | slope | texture
     this.sun = { dir: new THREE.Vector3(0.5, 0.6, 0.3).normalize(), vis: 1 };
@@ -56,6 +58,12 @@ export class PatchView {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.12;
     this.controls.maxPolarAngle = (86 * Math.PI) / 180;
+    // The view is locked to the one the slice opens with: no rotating, no panning. Scroll (or pinch) zooms toward
+    // the chosen site, so it always stays in view.
+    this.controls.enableRotate = false;
+    this.controls.enablePan = false;
+    this.controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: null };
+    this.controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_PAN };
     this.controls.addEventListener("change", () => (this.dirty = true));
 
     this.ambient = new THREE.HemisphereLight(0xcfd6ff, 0x1a1712, 0.1);
@@ -97,7 +105,14 @@ export class PatchView {
     this.resize();
     const loop = () => {
       this.raf = requestAnimationFrame(loop);
-      if (this.controls.update() || this.dirty) { this.dirty = false; r.render(this.scene, this.camera); }
+      if (this.controls.update() || this.dirty) {
+        this.dirty = false;
+        r.render(this.scene, this.camera);
+        if (this.inset && this.p) {
+          const hfov = (2 * Math.atan(Math.tan((this.camera.fov * Math.PI) / 360) * this.camera.aspect) * 180) / Math.PI;
+          this.inset.setView(this.camera.position, this.controls.target, hfov);
+        }
+      }
     };
     loop();
   }
@@ -138,11 +153,20 @@ export class PatchView {
     this.geo = geo;
     this.applyHeights();
 
-    if (this.mesh) { this.scene.remove(this.mesh); this.mesh.geometry.dispose(); this.mesh.material.map?.dispose(); this.mesh.material.dispose(); }
+    if (this.mesh) {
+      this.scene.remove(this.mesh);
+      this.mesh.geometry.dispose();
+      this.mesh.material.map?.dispose();
+      this.mesh.material.alphaMap?.dispose();
+      this.mesh.material.dispose();
+      this.mesh.customDepthMaterial?.dispose();
+    }
     this.mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 }));
     this.mesh.castShadow = this.mesh.receiveShadow = true;
     this.scene.add(this.mesh);
+    this.buildMask();
     this.buildTexture();
+    this.inset?.setPatch(p);
     this.drawOverlay();
 
     const shadowHalf = half * 1.5;
@@ -168,7 +192,7 @@ export class PatchView {
    * Hand-off from the 2D map: start straight overhead on a flattened slice (the map's last frame, which the map
    * lines up with this canvas), then at once tilt and swing into the default oblique view while the relief rises
    * to the set exaggeration. Any pointer or wheel input on the canvas jumps to the final
-   * frame; the controls stay on, so that first drag already orbits.
+   * frame.
    */
   playIntro() {
     if (prefersReducedMotion()) return;
@@ -279,6 +303,32 @@ export class PatchView {
     this.dirty = true;
   }
 
+  /**
+   * Cut the terrain to the region: an alpha mask (white inside the region outline, black outside, same mapping as
+   * the colour texture) with alphaTest, so a slice wider than the region shows nothing past its edge. The shadow
+   * pass gets the same mask, or the cut-away ground would still cast shadows.
+   */
+  buildMask() {
+    const { center, sizeM, outline } = this.p, half = sizeM / 2;
+    if (!outline || outline.length < 3) return;
+    const T = 2048, c = document.createElement("canvas");
+    c.width = c.height = T;
+    const g = c.getContext("2d");
+    const toPx = (x, y) => [((x - (center.x - half)) / sizeM) * T, (((center.y + half) - y) / sizeM) * T];
+    g.fillStyle = "#000"; g.fillRect(0, 0, T, T);
+    g.fillStyle = "#fff";
+    g.beginPath();
+    outline.forEach(([x, y], i) => { const [px, py] = toPx(x, y); if (i) g.lineTo(px, py); else g.moveTo(px, py); });
+    g.closePath();
+    g.fill();
+    const mask = new THREE.CanvasTexture(c);
+    const m = this.mesh.material;
+    m.alphaMap = mask;
+    m.alphaTest = 0.5;
+    m.needsUpdate = true;
+    this.mesh.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, alphaMap: mask, alphaTest: 0.5 });
+  }
+
   /** Base colour texture: grey, slope classes or the supplied image, with the 200 m grid drawn over it. */
   buildTexture() {
     const { center, sizeM, grid, texture } = this.p, half = sizeM / 2;
@@ -298,7 +348,7 @@ export class PatchView {
         const x = center.x - half + (i + 0.5) * step, y = center.y + half - (j + 0.5) * step, s = 100;
         const gx = (this.p.sample(x + s, y) - this.p.sample(x - s, y)) / (2 * s), gy = (this.p.sample(x, y + s) - this.p.sample(x, y - s)) / (2 * s);
         const deg = (Math.atan(Math.hypot(gx, gy)) * 180) / Math.PI, o = (j * N + i) * 4;
-        const col = deg < 5 ? [70, 170, 110] : deg < 10 ? [215, 200, 80] : deg < 15 ? [230, 140, 60] : [205, 70, 60];
+        const col = deg < 5 ? [70, 170, 110] : deg < 10 ? [215, 200, 80] : [205, 70, 60]; // over NASA's 10° limit: red
         img.data.set([...col, 255], o);
       }
       const tmp = document.createElement("canvas"); tmp.width = tmp.height = N;

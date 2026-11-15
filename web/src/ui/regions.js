@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Region helpers. The nine Artemis IV candidate regions (named for Artemis III in NASA release 24-136, 2024-10-28; USGS outlines,
+// Region helpers. The nine Artemis IV candidate regions (NASA release 24-136, 2024-10-28; USGS outlines,
 // CC0, DOI 10.5066/P1MEQ6UK) come from the team pipeline's regions.json at run time: see src/teamdata.js.
 // Outline corners are in the south polar stereographic map (1,737,400 m sphere, true scale at the pole),
 // where each region's edges are straight lines.

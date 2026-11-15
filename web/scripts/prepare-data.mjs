@@ -318,7 +318,7 @@ async function buildPolar() {
     note: "x0_m / y0_m are the centres of the top-left pixel; rows run toward -y. Heights are metres + 32768 in red (high) / green (low).",
     offset: OFFSET, home: homeMeta, regions,
     credits: ["Elevation and hillshade: NASA LRO LOLA LDEM_80S_80M (PDS LRO-L-LOLA-4-GDR), public domain.",
-      "Region outlines: USGS Artemis III regions, CC0, doi:10.5066/P1MEQ6UK."],
+      "Region outlines: USGS candidate landing regions, CC0, doi:10.5066/P1MEQ6UK."],
   }));
 }
 

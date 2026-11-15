@@ -21,12 +21,12 @@ const HEAD = `<span></span><span></span><span>Site</span><span>Coverage</span>`
   + `<span class="num" title="${esc(CLEARANCE_TITLE)}">Worst</span>`
   + SITE_COLUMNS.map((c) => `<span class="num" title="${esc(c.title)}">${c.head}</span>`).join("");
 
-const SLOPE_MAX_DEG = 20;
+const SLOPE_MAX_DEG = 10; // the slider tops out at NASA's landing limit
 const NASA_SLOPE_DEG = 10;
 let slopeCtl = 0; // unique ids for the slider's label
 
 /**
- * The top-10 Landing Slope limit: a 0–20° slider (NASA's 10° marked) and a "No slope filter" checkbox that turns the
+ * The top-10 Landing Slope limit: a 0–10° slider (up to NASA's 10° landing limit) and a "No slope filter" checkbox that turns the
  * limit off and greys the slider out. `limitDeg` is a number, or null for no filter (the slider then shows the
  * default). Read it with slopeLimitOf(); bindSlopeLimit() keeps the readout and the note in step while dragging.
  */
@@ -37,7 +37,7 @@ export function slopeLimitHtml(limitDeg) {
       <div class="slope-row"><label for="${id}">Max slope</label><output>${off ? "off" : `${v}°`}</output></div>
       <div class="slope-track">
         <input id="${id}" type="range" min="0" max="${SLOPE_MAX_DEG}" step="1" value="${v}"${off ? " disabled" : ""} aria-describedby="${id}-note">
-        <div class="slope-ticks" aria-hidden="true">${[0, 5, 10, 15, 20].map((d) => `<span${d === NASA_SLOPE_DEG ? ' class="nasa"' : ""} style="left:${pct(d)}">${d}°${d === NASA_SLOPE_DEG ? " NASA" : ""}</span>`).join("")}</div>
+        <div class="slope-ticks" aria-hidden="true">${[0, 2, 4, 6, 8, 10].map((d) => `<span${d === NASA_SLOPE_DEG ? ' class="nasa"' : ""} style="left:${pct(d)}">${d}°${d === NASA_SLOPE_DEG ? " NASA" : ""}</span>`).join("")}</div>
       </div>
       <label class="slope-off"><input type="checkbox"${off ? " checked" : ""}> No slope filter (slope isn't a priority)</label>
       <p class="slope-note" id="${id}-note">${slopeNote(off ? null : v)}</p>

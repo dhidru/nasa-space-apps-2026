@@ -7,6 +7,7 @@ import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
 import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
 import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
+import { parseHms, hms } from "../app/utctime.ts";
 import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, noFullStayDays, SPAN_START, SPAN_END, DAY_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -496,7 +497,7 @@ export class MapView {
   renderFilter(r, grid) {
     this.noStay = null; // No-Full-Stay Days (UTC day starts), crossed out on the calendar
     if (!r.hasSiteData) { this.filterBody.innerHTML = `<p class="filter-note">Landing Times for ${r.name} are coming soon.</p>`; return; }
-    const t = new Date(this.getLanding()), pad = (n) => String(n).padStart(2, "0");
+    const t = new Date(this.getLanding());
     this.calMonth = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1);
     this.calView = "days"; // "days" → click the title → "months" → click again → "years"
     this.filterBody.innerHTML = `
@@ -517,12 +518,10 @@ export class MapView {
         <span class="cal-status">Checking which days have a full 7-day window…</span>
       </div>
       <div class="time-pick">
-        <label>Hour <input class="t-hour" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Landing hour, 00 to 23 (UTC)" placeholder="hh"></label>
-        <span class="colon">:</span>
-        <label>Minute <input class="t-min" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Landing minute, 00 to 59 (UTC)" placeholder="mm"></label>
+        <label>Time (24 h) <input class="t-hms" type="text" inputmode="numeric" maxlength="8" autocomplete="off" spellcheck="false" aria-label="Landing time, 24-hour UTC, hh:mm:ss" placeholder="hh:mm:ss"></label>
         <span class="utc">UTC</span>
       </div>
-      <p class="filter-note time-note">Minutes round to the nearest 10. ↑ / ↓ step the value.</p>
+      <p class="filter-note time-note">Rounds to the nearest 10 minutes (the Sun and Earth data are every 10 minutes). ↑ / ↓ step 10 minutes.</p>
       <p class="filter-picked" aria-live="polite"></p>
       <p class="nostay-warn" role="note" hidden></p>
       <button type="button" class="filter-clear">Clear selection</button>
@@ -530,44 +529,48 @@ export class MapView {
       ${slopeLimitHtml(this.getSlopeLimit())}`;
     bindSlopeLimit(this.filterBody, (limit) => { this.setSlopeLimit(limit); if (this.picked) this.loadTopTen(r, grid); });
 
-    // Typed hour and minute: digits only; on Enter, blur or ↑/↓ the value is clamped (minutes to the 10-minute grid).
-    const hour = this.filterBody.querySelector(".t-hour"), min = this.filterBody.querySelector(".t-min");
-    // Until a Landing Time is chosen the hour and minute are blank (null); picking a day with no time typed lands at 00:00.
-    const time = this.picked ? { h: t.getUTCHours(), m: Math.floor(t.getUTCMinutes() / 10) * 10 } : { h: null, m: null };
-    const show = () => { hour.value = time.h === null ? "" : pad(time.h); min.value = time.m === null ? "" : pad(time.m); };
+    // Typed 24-hour time (hh:mm:ss). On Enter, blur or ↑/↓ it is read, rounded to the 10-minute Landing Time grid
+    // and shown back as hh:mm:ss; a time that can't be read puts back the last good one.
+    const box = this.filterBody.querySelector(".t-hms");
+    const STEP_S = 600, DAY_S = 86400;
+    // Until a Landing Time is chosen the box is blank (null); picking a day with no time typed lands at 00:00:00.
+    let sec = this.picked ? Math.round((((t.getTime() % DAY_MS) + DAY_MS) % DAY_MS) / 1000) : null;
+    const show = () => { box.value = sec === null ? "" : hms(sec); box.classList.remove("bad"); };
     show();
     const dayOf = (ms) => ms - (((ms % DAY_MS) + DAY_MS) % DAY_MS);
     this.pickDay = (day) => {
-      time.h ??= 0; time.m ??= 0;
+      sec ??= 0;
       show();
-      this.setLanding(day + (time.h * 60 + time.m) * 60000);
+      this.setLanding(day + sec * 1000);
       this.picked = true; // before drawing, so the calendar marks the chosen day
       this.drawCalendar();
       this.setPicked(true, r, grid);
     };
-    const commit = (h, m) => {
-      const nh = h === null ? null : Math.min(23, Math.max(0, h)), nm = m === null ? null : Math.min(50, Math.max(0, Math.round(m / 10) * 10));
-      const changed = nh !== time.h || nm !== time.m;
-      Object.assign(time, { h: nh, m: nm });
+    const commit = (s) => {
+      const next = s === null ? null : Math.min(DAY_S - STEP_S, Math.round(s / STEP_S) * STEP_S);
+      const changed = next !== sec;
+      sec = next;
       show();
       if (changed && this.picked) this.pickDay(dayOf(this.getLanding()));
     };
-    const read = (input, fallback) => (input.value.trim() === "" ? fallback : Number(input.value));
-    for (const [input, isHour] of [[hour, true], [min, false]]) {
-      input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, "").slice(0, 2); });
-      input.addEventListener("focus", () => input.select());
-      input.addEventListener("change", () => commit(read(hour, time.h), read(min, time.m)));
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") { e.preventDefault(); commit(read(hour, time.h), read(min, time.m)); input.select(); return; }
-        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
-        e.preventDefault();
-        const d = e.key === "ArrowUp" ? 1 : -1;
-        // wrap within the day: 23 → 00, 50 → 00; a blank field steps to 00
-        if (isHour) commit(time.h === null ? 0 : (time.h + d + 24) % 24, time.m);
-        else commit(time.h, time.m === null ? 0 : (time.m + d * 10 + 60) % 60);
-        input.select();
-      });
-    }
+    const read = () => {
+      if (box.value.trim() === "") return sec;
+      const s = parseHms(box.value);
+      if (s === null) { box.classList.add("bad"); return sec; }
+      return s;
+    };
+    box.addEventListener("input", () => { box.value = box.value.replace(/[^\d:]/g, "").slice(0, 8); });
+    box.addEventListener("focus", () => box.select());
+    box.addEventListener("change", () => commit(read()));
+    box.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); commit(read()); box.select(); return; }
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      e.preventDefault();
+      // ±10 minutes, wrapping within the day; a blank box steps to 00:00:00
+      const d = e.key === "ArrowUp" ? STEP_S : -STEP_S, cur = read();
+      commit(cur === null ? 0 : (cur + d + DAY_S) % DAY_S);
+      box.select();
+    });
 
     this.filterBody.querySelector(".cal-title").addEventListener("click", () => {
       this.calView = this.calView === "days" ? "months" : "years";
@@ -579,7 +582,7 @@ export class MapView {
       this.drawCalendar();
     });
     this.filterBody.querySelector(".filter-clear").addEventListener("click", () => {
-      time.h = time.m = null;
+      sec = null;
       show();
       this.setPicked(false, r, grid);
       this.drawCalendar();
@@ -666,7 +669,7 @@ export class MapView {
       this.drawCalendar();
     });
     this.filterBody.querySelector(".filter-picked").innerHTML = chosen
-      ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 16)} UTC</b>`
+      ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 19)} UTC</b>`
       : "No date chosen yet";
     this.filterBody.querySelector(".filter-clear").disabled = !this.picked;
     const warn = this.filterBody.querySelector(".nostay-warn");

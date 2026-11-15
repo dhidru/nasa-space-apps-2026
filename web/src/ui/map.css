@@ -198,7 +198,7 @@
 .time-pick label { font-size: 12.5px; flex: 1; }
 .time-pick input { font: 600 18px var(--f-mono); font-variant-numeric: tabular-nums; padding: 8px 10px; text-align: center; letter-spacing: .05em; }
 .time-note { font-size: 12.5px; margin-top: -4px; }
-.time-pick .colon { font-size: 18px; font-weight: 700; padding-bottom: 7px; }
+.time-pick input.bad { border-color: var(--dusk); }
 .time-pick .utc { font-size: 14px; color: var(--muted); padding-bottom: 9px; }
 .filter-picked { margin: 0; font-size: 14px; color: var(--muted); }
 .filter-picked b { color: var(--fg); }
