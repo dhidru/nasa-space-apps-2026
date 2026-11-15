@@ -26,7 +26,7 @@ _What we built, how it works, and why it matters._
 
 ## Demo
 
-- **Live demo:** _TBD_
+- **Live demo:** https://dhidru.github.io/nasa-space-apps-2026/ (3D Lunar Site Viewer: https://dhidru.github.io/nasa-space-apps-2026/viewer/)
 - **Video (30s max for judging):** _TBD_
 - **Project page:** _TBD_
 
@@ -103,6 +103,23 @@ npm run build      # static site in web/dist/, including THIRD-PARTY-NOTICES.txt
 If the science changes, change the Python first, regenerate `results/`, then port
 the change. The parity tests in `web/src/science/*.test.ts` fail until the two agree.
 
+### Publishing (GitHub Pages)
+
+Every push to `main` runs [`.github/workflows/pages.yml`](.github/workflows/pages.yml):
+it runs `npm test`, then `npm run build`, and publishes `web/dist/` to
+https://dhidru.github.io/nasa-space-apps-2026/. You can also run it by hand from
+the repo's **Actions** tab ("Deploy to GitHub Pages" → **Run workflow**). The app
+uses relative paths and `#/` routes, so it works under the `/nasa-space-apps-2026/`
+subpath without any extra config.
+
+The same workflow builds the Lunar Site Viewer (`viewer/`) with `BASE_PATH=/nasa-space-apps-2026/viewer/`
+and copies it into `web/dist/viewer/`, so it is served at
+https://dhidru.github.io/nasa-space-apps-2026/viewer/.
+
+This needs one repo setting, which is already on (checked 2026-11-14): **Settings →
+Pages → Build and deployment → Source: GitHub Actions**. If the deploy job fails
+with "Get Pages site failed" or "not found", a repo admin should check it again.
+
 ## Repository Layout
 
 ```
@@ -111,7 +128,7 @@ web/            Static web app (React + OpenLayers) and the TypeScript science p
 viewer/         Second app, Lunar Site Viewer (Vite + three.js, 3D terrain), reads site-data; see viewer/README.md
 data/raw/       Original downloaded datasets (large files git-ignored)
 data/processed/ Pipeline output; site-data/ is committed for the front end
-.github/        GitHub Pages workflow that builds and publishes viewer/
+.github/        GitHub Pages workflow: web/ at the site root, viewer/ under /viewer/
 notebooks/      Exploration notebooks
 docs/           Write-ups, diagrams, presentation material
 assets/         Images, logos, media for the demo

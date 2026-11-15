@@ -1,20 +1,17 @@
-# Builds the Lunar Site Viewer (viewer/) with the team's site-data and publishes it to GitHub Pages.
-# Test deployment: the team's main front end is web/ (React + the TypeScript science port).
-# One-time setup by a repo admin: Settings -> Pages -> Source: "GitHub Actions".
-# GitHub Pages sites on this plan are public.
-name: Deploy viewer to GitHub Pages
+# Builds the static site in web/ and publishes it to GitHub Pages (ADR 0001).
+# The Lunar Site Viewer (viewer/) is built into the same site under /viewer/.
+# Needs Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
-    paths: ["viewer/**", "data/processed/site-data/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# One deployment at a time; a newer push supersedes a queued one but never cancels one mid-deploy.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -24,35 +21,52 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: viewer
+        working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-          cache-dependency-path: viewer/package-lock.json
-      - run: npm ci --no-audit --no-fund
-      # NASA source files (~120 MB) and the tiles cut from them; rebuilt only when the data script changes.
+          cache-dependency-path: |
+            web/package-lock.json
+            viewer/package-lock.json
+      - run: npm ci
+      # Parity tests: the TypeScript science must match the committed Python results.
+      - run: npm test
+      # Typechecks, then builds web/dist/ with data/ and THIRD-PARTY-NOTICES.txt.
+      - run: npm run build
+
+      # Lunar Site Viewer, served at /<repo>/viewer/. Its 3D terrain needs NASA elevation files (~180 MB);
+      # they and the tiles cut from them are cached until the data script or the region list changes.
       - uses: actions/cache@v4
         with:
           path: |
             viewer/data-raw
             viewer/public/tiles
-          key: nasa-tiles-${{ hashFiles('viewer/scripts/prepare-data.mjs', 'data/processed/site-data/regions.json') }}
+          key: viewer-nasa-tiles-${{ hashFiles('viewer/scripts/prepare-data.mjs', 'data/processed/site-data/regions.json') }}
+      - run: npm ci --no-audit --no-fund
+        working-directory: viewer
       - run: npm run build
+        working-directory: viewer
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
-      - uses: actions/upload-pages-artifact@v3
+          BASE_PATH: /${{ github.event.repository.name }}/viewer/
+      - run: cp -r viewer/dist web/dist/viewer
+        working-directory: .
+
+      - uses: actions/upload-pages-artifact@v5
         with:
-          path: viewer/dist
+          path: web/dist
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

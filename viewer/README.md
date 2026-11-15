@@ -51,15 +51,15 @@ state a license for that ASU-derived map. `npm run data -- --with-color` builds 
 
 ## Deploy: GitHub Pages
 
-`.github/workflows/pages.yml` builds this folder and publishes `viewer/dist` to GitHub Pages on pushes to `main` that
-touch `viewer/` or the site data, or by hand from the Actions tab. `BASE_PATH` sets the URL prefix (`/<repo>/`).
-A repo admin has to set **Settings → Pages → Source: GitHub Actions** once. Pages sites are public.
+The team's `.github/workflows/pages.yml` publishes `web/` at the site root and builds this folder into
+`web/dist/viewer/`, so the viewer is served at https://dhidru.github.io/nasa-space-apps-2026/viewer/ after every
+push to `main`. `BASE_PATH` sets the viewer's URL prefix (`/<repo>/viewer/`). Pages sites are public.
 
 To check a Pages build locally:
 
 ```bash
-BASE_PATH=/nasa-space-apps-2026/ npm run build
-npx vite preview --base /nasa-space-apps-2026/
+BASE_PATH=/nasa-space-apps-2026/viewer/ npm run build
+npx vite preview --base /nasa-space-apps-2026/viewer/
 ```
 
 (In Git Bash on Windows, prefix the build with `MSYS_NO_PATHCONV=1` so the path isn't rewritten.)

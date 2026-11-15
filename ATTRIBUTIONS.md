@@ -307,17 +307,32 @@ Each dataset below also has a conventions card in
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** GitHub, Inc. https://github.com
 
-### GitHub Pages and GitHub Actions
+### GitHub Actions and GitHub Pages, with the official `actions/*` workflow actions
 - **Type:** Tool
-- **Used for:** Building and hosting the static front end (`.github/workflows/pages.yml`, using the official
-  `actions/checkout`, `actions/setup-node`, `actions/cache`, `actions/upload-pages-artifact` and
-  `actions/deploy-pages`, all MIT). Being tested as a replacement for the viewer's earlier Vercel deployment.
-- **Source:** https://docs.github.com/en/pages
+- **Used for:** Building, testing and publishing the web app to GitHub Pages
+  (`.github/workflows/pages.yml`), with the Lunar Site Viewer (`viewer/`) built into the same site under `/viewer/`. The workflow references these actions by
+  version; none of their code is copied into the repo or the site:
+  `actions/checkout@v7` (v7.0.1), `actions/setup-node@v7` (v7.1.0),
+  `actions/upload-pages-artifact@v5` (v5.0.0), `actions/deploy-pages@v5` (v5.0.1) and `actions/cache@v4`
+  (caches the viewer's NASA elevation files between runs).
+- **Source:** https://github.com/actions/checkout, https://github.com/actions/setup-node,
+  https://github.com/actions/upload-pages-artifact, https://github.com/actions/deploy-pages,
+  https://github.com/actions/cache;
+  service: https://docs.github.com/en/pages
 - **Accessed:** 2026-11-14
-- **License / permission:** [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service)
-- **Requirements:** Pages sites on this plan are public.
+- **License / permission:** Each action is MIT ([checkout](https://github.com/actions/checkout/blob/main/LICENSE),
+  [setup-node](https://github.com/actions/setup-node/blob/main/LICENSE),
+  [upload-pages-artifact](https://github.com/actions/upload-pages-artifact/blob/main/LICENSE),
+  [deploy-pages](https://github.com/actions/deploy-pages/blob/main/LICENSE),
+  [cache](https://github.com/actions/cache/blob/main/LICENSE)).
+  The Actions and Pages services fall under the
+  [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service)
+  and the [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
+  (1 GB site, 100 GB/month soft bandwidth limit; the web app is about 11 MB and the viewer adds about 47 MB).
+- **Requirements:** None for our use. We only run the actions on GitHub's
+  runners and don't redistribute them. MIT is compatible with Apache 2.0.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
-- **Citation:** GitHub, Inc. *GitHub Pages*. https://pages.github.com/
+- **Citation:** GitHub, Inc. *GitHub Actions* and *GitHub Pages*. https://github.com/features/actions, https://pages.github.com
 
 ### Matt Pocock's agent skills (`mattpocock-skills`)
 - **Type:** Tool (Claude Code agent skills: Markdown instructions plus a few shell templates)
@@ -369,8 +384,10 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Weighed static site vs. server using measured data sizes and wrote ADR 0001 (static site, clearance in the browser); updated the design doc and data contract to match | `docs/adr/`, `docs/design.md`, `docs/data-contract.md` |
 | 2026-11-14 | Claude Code | Measured region data sizes, tested a long-term-average site filter on Mons Mouton and recorded the decision to keep Mons Mouton Plateau "coming soon" | `docs/design.md`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Checked the npm licenses; built the web front end (React + OpenLayers) and the TypeScript port of the clearance, ranking and Landing Windows code, test-first against the committed Python results; added the build plugins for site data and third-party notices | `web/`, `.claude/launch.json`, `docs/`, `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Checked the licenses of the official GitHub Actions; wrote the GitHub Pages deploy workflow (tests, build, publish) and checked the built site under the Pages subpath | `.github/workflows/pages.yml`, `README.md`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Moved the Lunar Site Viewer (started from a Claude design chat, first hosted on Vercel) into the repo; switched it to the team's site-data (regions, outlines, hillshades, `sites.json` heights, Horizons for Clearance, SPICE positions); fixed the overlapping-region lookup; made the unlicensed CGI Moon Kit colour map opt-in; added the GitHub Pages workflow; checked the viewer's Clearance against the pipeline's golden site detail | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Moved the Lunar Site Viewer from `web/` to `viewer/` so it sits beside the team's React front end, merged `main` and resolved the attribution conflicts | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
+| 2026-11-14 | Claude Code | Merged `main` again: dropped the viewer's separate Pages workflow and added the viewer build to the team's workflow, so it publishes under `/viewer/` on the same site | `.github/workflows/pages.yml`, `viewer/`, `ATTRIBUTIONS.md`, `README.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
