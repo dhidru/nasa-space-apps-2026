@@ -155,6 +155,8 @@ async function route() {
   if (!region) return go("#");
   landingMs = r.landing;
   if (!r.siteId) return showMap(() => mapView.showRegion(region.id, site && site.region.id === region.id ? site.cell.id : null));
+  // Site ids are read against the published sites (see siteGrid), so load them before looking the id up.
+  if (region.hasSiteData) await teamSitesFor(region.id).catch(() => null);
   const cell = siteGrid(region).byId(r.siteId);
   if (!cell) return go(`#${region.id}`);
   await showSite(region, cell);

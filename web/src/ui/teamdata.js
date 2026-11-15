@@ -11,6 +11,7 @@ import { dataRootFromPage, fetchSiteData } from "../science/fetchSiteData.ts";
 import { loadRegion, loadPositions, readJson } from "../science/data.ts";
 import { track } from "../science/geometry.ts";
 import { STEP_MS } from "../science/time.ts";
+import { setSiteLattice } from "./polar.js";
 
 /** Absolute URL of the published data/ folder (the science worker reads the same one). */
 export const DATA_ROOT = dataRootFromPage();
@@ -50,6 +51,7 @@ export function loadRegionBasemap(region) {
  */
 export async function loadTeamRegion(regionId) {
   const region = await loadRegion(read, regionId);
+  setSiteLattice(regionId, region.siteIds, region.xM, region.yM); // the map grid follows the published sites
   return {
     region,
     heightOf(siteId) {

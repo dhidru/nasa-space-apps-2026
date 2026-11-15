@@ -432,6 +432,7 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Applied UX review feedback: top-10 map badges open their exact site; pinned 7-day verdict card; Landing Windows in date order with a Best badge; rank-based site labels and timeline title | `web/index.html`, `web/src/ui/main.js`, `web/src/ui/mapview.js`, `web/src/ui/stayview.js`, `web/src/ui/map.css`, `web/src/ui/style.css` |
 | 2026-11-15 | Claude Code | Calendar no longer crosses out days inside the chosen stay; No-full-window warning gets a jump to the next working day at its best hour (new bestLandingOnDay search) | `web/src/science/fullstay.ts`, `web/src/science/worker.ts`, `web/src/science/client.ts`, `web/src/science/protocol.ts`, `web/src/ui/calendar.js`, `web/src/ui/mapview.js`, `web/src/ui/ranking.js`, `web/src/ui/map.css` |
 | 2026-11-15 | Claude Code | Region page: larger text, shorter copy, slope limit keeps sites at the limit, legend one per line at the bottom of the right pane, calendar overlap fix | `web/src/app/slope.ts`, `web/src/ui/mapview.js`, `web/src/ui/toplist.js`, `web/src/ui/map.css` |
+| 2026-11-15 | Claude Code | Region map grid follows the published sites (Haworth's colours were one column off), border traces the site cells, straight 7-day band on both calendars, one-line calendar key, shorter notes | `web/src/ui/polar.js`, `web/src/ui/teamdata.js`, `web/src/ui/main.js`, `web/src/ui/mapview.js`, `web/src/ui/toplist.js`, `web/src/ui/map.css`, `web/src/app/sitegrid.test.ts` |
 
 ## Media (images, icons, fonts, video, audio)
 

@@ -23,33 +23,113 @@ export function bbox(xy) {
   return { xmin: Math.min(...xs), xmax: Math.max(...xs), ymin: Math.min(...ys), ymax: Math.max(...ys) };
 }
 
-/** The region's site lattice. All nine USGS outlines are axis-aligned squares/rectangles on this map. */
-export function siteGrid(region) {
+/** Even-odd point-in-polygon test, as the pipeline's points_in_polygon (src/pipeline/sites.py). `ring` is open. */
+function insideRing(x, y, ring) {
+  let inside = false;
+  for (let i = 0; i < ring.length; i++) {
+    const [x1, y1] = ring[i], [x2, y2] = ring[(i + 1) % ring.length];
+    if ((y1 > y) !== (y2 > y) && x < x1 + ((y - y1) * (x2 - x1)) / (y2 - y1)) inside = !inside;
+  }
+  return inside;
+}
+
+/** A lattice: the occupied cells as "m,k" (k = floor(x / 200), m = floor(y / 200)) and the k/m of column 0 and row 0. */
+function lattice(cells, k0, m0) {
+  let k1 = -Infinity, m1 = Infinity;
+  for (const key of cells) { const [m, k] = key.split(",").map(Number); k1 = Math.max(k1, k); m1 = Math.min(m1, m); }
+  return { cells, k0, m0, k1, m1, cols: k1 - k0 + 1, rows: m0 - m1 + 1 };
+}
+
+/** Lattice from the outline, by the pipeline's rule (build_site_grid): 200 m centres inside it, ids from the first
+ * occupied row and column. Used until the region's sites.json is in. */
+function outlineLattice(region) {
   const b = bbox(region.xy);
-  const k0 = Math.ceil((b.xmin - HALF) / GRID_M), k1 = Math.floor((b.xmax - HALF) / GRID_M);
-  const m0 = Math.floor((b.ymax - HALF) / GRID_M), m1 = Math.ceil((b.ymin - HALF) / GRID_M);
-  const cols = k1 - k0 + 1, rows = m0 - m1 + 1;
-  return {
-    k0, k1, m0, m1, cols, rows, count: cols * rows,
+  const kA = Math.ceil((b.xmin - HALF) / GRID_M), kB = Math.floor((b.xmax - HALF) / GRID_M);
+  const mA = Math.floor((b.ymax - HALF) / GRID_M), mB = Math.ceil((b.ymin - HALF) / GRID_M);
+  const cells = new Set();
+  let k0 = Infinity, m0 = -Infinity;
+  for (let m = mA; m >= mB; m--) for (let k = kA; k <= kB; k++) {
+    if (!insideRing(HALF + k * GRID_M, HALF + m * GRID_M, region.xy)) continue;
+    cells.add(`${m},${k}`);
+    k0 = Math.min(k0, k); m0 = Math.max(m0, m);
+  }
+  return lattice(cells, k0, m0);
+}
+
+// Lattices read from sites.json, by region id. The published sites don't always follow the outline rule at the edges
+// (Haworth's start one column in from its west edge), so once they are loaded they are the truth.
+const fromSites = new Map();
+
+/** Use the sites the pipeline published (ids and map x/y in metres, in matching order) as `regionId`'s lattice. */
+export function setSiteLattice(regionId, ids, xs, ys) {
+  if (!ids?.length) return;
+  const cells = new Set();
+  let k0 = Infinity, m0 = -Infinity;
+  ids.forEach((siteId, i) => {
+    const id = /^r(\d+)c(\d+)$/.exec(siteId);
+    if (!id) return;
+    const k = Math.floor(xs[i] / GRID_M), m = Math.floor(ys[i] / GRID_M);
+    cells.add(`${m},${k}`);
+    k0 = Math.min(k0, k - +id[2]); m0 = Math.max(m0, m + +id[1]);
+  });
+  fromSites.set(regionId, lattice(cells, k0, m0));
+}
+
+/**
+ * The region's Landing Site grid: 200 m cells centred at odd multiples of 100 m, ids r<row>c<col> from the top-left
+ * site. Matches sites.json once setSiteLattice has run for the region (call refresh() on a grid made before that).
+ */
+export function siteGrid(region) {
+  let L = fromSites.get(region.id) ?? outlineLattice(region);
+  const grid = {
+    get k0() { return L.k0; }, get k1() { return L.k1; }, get m0() { return L.m0; }, get m1() { return L.m1; },
+    get cols() { return L.cols; }, get rows() { return L.rows; }, get count() { return L.cells.size; },
+    /** Switch to the sites.json lattice if it has loaded since; true if the grid changed. */
+    refresh() {
+      const next = fromSites.get(region.id);
+      if (!next || next === L) return false;
+      L = next;
+      return true;
+    },
     /** Cell under map point (x, y), or null outside the region. */
     cellAt(x, y) {
       const k = Math.floor(x / GRID_M), m = Math.floor(y / GRID_M);
-      if (k < k0 || k > k1 || m > m0 || m < m1) return null;
-      return this.cell(m0 - m, k - k0);
+      return L.cells.has(`${m},${k}`) ? grid.cell(L.m0 - m, k - L.k0) : null;
     },
     cell(r, c) {
-      if (r < 0 || c < 0 || r >= rows || c >= cols) return null;
-      const x = HALF + (k0 + c) * GRID_M, y = HALF + (m0 - r) * GRID_M;
+      if (r < 0 || c < 0 || !L.cells.has(`${L.m0 - r},${L.k0 + c}`)) return null;
+      const x = HALF + (L.k0 + c) * GRID_M, y = HALF + (L.m0 - r) * GRID_M;
       const [lat, lon] = xyToLL(x, y);
       return { id: `r${String(r).padStart(3, "0")}c${String(c).padStart(3, "0")}`, r, c, x, y, lat, lon };
     },
     byId(id) {
       const m = /^r(\d+)c(\d+)$/.exec(id || "");
-      return m ? this.cell(+m[1], +m[2]) : null;
+      return m ? grid.cell(+m[1], +m[2]) : null;
     },
-    /** Outer edges of the lattice cells (for drawing). */
-    extent: { xmin: k0 * GRID_M, xmax: (k1 + 1) * GRID_M, ymin: m1 * GRID_M, ymax: (m0 + 1) * GRID_M },
+    /** Bounding box of the site cells (for drawing: the grid lines and the dimmed surround). */
+    get extent() {
+      return { xmin: L.k0 * GRID_M, xmax: (L.k1 + 1) * GRID_M, ymin: L.m1 * GRID_M, ymax: (L.m0 + 1) * GRID_M };
+    },
+    /**
+     * SVG paths in map metres (y flipped, as the region map draws): `border`, the outer edges of the site cells, and
+     * `gaps`, the cells inside the bounding box with no site. The pipeline leaves a few edge cells out in some regions.
+     */
+    outlinePaths() {
+      if (L.paths) return L.paths;
+      const has = (m, k) => L.cells.has(`${m},${k}`);
+      let border = "", gaps = "";
+      for (let m = L.m1; m <= L.m0; m++) for (let k = L.k0; k <= L.k1; k++) {
+        const x = k * GRID_M, y = -(m + 1) * GRID_M; // top-left corner on screen
+        if (!has(m, k)) { gaps += `M${x},${y}h${GRID_M}v${GRID_M}h${-GRID_M}z`; continue; }
+        if (!has(m + 1, k)) border += `M${x},${y}h${GRID_M}`;
+        if (!has(m - 1, k)) border += `M${x},${y + GRID_M}h${GRID_M}`;
+        if (!has(m, k - 1)) border += `M${x},${y}v${GRID_M}`;
+        if (!has(m, k + 1)) border += `M${x + GRID_M},${y}v${GRID_M}`;
+      }
+      return (L.paths = { border, gaps });
+    },
   };
+  return grid;
 }
 
 /** A region DEM from tiles/polar (80 m LOLA), decoded to metres. */
