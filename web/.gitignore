@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data-raw/
+public/tiles/
+preview/heights.json
+.vercel/
+.DS_Store
