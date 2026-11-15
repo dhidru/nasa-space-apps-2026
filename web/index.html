@@ -53,12 +53,15 @@
         </div>
         <div class="row">
           <label for="date">Date <span class="unit">UTC</span>
-            <input id="date" type="text" inputmode="numeric" placeholder="yyyy-mm-dd" maxlength="10" autocomplete="off" spellcheck="false" required>
+            <!-- The grey yyyy-mm-dd behind the field shows the part of the format still to type (src/ui/main.js). -->
+            <span class="masked"><span class="mask-ghost" id="dateGhost" aria-hidden="true"></span><input id="date" type="text" inputmode="numeric" maxlength="10" autocomplete="off" spellcheck="false" aria-describedby="dateFormat" required></span>
+            <span class="sr-only" id="dateFormat">Format yyyy-mm-dd</span>
           </label>
           <label for="time">Time <span class="unit">UTC, 24 h</span>
             <input id="time" type="text" inputmode="numeric" placeholder="hh:mm:ss" maxlength="8" autocomplete="off" spellcheck="false" required>
           </label>
         </div>
+        <div id="siteCal"></div>
         <div class="steps" role="group" aria-label="Step the time">
           <button type="button" data-step="-86400000" title="One day earlier">−1 d</button>
           <button type="button" data-step="-3600000" title="One hour earlier">−1 h</button>
@@ -71,6 +74,8 @@
         </div>
         <p class="hint" id="hint">Scroll to zoom · click a site to open it</p>
       </form>
+
+      <section class="side-slope" id="sideSlope" aria-label="Landing Slope limit for the Top 10"></section>
 
       <section class="readout" aria-live="polite">
         <div class="status">
@@ -124,6 +129,18 @@
             <option value="16000" data-short="16 km">16 km (80 × 80 sites)</option>
           </select>
         </div>
+        <!-- Top 10 Landing Sites: a menu like the two above, but holding the ranked list (src/ui/main.js). -->
+        <div class="view-pop" id="top10" hidden>
+          <button type="button" class="view-menu-btn" id="topToggle" aria-haspopup="true" aria-expanded="false" aria-controls="topBody"><span class="view-menu-name">Top 10 sites</span> <span class="view-menu-value" id="topValue"></span><span class="view-menu-caret" aria-hidden="true">▾</span></button>
+          <div class="view-pop-panel" id="topBody" role="region" aria-label="Top 10 Landing Sites">
+            <div class="view-pop-inner">
+              <p class="hint" id="topWhen">—</p>
+              <p class="hint" id="topStatus"></p>
+              <ol class="top-list" id="topList"></ol>
+              <p class="hint">Best first. Sites are at least 2 km apart. Max slope is set in the left pane.</p>
+            </div>
+          </div>
+        </div>
       </div>
       <!-- Orientation window (src/ui/inset.js): overhead view of the slice with 0° (Earth) at the top, as on the home map. -->
       <figure class="inset" id="inset" aria-label="Orientation: overhead view of the slice, 0° (Earth side) at the top; the wedge is the 3D camera's view">
@@ -157,18 +174,6 @@
     </section>
 
     <aside class="panel sites" aria-label="Site comparison">
-      <section class="top10" id="top10" hidden aria-label="Top 10 Landing Sites">
-        <header>
-          <h2><button type="button" class="collapse-btn" id="topToggle" aria-expanded="true" aria-controls="topBody"><span class="chev" aria-hidden="true">▾</span>Top 10 Landing Sites</button></h2>
-          <small id="topWhen">—</small>
-        </header>
-        <div id="topBody">
-          <div id="topSlope"></div>
-          <p class="hint" id="topStatus"></p>
-          <ol class="top-list" id="topList"></ol>
-          <p class="hint">Best first. Sites are at least 2 km apart.</p>
-        </div>
-      </section>
       <section class="stay" id="stay" hidden aria-label="Surface Stay">
         <header>
           <h2 id="stayTitle">Surface Stay</h2>

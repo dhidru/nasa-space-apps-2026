@@ -7,8 +7,9 @@ import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
 import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
 import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
+import { Calendar, calendarHtml } from "./calendar.js";
 import { parseHms, hms } from "../app/utctime.ts";
-import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, noFullStayDays, SPAN_START, SPAN_END, DAY_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
+import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, noFullStayDays, DAY_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}, parent) => {
@@ -498,19 +499,10 @@ export class MapView {
     this.noStay = null; // No-Full-Stay Days (UTC day starts), crossed out on the calendar
     if (!r.hasSiteData) { this.filterBody.innerHTML = `<p class="filter-note">Landing Times for ${r.name} are coming soon.</p>`; return; }
     const t = new Date(this.getLanding());
-    this.calMonth = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1);
-    this.calView = "days"; // "days" → click the title → "months" → click again → "years"
     this.filterBody.innerHTML = `
       <h2>Landing Time</h2>
       <p class="filter-note">Pick a day, then type a time (UTC). The crew stays 7 days.</p>
-      <div class="cal" role="group" aria-label="Landing date">
-        <div class="cal-head">
-          <button type="button" class="cal-nav" data-dir="-1">‹</button>
-          <button type="button" class="cal-title" aria-live="polite"></button>
-          <button type="button" class="cal-nav" data-dir="1">›</button>
-        </div>
-        <div class="cal-grid"></div>
-      </div>
+      ${calendarHtml()}
       <div class="cal-key">
         <span><i class="k-land"></i> Landing day (day 1)</span>
         <span><i class="k-stay"></i> Days 2–7 of the surface stay</span>
@@ -528,6 +520,8 @@ export class MapView {
       <h2 class="side-h">Landing Slope</h2>
       ${slopeLimitHtml(this.getSlopeLimit())}`;
     bindSlopeLimit(this.filterBody, (limit) => { this.setSlopeLimit(limit); if (this.picked) this.loadTopTen(r, grid); });
+    this.cal = new Calendar(this.filterBody, { onPick: (day) => this.pickDay(day) });
+    this.cal.showMonthOf(t.getTime());
 
     // Typed 24-hour time (hh:mm:ss). On Enter, blur or ↑/↓ it is read, rounded to the 10-minute Landing Time grid
     // and shown back as hh:mm:ss; a time that can't be read puts back the last good one.
@@ -572,15 +566,6 @@ export class MapView {
       box.select();
     });
 
-    this.filterBody.querySelector(".cal-title").addEventListener("click", () => {
-      this.calView = this.calView === "days" ? "months" : "years";
-      this.drawCalendar();
-    });
-    for (const b of this.filterBody.querySelectorAll(".cal-nav")) b.addEventListener("click", () => {
-      const d = new Date(this.calMonth), k = Number(b.dataset.dir);
-      this.calMonth = this.calView === "days" ? Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, 1) : Date.UTC(d.getUTCFullYear() + k, d.getUTCMonth(), 1);
-      this.drawCalendar();
-    });
     this.filterBody.querySelector(".filter-clear").addEventListener("click", () => {
       sec = null;
       show();
@@ -596,78 +581,15 @@ export class MapView {
       this.drawCalendar();
     }).catch((err) => { console.error(err); status("Couldn't check the 7-day windows"); });
   }
-  /**
-   * The calendar, in one of three views like a desktop clock: days of a month, the months of a year, or the years.
-   * Clicking the title goes up a level; picking a month or year goes back down. Days outside the Supported Span
-   * can't be picked. No-Full-Stay Days are black and crossed out but can still be picked, with a warning.
-   * The chosen Surface Stay is lit up: the landing day in amber ("LAND"), days 2–7 as one teal band across rows.
-   */
+  /** Redraw the calendar (src/ui/calendar.js) and the picked-day line, Clear button and No-Full-Stay warning under it. */
   drawCalendar() {
-    const gridEl = this.filterBody.querySelector(".cal-grid");
-    if (!gridEl) return;
-    const m = new Date(this.calMonth), y = m.getUTCFullYear(), mo = m.getUTCMonth();
-    const s0 = new Date(SPAN_START), s1 = new Date(SPAN_END - 1);
-    const firstMonth = Date.UTC(s0.getUTCFullYear(), s0.getUTCMonth(), 1), lastMonth = Date.UTC(s1.getUTCFullYear(), s1.getUTCMonth(), 1);
+    if (!this.cal || !this.filterBody.querySelector(".cal-grid")) return;
     const fmt = (ms, o) => new Date(ms).toLocaleDateString("en-GB", { ...o, timeZone: "UTC" });
     const chosen = this.picked ? new Date(this.getLanding()) : null;
     const chosenDay = chosen && Date.UTC(chosen.getUTCFullYear(), chosen.getUTCMonth(), chosen.getUTCDate());
-    const title = this.filterBody.querySelector(".cal-title"), [prev, next] = this.filterBody.querySelectorAll(".cal-nav");
-    gridEl.className = `cal-grid view-${this.calView}`;
-    let html = "";
-    if (this.calView === "days") {
-      title.textContent = fmt(this.calMonth, { month: "long", year: "numeric" });
-      title.title = "Show the months";
-      prev.disabled = this.calMonth <= firstMonth;
-      next.disabled = this.calMonth >= lastMonth;
-      prev.ariaLabel = "Previous month"; next.ariaLabel = "Next month";
-      const lead = (m.getUTCDay() + 6) % 7, nDays = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
-      html = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<span class="cal-dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
-      for (let d = 1; d <= nDays; d++) {
-        const day = Date.UTC(y, mo, d), out = day < SPAN_START || day >= SPAN_END, nostay = !out && !!this.noStay?.has(day), sel = day === chosenDay;
-        const n = chosen ? Math.round((day - chosenDay) / DAY_MS) + 1 : 0, stay = n >= 2 && n <= 7; // day n of the stay
-        const col = (lead + d - 1) % 7;
-        const cls = ["cal-day", nostay && "nostay", sel && "sel", stay && "stay",
-          (sel || stay) && (n === 7 || col === 6 || d === nDays) && "band-end", stay && col === 0 && "band-start"].filter(Boolean).join(" ");
-        const why = out ? "Outside the supported year"
-          : [sel && "Landing day", stay && `Day ${n} of the stay`, nostay && "No site in the region has a full 7-day window starting this day"].filter(Boolean).join(". ");
-        const label = fmt(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-        html += `<button type="button" class="${cls}" data-day="${day}"${stay ? ` data-n="${n}"` : ""}${out ? " disabled" : ""}`
-          + ` aria-label="${label}${why ? `, ${why}` : ""}" title="${why || label}" aria-pressed="${sel}">${d}</button>`;
-      }
-    } else if (this.calView === "months") {
-      title.textContent = String(y);
-      title.title = "Show the years";
-      prev.disabled = y <= s0.getUTCFullYear();
-      next.disabled = y >= s1.getUTCFullYear();
-      prev.ariaLabel = "Previous year"; next.ariaLabel = "Next year";
-      for (let k = 0; k < 12; k++) {
-        const ms = Date.UTC(y, k, 1), out = ms < firstMonth || ms > lastMonth;
-        const sel = chosen && chosen.getUTCFullYear() === y && chosen.getUTCMonth() === k;
-        html += `<button type="button" class="cal-cell${sel ? " sel" : ""}${ms === this.calMonth ? " here" : ""}" data-month="${ms}"${out ? " disabled" : ""}`
-          + ` aria-label="${fmt(ms, { month: "long", year: "numeric" })}${out ? ", outside the supported year" : ""}">${fmt(ms, { month: "short" })}</button>`;
-      }
-    } else {
-      const y0 = s0.getUTCFullYear(), y1 = s1.getUTCFullYear();
-      title.textContent = `${y0} – ${y1}`;
-      title.title = "";
-      prev.disabled = next.disabled = true;
-      prev.ariaLabel = "Previous years"; next.ariaLabel = "Next years";
-      for (let yy = y0; yy <= y1; yy++) {
-        const sel = chosen && chosen.getUTCFullYear() === yy;
-        html += `<button type="button" class="cal-cell${sel ? " sel" : ""}${yy === y ? " here" : ""}" data-year="${yy}">${yy}</button>`;
-      }
-    }
-    title.disabled = this.calView === "years";
-    gridEl.innerHTML = html;
-    for (const b of gridEl.querySelectorAll(".cal-day:not([disabled])")) b.addEventListener("click", () => this.pickDay(Number(b.dataset.day)));
-    for (const b of gridEl.querySelectorAll("[data-month]:not([disabled])")) b.addEventListener("click", () => { this.calMonth = Number(b.dataset.month); this.calView = "days"; this.drawCalendar(); });
-    for (const b of gridEl.querySelectorAll("[data-year]")) b.addEventListener("click", () => {
-      // keep the month if it is in that year's part of the span, else the nearest month that is
-      const ms = Date.UTC(Number(b.dataset.year), mo, 1);
-      this.calMonth = Math.min(lastMonth, Math.max(firstMonth, ms));
-      this.calView = "months";
-      this.drawCalendar();
-    });
+    this.cal.chosen = chosen && chosen.getTime();
+    this.cal.noStay = this.noStay;
+    this.cal.draw();
     this.filterBody.querySelector(".filter-picked").innerHTML = chosen
       ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 19)} UTC</b>`
       : "No date chosen yet";

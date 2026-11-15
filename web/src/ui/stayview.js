@@ -104,10 +104,18 @@ export function windowsView(doc, landing) {
   const months = Array.from({ length: 13 }, (_, i) => Date.UTC(2026, 11 + i, 1)).filter((t) => t < SPAN_END);
   const strip = `<svg viewBox="0 0 ${W} ${H}" class="chart strip" role="img" aria-label="Coverage of every Landing Time in the Supported Span">
     <rect x="${PAD}" y="4" width="${W - 2 * PAD}" height="22" fill="#555"/>
-    ${doc.strip.runs.map((r) => `<rect x="${x(parseUtc(r.start_utc))}" y="4" height="22" width="${Math.max(x(parseUtc(r.end_utc)) - x(parseUtc(r.start_utc)), 0.5)}" fill="${r.coverage === "full" ? "#2fae4a" : "#e0a030"}"/>`).join("")}
-    <line x1="${x(landing)}" x2="${x(landing)}" y1="0" y2="30" stroke="#fff" stroke-width="2"/>
+    ${doc.strip.runs.map((r) => {
+      const s = parseUtc(r.start_utc), e = parseUtc(r.end_utc), geo = `x="${x(s)}" y="4" height="22" width="${Math.max(x(e) - x(s), 0.5)}"`;
+      if (r.coverage !== "full") return `<rect ${geo} fill="#e0a030"/>`;
+      // A green run is a button: it lands at the Best Landing Time of the window it belongs to, else at its start.
+      const w = doc.windows.find((w) => parseUtc(w.start_utc) <= s && e <= parseUtc(w.end_utc));
+      const t = w ? w.best_landing_time_utc : r.start_utc, when = utc(t);
+      const what = `Full Coverage ${utc(r.start_utc)} to ${utc(r.end_utc)}${w ? ` (window ${w.rank})` : ""}. Land at ${when}`;
+      return `<rect ${geo} fill="#2fae4a" class="seg-full" data-t="${esc(t)}" tabindex="0" role="button" aria-label="${esc(what)}"><title>${esc(what)}</title></rect>`;
+    }).join("")}
+    <line x1="${x(landing)}" x2="${x(landing)}" y1="0" y2="30" stroke="#fff" stroke-width="2" pointer-events="none"/>
     ${months.map((t) => `<text x="${x(t)}" y="42" class="tick" text-anchor="middle">${new Date(t).toLocaleString("en", { month: "short", timeZone: "UTC" })}</text>`).join("")}
-  </svg><p class="fine">Green: Full Coverage. Amber: Partial. Gray: outside the Supported Span. White line: current Landing Time.</p>`;
+  </svg><p class="fine">Green: Full Coverage (click to land there). Amber: Partial. Gray: outside the Supported Span. White line: current Landing Time.</p>`;
   if (!doc.windows.length) return strip + `<p class="status">This site has no Landing Time with Full Coverage in the Supported Span.</p>`;
   const dur = (h) => (h < 48 ? `${h.toFixed(1)} h` : `${(h / 24).toFixed(1)} d`);
   return strip + `<table class="windows-list"><thead><tr><th>#</th><th>Window (UTC)</th><th>Length</th><th>Best Landing Time</th><th>Worst-case</th></tr></thead><tbody>
