@@ -85,7 +85,6 @@ dd b { font-weight: 500; color: var(--sun); }
 .toggle input { width: auto; accent-color: var(--sun); }
 .range-head { display: flex; justify-content: space-between; }
 .range-head output { font-family: var(--f-mono); color: var(--fg); letter-spacing: 0; }
-.credits { margin-top: auto; padding: 10px 16px 12px; border-top: 1px solid var(--line); font-size: 10.5px; line-height: 1.45; color: #6c717b; }
 
 /* compass */
 .compass { position: absolute; z-index: 5; pointer-events: none; width: 92px; height: 92px; right: 16px; top: 16px; }
@@ -152,7 +151,7 @@ tbody tr.active td:first-child { box-shadow: inset 2px 0 0 var(--sun); }
   .timeline { order: 3; height: 240px; }
   .sites { order: 4; border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
   .controls { order: 2; border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
-  .panel header, form, .readout, .view, .credits, .sites-actions, .sites .hint {
+  .panel header, form, .readout, .view, .sites-actions, .sites .hint {
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
   .compass { width: 72px; height: 72px; }
@@ -217,4 +216,3 @@ button.link { background: none; border: none; color: var(--sun); padding: 0; tex
 .steps button { flex: 1; padding: 5px 0; font: 11.5px var(--f-mono); }
 .tagline { font-size: 12px; color: var(--muted); }
 .soon { font-style: normal; font: 10px var(--f-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }
-.credits a { color: inherit; }

@@ -195,12 +195,11 @@ export class MapView {
   renderHomeCard() {
     this.card.innerHTML = `
       <h2>Pick a Landing Region</h2>
-      <p class="hint">The nine candidate regions near the lunar south pole. Pick one, then a Landing Time, and every Landing Site is scored on whether the Sun and Earth stay in Line of Sight for the whole 7-day Surface Stay. Open any site to see it in 3D. Scroll to zoom, drag to pan.</p>
+      <p class="hint">Pick one of the nine Artemis III regions to see its best Landing Sites.</p>
       <ol class="region-list">${this.regions.map((r) => {
         const [w, h] = sizeKm(r);
         return `<li><button type="button" data-id="${r.id}"><span>${r.name}${r.hasSiteData ? "" : ' <em class="soon">coming soon</em>'}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites</small></button></li>`;
-      }).join("")}</ol>
-      <p class="credits">Hillshade: ${this.homeBasemap.source} (NASA, public domain). Regions: NASA news release 24-136 (2024-10-28). Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
+      }).join("")}</ol>`;
     for (const b of this.card.querySelectorAll("button[data-id]")) {
       b.addEventListener("pointerenter", () => this.hover(b.dataset.id));
       b.addEventListener("pointerleave", () => this.hover(null));
@@ -285,8 +284,8 @@ export class MapView {
     const [w, h] = sizeKm(r);
     this.card.innerHTML = `
       <h2>${r.name}</h2>
-      <p class="sub">${w.toFixed(1)} × ${h.toFixed(1)} km · ${grid.rows} × ${grid.cols} = ${grid.count.toLocaleString()} sites</p>
-      <p class="hint">Each cell is one landing site: a 200 m grid with a 100 m-radius site circle at its centre, the grid from the team design. Hover a cell to read it, click it to open its 3D topography.</p>
+      <p class="sub">${w.toFixed(0)} × ${h.toFixed(0)} km · ${grid.count.toLocaleString()} sites</p>
+      <p class="hint">Each square is one 200 m Landing Site. Hover to read it, click to see it in 3D.</p>
       <dl class="cell-read" id="cellRead">
         <dt>Site</dt><dd data-k="id">—</dd>
         <dt>Latitude</dt><dd data-k="lat">—</dd>
@@ -306,23 +305,18 @@ export class MapView {
           <button type="button" data-step="3600000" title="One hour later">+1 h</button>
           <button type="button" data-step="86400000" title="One day later">+1 d</button>
         </div>
-        <p class="fine">Supported Span: ${formatUtc(SPAN_START).slice(0, 10)} to ${formatUtc(SPAN_END).slice(0, 10)}. Surface Stay: 7 days from the Landing Time.</p>
         <div class="legend">
-          <span><i style="background:${rgb(FULL_HIGH)}"></i> Full coverage (darker = more Clearance)</span>
-          <span><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Partial (by the weaker of Sun and Earth)</span>
-          <span><i class="outlined"></i> Top 10 (at least 2 km apart)</span>
-          <span><i class="steep"></i> Landing slope over the limit</span>
+          <span><i style="background:${rgb(FULL_HIGH)}"></i> Sun and Earth in view all week</span>
+          <span><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Blocked part of the week</span>
+          <span><i class="outlined"></i> Top 10</span>
+          <span><i class="steep"></i> Too steep</span>
         </div>
         <h3>Top 10 Landing Sites</h3>
         ${slopeLimitHtml(this.getSlopeLimit())}
         <p class="hint top-status"></p>
         <ol class="top-list"></ol>
       </section>` : ""}
-      <p class="team-note">${r.hasSiteData
-        ? "Team data: site heights from the pipeline's sites.json; Sun and Earth Clearance in the 3D view use the team's Horizons."
-        : "Team site data (heights, Horizons) for this region is coming soon. Heights here are from the 80 m LOLA DEM."}</p>
-      <button type="button" class="back">← All regions</button>
-      <p class="credits">Hillshade: ${bm.source} (NASA, public domain). ${r.hasSiteData ? "Landing slope: LOLA 20 m DEM." : "Slope: LOLA 80 m DEM."} Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
+      <button type="button" class="back">← All regions</button>`;
     this.card.querySelector(".back").addEventListener("click", () => this.onHome());
     const input = this.card.querySelector(".landing input");
     const setT = (t) => {
@@ -348,11 +342,11 @@ export class MapView {
     this.heatLayer.replaceChildren();
     this.steepLayer.replaceChildren();
     for (const l of this.labels.querySelectorAll(".top-label")) l.remove();
-    if (status) status.textContent = "Scoring every Landing Site over the Surface Stay…";
+    if (status) status.textContent = "Scoring sites…";
     if (list) list.replaceChildren();
     try {
       const [res, team] = await Promise.all([this.ranking(r.id, landing, (f) => {
-        if (token === this.topToken && status) status.textContent = `Scoring every Landing Site over the Surface Stay… ${Math.round(f * 100)} %`;
+        if (token === this.topToken && status) status.textContent = `Scoring sites… ${Math.round(f * 100)} %`;
       }), this.teamSites(r.id).catch(() => null)]);
       if (token !== this.topToken || this.region !== r) return;
       this.rankData = res;
@@ -380,10 +374,13 @@ export class MapView {
       }
       const nFull = res.doc.sites.filter((x) => x.coverage === "full").length;
       const nFullFlat = hasSlope && limitDeg !== null ? res.doc.sites.filter((x) => x.coverage === "full" && !steep(x)).length : null;
-      if (status) status.textContent = `${nFull.toLocaleString()} of ${res.doc.sites.length.toLocaleString()} sites have Full Coverage`
-        + (nFullFlat === null ? "" : `, ${nFullFlat.toLocaleString()} of them with a Landing Slope under ${limitDeg}°`)
-        + `. Sites in the list are at least 2 km apart.`
-        + (limitDeg !== null && !hasSlope ? " (No Landing Slopes for this region, so the slope limit is off.)" : "");
+      const total = res.doc.sites.length.toLocaleString();
+      if (status) status.textContent = (!nFull
+        ? "No site keeps the Sun and Earth in view all week at this time. Try another Landing Time."
+        : nFullFlat === null ? `${nFull.toLocaleString()} of ${total} sites keep the Sun and Earth in view all week.`
+        : nFullFlat ? `${nFullFlat.toLocaleString()} of ${total} sites keep the Sun and Earth in view all week and are flat enough.`
+        : `${nFull.toLocaleString()} sites keep the Sun and Earth in view all week, but none are flat enough.`)
+        + (limitDeg !== null && !hasSlope ? " No slope data here yet." : "");
       top.forEach((e, i) => {
         const cell = grid.byId(e.site_id);
         if (!cell) return;

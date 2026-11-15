@@ -17,7 +17,7 @@ const SITE_COLUMNS = [
   { cls: "walk", head: "EVA", title: WALKABLE_TITLE, of: (team, id) => team.walkableOf(id), label: walkableLabel },
 ];
 
-const HEAD = `<span></span><span></span><span>Site</span><span>Coverage over the stay</span>`
+const HEAD = `<span></span><span></span><span>Site</span><span>Coverage</span>`
   + `<span class="num" title="${esc(CLEARANCE_TITLE)}">Worst</span>`
   + SITE_COLUMNS.map((c) => `<span class="num" title="${esc(c.title)}">${c.head}</span>`).join("");
 

@@ -282,7 +282,7 @@ async function slopeFor(lat, lon) {
 }
 
 /* ---------- 3D grid slice ---------- */
-const HINT = "Drag to orbit, right-drag to pan, scroll to zoom. Click a cell to move to it.";
+const HINT = "Drag to turn · right-drag to pan · scroll to zoom";
 function ensureView() {
   if (view) return;
   view = new PatchView($("globe"), {
@@ -350,11 +350,11 @@ async function updateTopTen() {
   }
   el.top10.hidden = false;
   el.topWhen.textContent = `from ${formatUtc(landingMs).slice(0, 16).replace("T", " ")} UTC`;
-  el.topStatus.textContent = "Scoring every Landing Site over the Surface Stay…";
+  el.topStatus.textContent = "Scoring sites…";
   el.oRank.textContent = "…";
   try {
     const [r, tr] = await Promise.all([ranking(cur.region.id, landingMs, (f) => {
-      if (token === topToken) el.topStatus.textContent = `Scoring every Landing Site over the Surface Stay… ${Math.round(f * 100)} %`;
+      if (token === topToken) el.topStatus.textContent = `Scoring sites… ${Math.round(f * 100)} %`;
     }), teamSitesFor(cur.region.id).catch(() => null)]);
     if (token !== topToken) return;
     const top = topUnderSlope(r, tr, slopeLimitDeg);
@@ -377,7 +377,7 @@ let windowsKey = null;
 async function updateStay(cur, entry, token) {
   el.stay.hidden = false;
   el.stayTitle.innerHTML = stayTitle(cur.cell.id, entry);
-  el.stayStatus.textContent = "Computing the Sun and Earth over the Surface Stay…";
+  el.stayStatus.textContent = "Working out the week…";
   const key = `${cur.region.id}|${cur.cell.id}`;
   if (key !== windowsKey) { windowsKey = key; resetWindows(); } else refreshWindows();
   try {
@@ -385,7 +385,7 @@ async function updateStay(cur, entry, token) {
     if (token !== topToken) return;
     el.stayStatus.textContent = "";
     el.stayRange.textContent = stayRange(doc);
-    el.stayDetail.innerHTML = `<h3>Stats over the Surface Stay</h3>${statsTable(doc)}<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth Elevation over the Horizon</h3>${timeCharts(doc)}`;
+    el.stayDetail.innerHTML = `<h3>Over the 7-day stay</h3>${statsTable(doc)}<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth above the terrain</h3>${timeCharts(doc)}`;
   } catch (e) {
     if (token !== topToken) return;
     console.error(e);
