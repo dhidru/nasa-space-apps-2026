@@ -108,7 +108,8 @@
 .map-top .top-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
 /* Outline only: the heatmap underneath already gives the colour, so the terrain stays visible inside the top 10. */
 .top-cell { fill-opacity: 0; stroke: #fff !important; stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
-.map-label.top-label { font: 600 11px var(--f-mono); color: #fff; background: rgba(14,16,21,.85); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; cursor: pointer; }
+.map-label.top-label { font: 600 11px var(--f-mono); color: #fff; background: rgba(14,16,21,.85); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; cursor: pointer; pointer-events: auto; }
+.map-label.top-label:hover, .map-label.top-label:focus-visible { border-color: var(--sun); color: var(--sun); }
 .map-top { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
 .map-top h3 { margin: 0; font-size: 13px; font-weight: 700; }
 .map-top .legend { grid-template-columns: 1fr 1fr; column-gap: 10px; }

@@ -29,7 +29,7 @@ import { parseDateTime } from "../app/utctime.ts";
 import { bindViewMenus } from "./viewmenu.js";
 import { Calendar, calendarHtml } from "./calendar.js";
 import { OrientationInset } from "./inset.js";
-import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
+import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayVerdict, stayRange } from "./stayview.js";
 
 
 const BASE = `${import.meta.env.BASE_URL}tiles`;
@@ -49,7 +49,7 @@ const el = {
   chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
   sitesBody: $("sitesBody"), sitesWindow: $("sitesWindow"), saveSite: $("saveSite"), sitesTable: $("sitesTable"),
   oRank: $("oRank"), top10: $("top10"), topValue: $("topValue"), topWhen: $("topWhen"), topStatus: $("topStatus"), topList: $("topList"),
-  stay: $("stay"), stayTitle: $("stayTitle"), stayRange: $("stayRange"), stayStatus: $("stayStatus"),
+  stay: $("stay"), stayTitle: $("stayTitle"), stayVerdict: $("stayVerdict"), siteId: $("siteId"), stayRange: $("stayRange"), stayStatus: $("stayStatus"),
   stayDetail: $("stayDetail"), stayWindows: $("stayWindows"),
 };
 $("oRobustLabel").title = ROBUSTNESS_TITLE;
@@ -194,6 +194,7 @@ async function showSite(region, cell) {
   const fromMap = !el.mapview.hidden && mapView.flying;
   const sameRegion = !!(site && site.region.id === region.id && view);
   site = { region, cell };
+  siteRank = null;
   if (!fromMap) el.mapview.hidden = true;
   el.app.hidden = false;
   renderCrumbs();
@@ -227,12 +228,21 @@ async function showSite(region, cell) {
   await apply();
 }
 
+/**
+ * The site's rank for the current Landing Time, as people say it: "Rank #3" inside the Top 10, else "Rank 1,204".
+ * Null until the ranking arrives. The grid id (r020c046) is shown beside the latitude and longitude instead.
+ */
+let siteRank = null;
+const siteLabel = () => `${site.region.name} · ${siteRank ?? site.cell.id}`;
 function renderCrumbs() {
   setBreadcrumbs(el.crumbs, [
     { text: "Lunar south pole", go: () => go("#") },
     { text: site.region.name, go: () => go(`#${site.region.id}`) },
-    { text: `Site ${site.cell.id}` },
+    { text: siteRank ?? `Site ${site.cell.id}` },
   ]);
+  el.siteId.hidden = false;
+  el.siteId.textContent = `Grid site ${site.cell.id}`;
+  el.tlSite.textContent = siteRank ? `${site.region.name} (${siteRank})` : `${site.region.name} · ${site.cell.id}`;
 }
 /** Esc goes up one level: site view -> region map -> all regions (not while typing in a field). */
 window.addEventListener("keydown", (e) => {
@@ -434,6 +444,9 @@ async function updateTopTen() {
     const grid = siteGrid(cur.region);
     renderTopList(top, cur, tr);
     const me = r.byId.get(cur.cell.id);
+    const k = top.findIndex((e) => e.site_id === cur.cell.id);
+    siteRank = k >= 0 ? `Rank #${k + 1}` : me ? `Rank ${me.rank.toLocaleString()}` : null;
+    renderCrumbs();
     el.oRank.textContent = me ? `${me.rank.toLocaleString()} of ${r.doc.sites.length.toLocaleString()}${top.some((e) => e.site_id === me.site_id) ? " · top 10" : ""} · ${coverageLabel(me)}` : "—";
     view.setMarks(top.map((e, i) => ({ cell: grid.byId(e.site_id), color: coverageColor(e), rank: i + 1 })).filter((m) => m.cell));
     updateStay(cur, me, token);
@@ -448,7 +461,8 @@ async function updateTopTen() {
 let windowsKey = null;
 async function updateStay(cur, entry, token) {
   el.stay.hidden = false;
-  el.stayTitle.innerHTML = stayTitle(cur.cell.id, entry);
+  el.stayTitle.innerHTML = stayTitle(siteLabel(), entry);
+  el.stayVerdict.textContent = "";
   el.stayStatus.textContent = "Working out the week…";
   const key = `${cur.region.id}|${cur.cell.id}`;
   if (key !== windowsKey) { windowsKey = key; resetWindows(); } else refreshWindows();
@@ -457,6 +471,7 @@ async function updateStay(cur, entry, token) {
     if (token !== topToken) return;
     el.stayStatus.textContent = "";
     el.stayRange.textContent = stayRange(doc);
+    el.stayVerdict.innerHTML = stayVerdict(doc);
     el.stayDetail.innerHTML = `<h3>Over the 7-day stay</h3>${statsTable(doc)}<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth above the terrain</h3>${timeCharts(doc)}`;
   } catch (e) {
     if (token !== topToken) return;
@@ -505,8 +520,7 @@ function renderTopList(top, cur, tr) {
 /* ---------- timeline ---------- */
 function updateTimeline() {
   if (!state) return;
-  el.tlSite.textContent = (site ? `${site.region.name} · ${site.cell.id}` : `${fmtLat(state.lat)}, ${fmtLon(state.lon)}`)
-    + (site && site.team ? " · team Horizon" : "");
+  if (site) renderCrumbs(); else el.tlSite.textContent = `${fmtLat(state.lat)}, ${fmtLon(state.lon)}`;
   const samples = sampleEphemeris(state.date, SYNODIC_DAYS, CHART_STEP_H);
   chartSeries = siteSeries(data, state.lat, state.lon, samples, site && site.team);
   renderChart();

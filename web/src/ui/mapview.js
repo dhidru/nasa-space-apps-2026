@@ -593,7 +593,7 @@ export class MapView {
     this.cal.draw();
     this.filterBody.querySelector(".filter-picked").innerHTML = chosen
       ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 19)} UTC</b>`
-        + (this.region && featuredLanding(this.region.id) === this.getLanding() ? `<br><span class="featured-note">A suggested time when sites here keep the Sun and Earth in view all week. Pick any other day to compare.</span>` : "")
+        + (this.region && featuredLanding(this.region.id) === this.getLanding() ? `<br><span class="featured-note">Region-wide best time: when the most sites here keep the Sun and Earth in view all week. Each site has its own best times under Landing Windows.</span>` : "")
       : "No date chosen yet";
     this.filterBody.querySelector(".filter-clear").disabled = !this.picked;
     const warn = this.filterBody.querySelector(".nostay-warn");
@@ -656,7 +656,11 @@ export class MapView {
         if (!cell) return;
         svgEl("rect", { x: cell.x - GRID_M / 2, y: -(cell.y + GRID_M / 2), width: GRID_M, height: GRID_M, class: "top-cell", style: `fill:${coverageColor(e)};stroke:${coverageColor(e)}` }, this.topLayer);
         const lab = this.addLabel({ x: cell.x + GRID_M, y: cell.y + GRID_M, text: String(i + 1), cls: "top-label", a: "start", id: e.site_id });
-        lab.addEventListener("click", () => this.onSite(r.id, e.site_id));
+        // The badge sits beside its cell, so it opens its own site (as the Top 10 list does) rather than whatever cell
+        // is under the pointer.
+        lab.setAttribute("aria-label", `Open rank ${i + 1} site ${e.site_id}`);
+        lab.addEventListener("click", () => { if (this.flying) return; this.markCell(cell, this.selRect); this.onSite(r.id, e.site_id); });
+        lab.addEventListener("pointerenter", () => { this.markCell(cell, this.hoverRect); this.renderCell(cell); });
       });
       if (list) fillTopList(list, top, {
         team,
