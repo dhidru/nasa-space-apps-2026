@@ -112,7 +112,11 @@
 .map-label.top-label:hover, .map-label.top-label:focus-visible { border-color: var(--sun); color: var(--sun); }
 .map-top { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
 .map-top h3 { margin: 0; font-size: 13px; font-weight: 700; }
-.map-top .legend { grid-template-columns: 1fr 1fr; column-gap: 10px; }
+/* Same reading size as the home page's secondary text (14px), in the main text colour, with swatches to match. */
+.map-top .legend { grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 6px; font-size: 14px; color: var(--fg); }
+.map-top .legend span { display: flex; align-items: center; gap: 6px; }
+.map-top .legend i { width: 15px; height: 15px; margin: 0; vertical-align: 0; flex: none; }
+.map-top .legend i + i { margin-left: -6px; }
 .map-top .top-list button { padding: 2px 8px; }
 /* narrow card: drop the coverage text (the swatch shows it; the row's tooltip has it) so every column fits */
 .map-top .top-list, .map-top .top-head { --top-cols: 18px 10px 66px 50px 38px 40px 36px; }
