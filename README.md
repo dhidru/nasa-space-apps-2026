@@ -112,9 +112,9 @@ the repo's **Actions** tab ("Deploy to GitHub Pages" → **Run workflow**). The 
 uses relative paths and `#/` routes, so it works under the `/nasa-space-apps-2026/`
 subpath without any extra config.
 
-One-time repo setting (a repo admin does this once): **Settings → Pages → Build
-and deployment → Source: GitHub Actions**. If the deploy job fails with "Get
-Pages site failed" or "not found", this setting is missing.
+This needs one repo setting, which is already on (checked 2026-11-14): **Settings →
+Pages → Build and deployment → Source: GitHub Actions**. If the deploy job fails
+with "Get Pages site failed" or "not found", a repo admin should check it again.
 
 ## Repository Layout
 
