@@ -554,7 +554,8 @@ async function boot() {
     homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
     ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); syncUrl(); },
     getSlopeLimit: () => slopeLimitDeg, setSlopeLimit: (deg) => { slopeLimitDeg = deg; showSlopeLimit(); },
-    onRegion: (id) => go(`#${id}`),
+    // Opening a region from the home map starts with no Landing Time chosen (a shared link or a return from a site keeps its own).
+    onRegion: (id) => { mapView.picked = false; go(`#${id}`); },
     onSite: (rid, cid) => flyToSite(rid, cid),
     onHome: () => go("#"),
     demFor,
