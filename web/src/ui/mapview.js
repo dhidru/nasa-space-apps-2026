@@ -392,9 +392,7 @@ export class MapView {
         lab.addEventListener("click", () => this.onSite(r.id, e.site_id));
       });
       if (list) fillTopList(list, top, {
-        robustnessOf: team ? (id) => team.robustnessOf(id) : undefined,
-        slopeOf: team ? (id) => team.slopeOf(id) : undefined,
-        walkableOf: team ? (id) => team.walkableOf(id) : undefined,
+        team,
         onPick: (e) => this.onSite(r.id, e.site_id),
         onHover: (e) => { const cell = grid.byId(e.site_id); if (cell) { this.markCell(cell, this.hoverRect); this.renderCell(cell); } },
       });

@@ -420,9 +420,7 @@ async function showWindows() {
 }
 function renderTopList(top, cur, tr) {
   fillTopList(el.topList, top, {
-    robustnessOf: tr ? (id) => tr.robustnessOf(id) : undefined,
-    slopeOf: tr ? (id) => tr.slopeOf(id) : undefined,
-    walkableOf: tr ? (id) => tr.walkableOf(id) : undefined,
+    team: tr,
     activeId: cur.cell.id,
     onPick: (e) => go(`#${cur.region.id}/${e.site_id}`),
   });
