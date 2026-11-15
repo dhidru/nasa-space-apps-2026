@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-// 2D south polar map: the home view (all nine Artemis III regions) and the region view (200 m site grid).
+// 2D south polar map: the home view (all nine Artemis IV regions) and the region view (200 m site grid).
 // Map coordinates are polar stereographic metres (src/polar.js); SVG y is the negative of map y.
 // Hillshades, outlines and site heights come from the team's site-data (src/teamdata.js).
 
 import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
 import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
-import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
-import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, darkDays, SPAN_START, SPAN_END, DAY_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
+import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
+import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, noFullStayDays, SPAN_START, SPAN_END, DAY_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}, parent) => {
@@ -17,21 +17,30 @@ const svgEl = (tag, attrs = {}, parent) => {
   return n;
 };
 
-// Label anchors (map metres) and text alignment, placed by hand so the clustered regions stay readable.
-const LABELS = {
-  "peak-near-cabeus-b": { x: -196000, y: 70000, a: "end" },
-  "haworth": { x: -56000, y: 100000, a: "end" },
-  "malapert-massif": { x: -1000, y: 141000, a: "middle" },
-  "mons-mouton-plateau": { x: 88000, y: 186000, a: "middle" },
-  "mons-mouton": { x: 61000, y: 104000, a: "end" },
-  "nobile-rim-1": { x: 90000, y: 90000, a: "middle" },
-  "nobile-rim-2": { x: 173000, y: 95000, a: "start" },
-  "de-gerlache-rim-2": { x: -64000, y: 23000, a: "end" },
-  "slater-plain": { x: 86000, y: -50000, a: "start" },
-};
-const LAT_RINGS = [-80, -82, -84, -86, -88, -89]; // dashed parallels for orientation
-const LON_STEP = 30; // meridians every 30°
-const lonText = (lon) => (lon === 0 ? "0° (Earth)" : lon === 180 ? "180°" : lon < 180 ? `${lon}° E` : `${360 - lon}° W`);
+// Home map: the Moon inside the 80° S circle, ringed by a dark bezel with the longitude scale (0° faces Earth).
+const MOON_R = 1737400;
+/** Polar stereographic radius (map metres) of a southern latitude in degrees, as in src/polar.js. */
+const rhoOf = (lat) => 2 * MOON_R * Math.tan(Math.PI / 4 + (lat * Math.PI) / 360);
+const RIM_M = rhoOf(-80);
+const BEZEL_PX = 30;                       // bezel width on screen
+const HOME_MARGIN_PX = 50;                 // room around the circle for the bezel and its labels
+const LAT_TICKS = [-88, -86, -84, -82];    // latitude ticks down the 180° meridian (keeps 0° clear for Earth)
+const lonText = (lon) => (lon === 180 ? "180°" : lon < 180 ? `${lon}°E` : `${360 - lon}°W`);
+/** Distance (screen px) between every region name and its square. */
+const LABEL_GAP_PX = 5;
+/**
+ * Region names on the home map with a fixed side of their square (`lines` = two lines). They are placed first, in
+ * this order, centred on the square when that spot is free, else slid along the same side; every other name is
+ * placed automatically around them (layoutRegionLabels).
+ */
+const PINNED_LABELS = [
+  ["malapert-massif", { side: "above", lines: true }],
+  ["haworth", { side: "above" }],
+  ["mons-mouton", { side: "below", lines: true }],
+  ["nobile-rim-1", { side: "right" }],   // wraps to two lines if boxed in (Nobile Rim 2's square sits beside it)
+  ["slater-plain", { side: "above" }],
+];
+const PINNED = new Map(PINNED_LABELS);
 /** "84.12° S, 35.40° E" for a map point. */
 export function llText(x, y) {
   const [lat, lon] = xyToLL(x, y);
@@ -83,15 +92,17 @@ export class MapView {
   }
   refit() {
     if (this.flight) { if (this.flight.done) this.setVB(this.flightVB()); return; } // hold the hand-off frame; the zoom re-measures each step
-    if (this.fitBox && !this.userMoved) this.fit(this.fitBox); else this.setVB(this.vb);
+    if (this.mode === "home") this.fitHome();
+    else if (this.fitBox && !this.userMoved) this.fit(this.fitBox); else this.setVB(this.vb);
   }
   setVB(vb) {
     const [W, H] = this.size();
     vb.h = (vb.w * H) / W; // keep aspect
     this.vb = vb;
     this.svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
-    if (this.mode === "home") this.labelGraticule();
+    if (this.mode === "home") this.drawBezel();
     this.placeLabels();
+    if (this.mode === "home") this.layoutRegionLabels();
     this.updateGridVisibility();
   }
   toMap(evt) {
@@ -162,31 +173,24 @@ export class MapView {
     this.back.hidden = true;
     this.svg.replaceChildren();
     this.labels.replaceChildren();
-    this.svg.setAttribute("aria-label", "Map of the lunar south pole with the nine Artemis III candidate regions");
+    this.svg.setAttribute("aria-label", "Map of the lunar south pole with the nine Artemis IV candidate regions");
     const h = this.homeBasemap, [x0, y0, x1, y1] = h.extent_m;
-    svgEl("image", { href: h.href, x: x0, y: -y1, width: x1 - x0, height: y1 - y0, preserveAspectRatio: "none", class: "map-img" }, this.svg);
-    const all = this.regions.map((r) => bbox(r.xy));
-    const box = { xmin: Math.min(...all.map((b) => b.xmin)) - 60000, // room for the "Peak near Cabeus B" label
-       xmax: Math.max(...all.map((b) => b.xmax)) + 25000, ymin: Math.min(...all.map((b) => b.ymin)) - 15000, ymax: Math.max(...all.map((b) => b.ymax)) + 15000 };
-    // Graticule: parallels and meridians, each a light dashed line over a dark halo so it reads on any terrain.
-    // Their labels are placed by labelGraticule() at the edges of what is on screen.
-    const g = svgEl("g", { class: "graticule" }, this.svg);
-    const line = (tag, attrs, cls) => { svgEl(tag, { ...attrs, class: `halo ${cls}` }, g); svgEl(tag, { ...attrs, class: `ln ${cls}` }, g); };
-    for (const lat of LAT_RINGS) line("circle", { cx: 0, cy: 0, r: 2 * 1737400 * Math.tan(Math.PI / 4 + (lat * Math.PI) / 360) }, "");
-    for (let lon = 0; lon < 360; lon += LON_STEP) {
-      const a = (lon * Math.PI) / 180, r = 400000;
-      line("line", { x1: 0, y1: 0, x2: r * Math.sin(a), y2: -r * Math.cos(a) }, lon % 90 ? "minor" : "");
-    }
+    // The Moon, clipped to the 80° S circle; drawBezel() rings it with the longitude scale.
+    svgEl("circle", { r: RIM_M }, svgEl("clipPath", { id: "moon-clip" }, svgEl("defs", {}, this.svg)));
+    svgEl("image", { href: h.href, x: x0, y: -y1, width: x1 - x0, height: y1 - y0, preserveAspectRatio: "none", class: "map-img", "clip-path": "url(#moon-clip)" }, this.svg);
+    this.bezel = svgEl("g", { class: "bezel" }, this.svg);
     svgEl("circle", { cx: 0, cy: 0, r: 2500, class: "pole" }, this.svg);
-    this.addLabel({ x: 0, y: -9000, text: "South Pole · 90° S", cls: "pole-label", a: "middle" });
+    this.leaders = svgEl("g", { class: "leaders" }, this.svg);
 
     this.polys = {};
+    this.regionLabels = new Map();
     for (const r of this.regions) {
       const pts = r.xy.map(([x, y]) => `${x},${-y}`).join(" ");
       const poly = svgEl("polygon", { points: pts, class: "region", "data-id": r.id, tabindex: 0, role: "button", "aria-label": `Open ${r.name}` }, this.svg);
       this.polys[r.id] = poly;
-      const L = LABELS[r.id] || { x: bbox(r.xy).xmin - 3000, y: (bbox(r.xy).ymin + bbox(r.xy).ymax) / 2, a: "end" };
-      const lab = this.addLabel({ x: L.x, y: L.y, text: r.name, cls: "region-label", a: L.a, id: r.id });
+      // Placed by layoutRegionLabels() once the map is sized.
+      const lab = this.addLabel({ x: 0, y: 0, text: r.name, cls: "region-label", a: "tl", id: r.id, lines: PINNED.get(r.id)?.lines });
+      this.regionLabels.set(r.id, lab);
       lab.addEventListener("pointerenter", () => this.hover(r.id));
       lab.addEventListener("pointerleave", () => this.hover(null));
       lab.addEventListener("click", () => this.onRegion(r.id));
@@ -198,37 +202,145 @@ export class MapView {
     this.onLeave = () => this.hover(null);
     this.onClick = (e, press) => { const id = (press && press.region) || this.hovered; if (id) this.onRegion(id); };
 
-    this.fit(box, 0.04);
+    this.fitHome();
     this.zoomHint.hidden = true;
     this.reset.hidden = true; // nothing to reset: the home map doesn't zoom or pan
     this.setCrumbs([{ text: "Lunar south pole" }]);
     this.renderHomeCard();
   }
-  /** Latitude labels on each ring and longitude labels where each meridian leaves the visible map (home only). */
-  labelGraticule() {
-    for (const l of this.labels.querySelectorAll(".lat-label, .lon-label")) l.remove();
-    const [W] = this.size(), mpp = this.vb.w / W, inset = 22 * mpp;
-    const box = { xmin: this.vb.x + inset * 2.4, xmax: this.vb.x + this.vb.w - inset * 2.4, ymin: -(this.vb.y + this.vb.h) + inset, ymax: -this.vb.y - inset };
-    const inBox = (x, y) => x > box.xmin && x < box.xmax && y > box.ymin && y < box.ymax;
-    const rad = (d) => (d * Math.PI) / 180;
-    for (const lat of LAT_RINGS) {
-      const rho = 2 * 1737400 * Math.tan(Math.PI / 4 + rad(lat) / 2);
-      // on the first bearing between meridians (15° off one) that is on screen
-      const at = [225, 135, 315, 45, 255, 105, 195, 165].map((d) => [rho * Math.sin(rad(d)), rho * Math.cos(rad(d))]).find(([x, y]) => inBox(x, y));
-      if (at) this.addLabel({ x: at[0], y: at[1], text: `${-lat}° S`, cls: "lat-label", a: "middle" });
+  /** Fit the whole 80° S circle with HOME_MARGIN_PX around it for the bezel (the margin is in screen pixels). */
+  fitHome() {
+    const [W, H] = this.size(), m = Math.min(HOME_MARGIN_PX, Math.min(W, H) / 4);
+    this.fit({ xmin: -RIM_M, xmax: RIM_M, ymin: -RIM_M, ymax: RIM_M }, m / Math.max(1, Math.min(W, H) - 2 * m));
+  }
+  /**
+   * The bezel (home only): a dark ring outside 80° S with ticks every 10° and labels every 30°, the 0° EARTH
+   * marker, and latitude ticks down the 180° meridian. Sizes are in screen pixels, so it is redrawn on every resize.
+   */
+  drawBezel() {
+    if (!this.bezel) return;
+    for (const l of this.labels.querySelectorAll(".bezel-label, .lat-label, .earth-label")) l.remove();
+    this.bezel.replaceChildren();
+    const [W] = this.size(), mpp = this.vb.w / W, rad = (d) => (d * Math.PI) / 180;
+    const at = (r, lon) => [r * Math.sin(rad(lon)), r * Math.cos(rad(lon))]; // map metres; 0° up, 90° E right
+    svgEl("circle", { r: RIM_M + (BEZEL_PX / 2) * mpp, class: "bezel-band", "stroke-width": BEZEL_PX }, this.bezel);
+    svgEl("circle", { r: RIM_M, class: "bezel-rim" }, this.bezel);
+    for (let lon = 0; lon < 360; lon += 10) {
+      const [x1, y1] = at(RIM_M, lon), [x2, y2] = at(RIM_M + (lon % 30 ? 6 : 12) * mpp, lon);
+      svgEl("line", { x1, y1: -y1, x2, y2: -y2, class: lon % 30 ? "bezel-tick" : "bezel-tick major" }, this.bezel);
+      if (lon % 30 === 0 && lon !== 0) { const [x, y] = at(RIM_M + 23 * mpp, lon); this.addLabel({ x, y, text: lonText(lon), cls: "bezel-label", a: "middle" }); }
     }
-    for (let lon = 0; lon < 360; lon += LON_STEP) {
-      const dx = Math.sin(rad(lon)), dy = Math.cos(rad(lon));
-      const tx = dx > 1e-9 ? box.xmax / dx : dx < -1e-9 ? box.xmin / dx : Infinity;
-      const ty = dy > 1e-9 ? box.ymax / dy : dy < -1e-9 ? box.ymin / dy : Infinity;
-      const t = Math.min(tx, ty);
-      if (t > 0 && Number.isFinite(t)) this.addLabel({ x: t * dx, y: t * dy, text: lonText(lon), cls: `lon-label${lon % 90 ? " minor" : ""}`, a: "middle" });
+    const [ex, ey] = at(RIM_M + 23 * mpp, 0);
+    this.addLabel({ x: ex, y: ey, html: '<i class="earth-dot" aria-hidden="true"></i>0° EARTH', cls: "earth-label", a: "middle" });
+    for (const lat of LAT_TICKS) {
+      const y = -rhoOf(lat); // map y of the 180° meridian at this latitude
+      svgEl("line", { x1: -4 * mpp, y1: -y, x2: 4 * mpp, y2: -y, class: "lat-tick" }, this.bezel);
+      this.addLabel({ x: 7 * mpp, y, text: `${-lat}°`, cls: "lat-label", a: "start" });
     }
   }
-  addLabel({ x, y, text, cls, a, id }) {
+  /**
+   * Place the region names so none covers a square, another name, the pole or the latitude labels (home only).
+   * Works in screen pixels: PINNED_LABELS first (fixed side), then the rest automatically, all LABEL_GAP_PX from their squares. For an
+   * automatic name, spots slide along all four sides of its square at growing distances and the closest clear one
+   * wins; several orders are tried (seeded shuffles, so the layout is stable) and the tightest layout is kept.
+   * A name more than 6 px from its square gets a leader line.
+   */
+  layoutRegionLabels() {
+    if (!this.regionLabels || this.mode !== "home") return;
+    const [W, H] = this.size(), st = this.stage.getBoundingClientRect();
+    const px = (x, y) => [((x - this.vb.x) / this.vb.w) * W, ((-y - this.vb.y) / this.vb.h) * H];
+    const [cx0, cy0] = px(0, 0), rimPx = (RIM_M / this.vb.w) * W;
+    const boxes = new Map(this.regions.map((r) => {
+      const b = bbox(r.xy), [x0, y0] = px(b.xmin, b.ymax), [x1, y1] = px(b.xmax, b.ymin);
+      return [r.id, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }];
+    }));
+    const allBoxes = [...boxes.values()];
+    const fixed = [{ x: cx0 - 5, y: cy0 - 5, w: 10, h: 10 }, ...[...this.labels.querySelectorAll(".lat-label")].map((l) => {
+      const r = l.getBoundingClientRect();
+      return { x: r.left - st.left, y: r.top - st.top, w: r.width, h: r.height };
+    })];
+    const hit = (a, b, pad = 2) => a.x < b.x + b.w + pad && b.x < a.x + a.w + pad && a.y < b.y + b.h + pad && b.y < a.y + a.h + pad;
+    const inside = (r) => [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]].every(([x, y]) => Math.hypot(x - cx0, y - cy0) < rimPx - 4);
+    const gap = (r, b) => Math.hypot(Math.max(0, b.x - (r.x + r.w), r.x - (b.x + b.w)), Math.max(0, b.y - (r.y + r.h), r.y - (b.y + b.h)));
+    const items = this.regions.map((r) => {
+      const el = this.regionLabels.get(r.id);
+      return { id: r.id, el, b: boxes.get(r.id), w: el.offsetWidth, h: el.offsetHeight, pin: PINNED.get(r.id) };
+    });
+    const spotFor = (L, placed) => {
+      const { b, w, h, pin } = L, cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+      let best = null, bestScore = Infinity;
+      // Every name sits LABEL_GAP_PX from its square; only an automatic name with no room there moves further out.
+      for (const d of pin ? [LABEL_GAP_PX] : [LABEL_GAP_PX, 8, 14, 22, 32, 46, 62]) {
+        const xs = [cx - w / 2], ys = [cy - h / 2]; // the centred spot first, then slides along the side
+        for (let x = b.x - w - 20; x <= b.x + b.w + 20; x += 1) xs.push(x);
+        for (let y = b.y - h + 3; y <= b.y + b.h - 3; y += 1) ys.push(y);
+        const cands = [];
+        for (const y of ys) cands.push([b.x + b.w + d, y, "right"], [b.x - d - w, y, "left"]);
+        for (const x of xs) cands.push([x, b.y - d - h, "above"], [x, b.y + b.h + d, "below"]);
+        for (const [x, y, side] of cands) {
+          if (pin && side !== pin.side) continue;
+          const r = { x, y, w, h };
+          if (!inside(r) || allBoxes.some((o) => hit(r, o)) || placed.some((o) => hit(r, o))) continue;
+          const g = gap(r, b), score = g + (g > 6 ? 6 : 0) + (pin ? 0.3 : 0.05) * Math.hypot(x + w / 2 - cx, y + h / 2 - cy);
+          if (score < bestScore) { bestScore = score; best = r; }
+        }
+        if (best) break; // the closest distance that fits
+      }
+      if (!best && pin) return { ...spotFor({ ...L, pin: null }, placed), unpinned: true }; // pinned side blocked: place automatically
+      return best ? { r: best, score: bestScore } : { r: { x: b.x + b.w + 3, y: cy - h / 2, w, h }, score: 1e4 };
+    };
+    const pinned = PINNED_LABELS.map(([id]) => items.find((L) => L.id === id)).filter(Boolean), auto = items.filter((L) => !L.pin);
+    // A pinned one-line name whose side has no room (e.g. Nobile Rim 1, boxed in by Nobile Rim 2's square) wraps to
+    // two lines before giving up its side. Checked against the pinned names placed before it.
+    const pre = [...fixed];
+    for (const L of pinned) {
+      setLines(L.el, !!L.pin.lines);
+      L.w = L.el.offsetWidth; L.h = L.el.offsetHeight;
+      let s = spotFor(L, pre);
+      if (s.unpinned && !L.pin.lines && L.el.textContent.includes(" ")) {
+        setLines(L.el, true);
+        const w1 = L.w, h1 = L.h;
+        L.w = L.el.offsetWidth; L.h = L.el.offsetHeight;
+        const s2 = spotFor(L, pre);
+        if (s2.unpinned) { setLines(L.el, false); L.w = w1; L.h = h1; } else s = s2;
+      }
+      pre.push(s.r);
+    }
+    const placeAll = (order) => {
+      const placed = [...fixed], at = new Map();
+      let cost = 0;
+      for (const L of [...pinned, ...order]) { const { r, score } = spotFor(L, placed); placed.push(r); at.set(L, r); cost += score; }
+      return { at, cost };
+    };
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    let best = placeAll(auto);
+    for (let k = 0; k < 40; k++) {
+      const order = [...auto];
+      for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+      const run = placeAll(order);
+      if (run.cost < best.cost) best = run;
+    }
+    const toMap = (x, y) => [this.vb.x + (x / W) * this.vb.w, -(this.vb.y + (y / H) * this.vb.h)];
+    this.leaders.replaceChildren();
+    for (const L of items) {
+      const r = best.at.get(L), b = L.b, [mx, my] = toMap(r.x, r.y);
+      L.el.dataset.x = mx; L.el.dataset.y = my;
+      const nx = Math.max(b.x, Math.min(r.x + r.w / 2, b.x + b.w)), ny = Math.max(b.y, Math.min(r.y + r.h / 2, b.y + b.h));
+      const lx = Math.max(r.x, Math.min(nx, r.x + r.w)), ly = Math.max(r.y, Math.min(ny, r.y + r.h));
+      if (Math.hypot(lx - nx, ly - ny) > 6) {
+        const [ax, ay] = toMap(nx, ny), [bx, by] = toMap(lx, ly);
+        svgEl("line", { x1: ax, y1: -ay, x2: bx, y2: -by, class: "leader" }, this.leaders);
+      }
+    }
+    this.placeLabels();
+  }
+  /** A label over the map at map point (x, y). `html` replaces `text`; `lines` splits a name onto two lines. */
+  addLabel({ x, y, text, html, cls, a, id, lines }) {
     const el = document.createElement(id ? "button" : "span");
     el.className = `map-label ${cls} anchor-${a}`;
-    el.textContent = text;
+    if (html) el.innerHTML = html;
+    else { el.textContent = text; if (lines) setLines(el, true); }
     el.dataset.x = x; el.dataset.y = y;
     if (id) { el.type = "button"; el.dataset.id = id; }
     this.labels.appendChild(el);
@@ -244,7 +356,7 @@ export class MapView {
   renderHomeCard() {
     this.filterBody.innerHTML = `
       <h2>Pick a Landing Region</h2>
-      <p class="hint">Pick one of the nine Artemis III regions to see its best Landing Sites.</p>
+      <p class="hint">Pick one of the nine Artemis IV regions to see its best Landing Sites.</p>
       <ol class="region-list">${this.regions.map((r) => {
         const [w, h] = sizeKm(r);
         return `<li><button type="button" data-id="${r.id}"><span>${r.name}${r.hasSiteData ? "" : ' <em class="soon">coming soon</em>'}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites</small></button></li>`;
@@ -269,6 +381,8 @@ export class MapView {
     this.back.hidden = false;
     this.userMoved = false;
     this.polys = null;
+    this.regionLabels = null;
+    this.bezel = null;
     this.svg.replaceChildren();
     this.labels.replaceChildren();
     this.svg.setAttribute("aria-label", `Map of ${r.name} with its 200 m landing site grid`);
@@ -380,7 +494,7 @@ export class MapView {
     this.renderCell(this.lastCell);
   }
   renderFilter(r, grid) {
-    this.dark = null;
+    this.noStay = null; // No-Full-Stay Days (UTC day starts), crossed out on the calendar
     if (!r.hasSiteData) { this.filterBody.innerHTML = `<p class="filter-note">Landing Times for ${r.name} are coming soon.</p>`; return; }
     const t = new Date(this.getLanding()), pad = (n) => String(n).padStart(2, "0");
     this.calMonth = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1);
@@ -397,8 +511,10 @@ export class MapView {
         <div class="cal-grid"></div>
       </div>
       <div class="cal-key">
-        <span><i class="k-dark"></i> Dark all day: no sunlight anywhere in the region</span>
-        <span class="cal-status">Checking for dark days…</span>
+        <span><i class="k-land"></i> Landing day (day 1)</span>
+        <span><i class="k-stay"></i> Days 2–7 of the surface stay</span>
+        <span><i class="k-nostay"></i> No full 7-day window anywhere in the region</span>
+        <span class="cal-status">Checking which days have a full 7-day window…</span>
       </div>
       <div class="time-pick">
         <label>Hour <input class="t-hour" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Landing hour, 00 to 23 (UTC)" placeholder="hh"></label>
@@ -408,13 +524,11 @@ export class MapView {
       </div>
       <p class="filter-note time-note">Minutes round to the nearest 10. ↑ / ↓ step the value.</p>
       <p class="filter-picked" aria-live="polite"></p>
-      <p class="dark-warn" role="note" hidden></p>
+      <p class="nostay-warn" role="note" hidden></p>
       <button type="button" class="filter-clear">Clear selection</button>
       <h2 class="side-h">Landing Slope</h2>
-      ${slopeLimitHtml(this.getSlopeLimit())}
-      <p class="filter-note">Sites at or over this slope are shaded and left out of the top 10.</p>`;
-    const limit = this.filterBody.querySelector(".slope-limit select");
-    limit.addEventListener("change", () => { this.setSlopeLimit(slopeLimitOf(limit)); if (this.picked) this.loadTopTen(r, grid); });
+      ${slopeLimitHtml(this.getSlopeLimit())}`;
+    bindSlopeLimit(this.filterBody, (limit) => { this.setSlopeLimit(limit); if (this.picked) this.loadTopTen(r, grid); });
 
     // Typed hour and minute: digits only; on Enter, blur or ↑/↓ the value is clamped (minutes to the 10-minute grid).
     const hour = this.filterBody.querySelector(".t-hour"), min = this.filterBody.querySelector(".t-min");
@@ -472,17 +586,18 @@ export class MapView {
     });
     this.drawCalendar();
     const status = (text) => { const st = this.filterBody.querySelector(".cal-status"); if (st) st.textContent = text; };
-    darkDays(r.id).then((days) => {
+    noFullStayDays(r.id, (f) => { if (this.region === r) status(`Checking which days have a full 7-day window… ${Math.round(f * 100)} %`); }).then((days) => {
       if (this.region !== r) return;
-      this.dark = new Set(days);
-      status(days.length ? `${days.length} dark ${days.length === 1 ? "day" : "days"} in the year, shown in black` : "No fully dark days in the year");
+      this.noStay = new Set(days);
+      status(days.length ? `${days.length} ${days.length === 1 ? "day has" : "days have"} no full 7-day window, crossed out` : "Every day has a full 7-day window somewhere");
       this.drawCalendar();
-    }).catch((err) => { console.error(err); status("Couldn't check for dark days"); });
+    }).catch((err) => { console.error(err); status("Couldn't check the 7-day windows"); });
   }
   /**
    * The calendar, in one of three views like a desktop clock: days of a month, the months of a year, or the years.
    * Clicking the title goes up a level; picking a month or year goes back down. Days outside the Supported Span
-   * can't be picked; fully dark days are black but can be, with a warning.
+   * can't be picked. No-Full-Stay Days are black and crossed out but can still be picked, with a warning.
+   * The chosen Surface Stay is lit up: the landing day in amber ("LAND"), days 2–7 as one teal band across rows.
    */
   drawCalendar() {
     const gridEl = this.filterBody.querySelector(".cal-grid");
@@ -505,10 +620,15 @@ export class MapView {
       const lead = (m.getUTCDay() + 6) % 7, nDays = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
       html = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<span class="cal-dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
       for (let d = 1; d <= nDays; d++) {
-        const day = Date.UTC(y, mo, d), out = day < SPAN_START || day >= SPAN_END, dark = !out && !!this.dark?.has(day), sel = day === chosenDay;
-        const why = out ? "Outside the supported year" : dark ? "Dark all day: no sunlight anywhere in the region (you can still pick it)" : "";
+        const day = Date.UTC(y, mo, d), out = day < SPAN_START || day >= SPAN_END, nostay = !out && !!this.noStay?.has(day), sel = day === chosenDay;
+        const n = chosen ? Math.round((day - chosenDay) / DAY_MS) + 1 : 0, stay = n >= 2 && n <= 7; // day n of the stay
+        const col = (lead + d - 1) % 7;
+        const cls = ["cal-day", nostay && "nostay", sel && "sel", stay && "stay",
+          (sel || stay) && (n === 7 || col === 6 || d === nDays) && "band-end", stay && col === 0 && "band-start"].filter(Boolean).join(" ");
+        const why = out ? "Outside the supported year"
+          : [sel && "Landing day", stay && `Day ${n} of the stay`, nostay && "No site in the region has a full 7-day window starting this day"].filter(Boolean).join(". ");
         const label = fmt(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-        html += `<button type="button" class="cal-day${dark ? " dark" : ""}${sel ? " sel" : ""}" data-day="${day}"${out ? " disabled" : ""}`
+        html += `<button type="button" class="${cls}" data-day="${day}"${stay ? ` data-n="${n}"` : ""}${out ? " disabled" : ""}`
           + ` aria-label="${label}${why ? `, ${why}` : ""}" title="${why || label}" aria-pressed="${sel}">${d}</button>`;
       }
     } else if (this.calView === "months") {
@@ -549,11 +669,10 @@ export class MapView {
       ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 16)} UTC</b>`
       : "No date chosen yet";
     this.filterBody.querySelector(".filter-clear").disabled = !this.picked;
-    const warn = this.filterBody.querySelector(".dark-warn");
-    warn.hidden = !(chosen && this.dark?.has(chosenDay));
-    if (!warn.hidden) warn.innerHTML = `<b>Warning: dark day.</b> On this day the Sun stays below the local terrain horizon (Sun Clearance ≤ 0°) `
-      + `at every site in the region, all day: the whole region is in shadow. A crew landing now would start with no direct sunlight `
-      + `for solar power or lighting until the Sun clears the horizon. Check the coverage colours and the top 10 for later in the stay.`;
+    const warn = this.filterBody.querySelector(".nostay-warn");
+    warn.hidden = !(chosen && this.noStay?.has(chosenDay));
+    if (!warn.hidden) warn.innerHTML = `<b>No full 7-day window.</b> No site in this region keeps the Sun and Earth in view for a whole `
+      + `7-day stay starting on this day, at any landing time. The coverage colours and the top 10 show the best partial options.`;
   }
 
   /** Rank every site for the shared Landing Time and draw the top 10 (team science port, in a worker). */
@@ -747,6 +866,19 @@ export function setBreadcrumbs(nav, items, { back: withBack = true } = {}) {
     const n = it.go ? Object.assign(document.createElement("button"), { type: "button", textContent: it.text, onclick: it.go }) : Object.assign(document.createElement("span"), { textContent: it.text });
     return i ? [Object.assign(document.createElement("span"), { className: "sep", textContent: "›" }), n] : [n];
   }));
+}
+
+/** Show a label's text on one line, or on two when `two` is true (split where the lines come out most even). */
+function setLines(el, two) {
+  const text = el.dataset.text ?? (el.dataset.text = el.textContent);
+  const w = text.split(" ");
+  if (!two || w.length < 2) { el.textContent = text; return; }
+  let k = 1;
+  for (let i = 2; i < w.length; i++) {
+    const len = (j) => Math.max(w.slice(0, j).join(" ").length, w.slice(j).join(" ").length);
+    if (len(i) < len(k)) k = i;
+  }
+  el.replaceChildren(w.slice(0, k).join(" "), document.createElement("br"), w.slice(k).join(" "));
 }
 
 export { xyToLL };

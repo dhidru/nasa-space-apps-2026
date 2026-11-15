@@ -4,8 +4,7 @@ import { TOP_N, TOP_SEPARATION_M, type RankingEntry } from "../science/results";
 import { selectTop } from "../science/scoring";
 import { shareLabel } from "./coverage";
 
-/** The choices for the top-10 slope limit, in degrees: NASA's landing limit (HLS25 slide 21) and its 8° contour (slide 23). */
-export const SLOPE_LIMITS_DEG = [10, 8] as const;
+/** The top-10 slope limit to start with, in degrees: NASA's landing limit (HLS25 slide 21). The UI slider runs 0–20°. */
 export const DEFAULT_SLOPE_LIMIT_DEG = 10;
 
 /** Tooltip wherever Landing Slope is shown (GLOSSARY.md). */

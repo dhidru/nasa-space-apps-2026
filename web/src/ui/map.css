@@ -37,14 +37,18 @@
 .map-reset { position: absolute; z-index: 3; right: 12px; top: 12px; font-size: 12px; padding: 6px 10px; background: rgba(14,16,21,.85); }
 .map-zoomhint { position: absolute; z-index: 3; left: 50%; top: 12px; transform: translateX(-50%); margin: 0; padding: 6px 10px; border-radius: 4px; background: rgba(14,16,21,.85); border: 1px solid var(--line); font-size: 12px; color: var(--muted); pointer-events: none; }
 
-.graticule circle, .graticule line { fill: none; vector-effect: non-scaling-stroke; pointer-events: none; }
-.graticule .halo { stroke: rgba(0,0,0,.5); stroke-width: 3; }
-.graticule .ln { stroke: rgba(255,255,255,.88); stroke-width: 1.4; stroke-dasharray: 10 7; }
-.graticule .halo.minor { stroke: rgba(0,0,0,.45); stroke-width: 3; }
-.graticule .ln.minor { stroke: rgba(255,255,255,.7); stroke-width: 1.2; }
+/* Home map bezel: a dark ring outside 80° S carrying the longitude scale, so no grid lines cross the terrain. */
+.bezel circle, .bezel line, .leaders line { fill: none; vector-effect: non-scaling-stroke; pointer-events: none; }
+.bezel-band { stroke: rgba(10,11,14,.92); } /* stroke-width (px) set in drawBezel */
+.bezel-rim { stroke: rgba(255,255,255,.35); stroke-width: 1; }
+.bezel-tick { stroke: #cfcac0; stroke-width: .8; }
+.bezel-tick.major { stroke-width: 1.6; }
+.lat-tick { stroke: #fff; stroke-width: 1.4; }
+.leader { stroke: rgba(255,255,255,.85); stroke-width: 1; }
 .pole { fill: var(--fg); }
-.region { fill: rgba(242,184,75,.12); stroke: var(--sun); stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .12s; }
-.region.hover, .region:focus-visible { fill: rgba(242,184,75,.38); stroke-width: 2.5; outline: none; }
+.region { fill: rgba(242,184,75,.32); stroke: var(--sun); stroke-width: 2.4; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .12s;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.7)); }
+.region.hover, .region:focus-visible { fill: rgba(242,184,75,.5); stroke-width: 3; outline: none; }
 .region-outline { fill: none; stroke: var(--sun); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 .mask { fill: rgba(5,6,8,.55); pointer-events: none; }
 .grid { fill: none; stroke: rgba(231,228,220,.9); stroke-width: .6; vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -55,12 +59,18 @@
 .map-label { position: absolute; white-space: nowrap; transform: translate(-50%, -50%); font: 12px var(--f-ui); color: var(--muted); text-shadow: 0 0 3px #000, 0 0 6px #000; }
 .map-label.anchor-start { transform: translate(0, -50%); }
 .map-label.anchor-end { transform: translate(-100%, -50%); }
-.region-label { pointer-events: auto; cursor: pointer; background: rgba(7,8,11,.72); border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; font-weight: 600; font-size: 12.5px; color: var(--fg); text-shadow: none; }
-.region-label.hover { border-color: var(--sun); color: var(--sun-ink); background: var(--sun); }
-.pole-label { font-size: 11px; }
-.lat-label, .lon-label { font: 700 13.5px var(--f-mono); color: #fff; background: rgba(7,8,11,.85); border: 1px solid rgba(255,255,255,.35); padding: 2px 7px; border-radius: 4px; text-shadow: none; }
-.lat-label { color: var(--sun); border-color: rgba(242,184,75,.55); }
-.pole-label { font-weight: 700; color: var(--fg); }
+.map-label.anchor-tl { transform: none; }
+/* Region names: plain white text on a dark halo (no box), placed beside their square by layoutRegionLabels. */
+.region-label { pointer-events: auto; cursor: pointer; background: none; border: 0; border-radius: 3px; padding: 0 2px; font: 600 13px/1.15 var(--f-ui);
+  color: #fff; text-align: center; text-shadow: 0 0 2px #000, 0 0 3px #000, 0 0 6px rgba(0,0,0,.9); }
+.region-label.hover, .region-label:focus-visible { color: var(--sun); outline: none; }
+.bezel-label { font: 10.5px var(--f-mono); color: #cfcac0; text-shadow: none; }
+.earth-label { font: 700 11px var(--f-mono); color: #8ec9ff; text-shadow: none; letter-spacing: .04em; }
+.earth-dot { display: inline-block; width: 9px; height: 9px; margin-right: 5px; vertical-align: -1px; border-radius: 50%; background: #3d7dd8; box-shadow: 0 0 0 1px #8ec9ff; }
+.lat-label { font: 600 10.5px var(--f-mono); color: #fff; text-shadow: 0 0 2px #000, 0 0 4px #000; }
+.map-earth-note { position: absolute; z-index: 3; left: 12px; top: 10px; margin: 0; font-size: 12.5px; line-height: 1.35; color: #cfcac0; pointer-events: none; display: none; }
+.map-earth-note span { color: var(--muted); }
+.mapview.home .map-earth-note { display: block; }
 .map-cursor-ll { position: absolute; z-index: 3; left: 12px; bottom: 12px; margin: 0; padding: 5px 10px; border-radius: 4px; pointer-events: none;
   background: rgba(14,16,21,.88); border: 1px solid var(--line); font: 600 13px var(--f-mono); color: var(--fg); font-variant-numeric: tabular-nums; }
 
@@ -79,6 +89,11 @@
   .map-stage { order: -1; }
   .map-side { border-right: 0; border-top: 1px solid var(--line); }
   .map-card { border-left: 0; border-top: 1px solid var(--line); }
+  /* home: a square map, so the polar cap is big enough for the region names to sit beside their squares */
+  .mapview.home .map-body { grid-template-rows: auto auto; }
+  .mapview.home .map-stage { height: min(100vw, 640px); }
+  .mapview.home .map-earth-note { font-size: 11px; }
+  .region-label { font-size: 11.5px; }
 }
 
 /* top 10 on the region map */
@@ -91,7 +106,6 @@
 .steep { fill: url(#steep-hatch); stroke: none; shape-rendering: crispEdges; }
 .steep-hatch line { stroke: rgba(8, 9, 12, .8); stroke-width: 34; }
 .map-top .top-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
-.map-top .slope-limit select { padding: 1px 6px; }
 /* Outline only: the heatmap underneath already gives the colour, so the terrain stays visible inside the top 10. */
 .top-cell { fill-opacity: 0; stroke: #fff !important; stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
 .map-label.top-label { font: 600 11px var(--f-mono); color: #fff; background: rgba(14,16,21,.85); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; cursor: pointer; }
@@ -103,7 +117,6 @@
 .map-top .top-list, .map-top .top-head { --top-cols: 18px 10px 66px 50px 38px 40px 36px; }
 .map-top .top-list button, .map-top .top-head { gap: 6px; }
 .map-top .top-head > span:nth-child(4), .map-top .top-list .lb { display: none; }
-.map-top .slope-limit select { font-size: 11.5px; }
 .cell-read dd.placeholder { color: var(--faint); font: 11.5px var(--f-ui); }
 .map-top .top-list { padding: 0; }
 .map-top .top-head { padding: 0 9px; } /* button padding + border, with no list padding */
@@ -131,10 +144,15 @@
 .map-back:hover, .map-back:focus-visible { opacity: 1; color: var(--fg); border-color: var(--sun); background: var(--sun-dim); }
 .side-body { display: grid; gap: 10px; align-content: start; }
 .side-body .side-h { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
-.side-body .slope-limit { font-size: 13px; }
-.side-body .slope-limit select { font: 600 15px var(--f-ui); padding: 7px 8px; }
+.side-body .slope-ctl { font-size: 13px; }
 .side-body .region-list button { padding: 10px 12px; font-size: 15px; }
 .side-body .region-list button small { font-size: 12.5px; }
+/* home: the region picker is the page's main control, so its text is large */
+.mapview.home .side-body h2 { font: 700 26px/1.2 var(--f-head); }
+.mapview.home .side-body .hint { font-size: 16px; line-height: 1.45; color: #c9c6bf; }
+.mapview.home .side-body .region-list button { padding: 9px 12px; font-size: 19px; font-weight: 600; }
+.mapview.home .side-body .region-list button small { font-size: 14px; font-weight: 400; }
+.mapview.home .side-body .region-list .soon { font-size: 11px; }
 .filter-note { margin: 0; font-size: 14px; color: var(--muted); }
 .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
 .cal-title { flex: 1; padding: 6px 8px; font: 700 15px var(--f-ui); background: transparent; border-color: transparent; }
@@ -150,18 +168,32 @@
 .cal-nav { padding: 2px 12px; font-size: 20px; line-height: 1.2; }
 .cal-nav:disabled { opacity: .3; cursor: default; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-grid.view-days { column-gap: 0; row-gap: 4px; } /* no column gap, so the stay band runs unbroken across a row */
 .cal-dow { text-align: center; font-size: 12.5px; font-weight: 600; color: var(--muted); padding-bottom: 2px; }
-.cal-day { aspect-ratio: 1; padding: 0; font: 600 14px var(--f-ui); font-variant-numeric: tabular-nums; border-radius: 6px; background: #1a1e26; border-color: var(--line); }
+.cal-day { position: relative; aspect-ratio: 1; margin: 0 1.5px; padding: 0; font: 600 14px var(--f-ui); font-variant-numeric: tabular-nums; border-radius: 6px; background: #1a1e26; border-color: var(--line); }
 .cal-day:hover:not(:disabled) { border-color: var(--sun); color: var(--sun); }
 .cal-day.sel { background: var(--sun); border-color: var(--sun); color: var(--sun-ink); }
 .cal-day:disabled { cursor: not-allowed; background: transparent; border-color: transparent; color: var(--faint); opacity: .45; }
-.cal-day.dark { background: #000; border-color: #000; color: #6a6f79; text-decoration: line-through; }
-.cal-day.dark:hover { border-color: var(--dusk); color: var(--dusk); }
-.cal-day.dark.sel { background: #000; border-color: var(--sun); color: var(--sun); box-shadow: inset 0 0 0 1px var(--sun); }
-.dark-warn { margin: 0; padding: 9px 11px; border: 1px solid var(--dusk); border-left-width: 4px; border-radius: 6px; background: var(--dusk-dim); font-size: 14px; line-height: 1.4; color: var(--fg); }
-.dark-warn b { color: var(--dusk); }
-.cal-key { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
-.cal-key i { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; border-radius: 3px; background: #000; border: 1px solid var(--line-strong); }
+/* No-Full-Stay Day: black and crossed out, still clickable */
+.cal-day.nostay { background: #000; border-color: #000; color: #5f646e; text-decoration: line-through; }
+.cal-day.nostay:hover { border-color: var(--dusk); color: var(--dusk); }
+/* The chosen Surface Stay: landing day amber with "LAND", days 2-7 one teal band (numbered), wrapping across rows */
+.cal-day.sel::after { content: "LAND"; position: absolute; left: 0; right: 0; bottom: 2px; font-size: 8px; font-weight: 800; letter-spacing: .06em; text-decoration: none; }
+.cal-day.sel:not(.band-end) { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.cal-day.stay { margin: 0; border-radius: 0; background: var(--stay-dim); border-color: var(--stay); border-left-color: transparent; border-right-color: transparent; color: #dff5f2; }
+.cal-day.stay::after { content: attr(data-n); position: absolute; right: 3px; top: 1px; font-size: 9px; font-weight: 700; color: var(--stay); }
+.cal-day.stay.band-start { margin-left: 1.5px; border-left-color: var(--stay); border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+.cal-day.stay.band-end { margin-right: 1.5px; border-right-color: var(--stay); border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
+.cal-day.stay:hover { color: var(--sun); }
+.cal-day.stay.nostay { background: rgba(63,167,160,.12); color: #6f8f8b; }
+.cal-day.sel.nostay { background: #8a6a2a; border-color: #8a6a2a; color: var(--sun-ink); }
+.nostay-warn { margin: 0; padding: 9px 11px; border: 1px solid var(--dusk); border-left-width: 4px; border-radius: 6px; background: var(--dusk-dim); font-size: 14px; line-height: 1.4; color: var(--fg); }
+.nostay-warn b { color: var(--dusk); }
+.cal-key { display: grid; gap: 3px; font-size: 13px; color: var(--muted); }
+.cal-key i { display: inline-block; width: 14px; height: 12px; vertical-align: -1px; margin-right: 6px; border-radius: 3px; }
+.cal-key .k-land { background: var(--sun); }
+.cal-key .k-stay { background: var(--stay-dim); box-shadow: inset 0 0 0 1.5px var(--stay); }
+.cal-key .k-nostay { background: #000; border: 1px solid var(--line-strong); }
 .time-pick { display: flex; align-items: flex-end; gap: 6px; }
 .time-pick label { font-size: 12.5px; flex: 1; }
 .time-pick input { font: 600 18px var(--f-mono); font-variant-numeric: tabular-nums; padding: 8px 10px; text-align: center; letter-spacing: .05em; }
@@ -174,6 +206,3 @@
 .filter-clear:disabled { opacity: .4; cursor: default; }
 .pick-prompt { margin: 0; padding: 10px 12px; border: 1px dashed var(--line-strong); border-radius: 6px; font-size: 14px; color: var(--muted); }
 .pick-prompt b { color: var(--sun); }
-/* small maps: keep only the 0°/90°/180°/270° meridian labels and drop the parallel labels so nothing overlaps */
-@container (max-width: 900px) { .lon-label.minor { display: none; } }
-@container (max-width: 520px) { .lat-label { display: none; } }

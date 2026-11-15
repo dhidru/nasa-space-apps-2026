@@ -8,7 +8,7 @@ import { science } from "../science/client.ts";
 export { snapLandingTime, formatUtc, parseUtc, compactUtc, SPAN_START, SPAN_END, STAY_STEPS, STEP_MS, STEP_S, HOUR_MS, DAY_MS } from "../science/time.ts";
 export { coverageLabel, coverageColor, pct, robustnessLabel, ROBUSTNESS_TITLE, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb, SUN_COLOR, EARTH_COLOR, LOS_COLOR, BLOCKED_COLOR } from "../app/coverage.ts";
 export { DEFAULT_LANDING, parseRoute, formatRoute } from "../app/route.ts";
-export { slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, SLOPE_LIMITS_DEG, DEFAULT_SLOPE_LIMIT_DEG } from "../app/slope.ts";
+export { slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG } from "../app/slope.ts";
 import { topWithinSlope } from "../app/slope.ts";
 
 function lru(map, key, make, limit) {
@@ -57,3 +57,10 @@ export const windows = (regionId, siteId) => lru(windowsCache, `${regionId}|${si
 const darkCache = new Map();
 /** Start (UTC ms) of each fully dark day of the Supported Span for a region (no site sees the Sun all day). */
 export const darkDays = (regionId) => lru(darkCache, regionId, () => science.darkDays(regionId), 4);
+
+const noStayCache = new Map();
+/**
+ * Start (UTC ms) of each No-Full-Stay Day for a region: no Landing Time that day gives any site Full Coverage.
+ * `progress` (0–1) is only called for the request that starts the work.
+ */
+export const noFullStayDays = (regionId, progress) => lru(noStayCache, regionId, () => science.noFullStayDays(regionId, progress), 4);

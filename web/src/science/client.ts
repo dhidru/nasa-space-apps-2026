@@ -49,6 +49,11 @@ class ScienceClient {
   darkDays(regionId: string): Promise<number[]> {
     return this.call({ type: "darkDays", regionId });
   }
+
+  /** Start (UTC ms) of each day in the Supported Span with no Full Coverage Landing Time at any site (src/science/fullstay.ts). */
+  noFullStayDays(regionId: string, progress?: (f: number) => void): Promise<number[]> {
+    return this.call({ type: "noFullStayDays", regionId }, progress);
+  }
 }
 
 export const science = new ScienceClient();
