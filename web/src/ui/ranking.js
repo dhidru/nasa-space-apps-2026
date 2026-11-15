@@ -53,3 +53,7 @@ export const detail = (regionId, landing, siteId) =>
 const windowsCache = new Map();
 /** Landing Windows for a site over the whole Supported Span (data-contract §7.3). */
 export const windows = (regionId, siteId) => lru(windowsCache, `${regionId}|${siteId}`, () => science.windows(regionId, siteId), 8);
+
+const darkCache = new Map();
+/** Start (UTC ms) of each fully dark day of the Supported Span for a region (no site sees the Sun all day). */
+export const darkDays = (regionId) => lru(darkCache, regionId, () => science.darkDays(regionId), 4);

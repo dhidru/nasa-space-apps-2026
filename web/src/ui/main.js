@@ -559,6 +559,7 @@ async function boot() {
     onHome: () => go("#"),
     demFor,
   });
+  mapView.picked = /[?&]t=/.test(location.hash); // a shared link names its Landing Time
   dataReady = MoonData.load(BASE).then((d) => { data = d; return d; });
   dataReady.catch((e) => { console.error(e); el.loading.hidden = false; el.loading.textContent = `Couldn't load the 3D terrain: ${e?.message ?? e}`; });
   el.loading.hidden = true;

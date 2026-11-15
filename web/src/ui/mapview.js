@@ -7,7 +7,7 @@ import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
 import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
 import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
-import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
+import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, darkDays, SPAN_START, SPAN_END, DAY_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}, parent) => {
@@ -29,7 +29,14 @@ const LABELS = {
   "de-gerlache-rim-2": { x: -64000, y: 23000, a: "end" },
   "slater-plain": { x: 86000, y: -50000, a: "start" },
 };
-const LAT_RINGS = [-80, -85, -88]; // dashed parallels for orientation
+const LAT_RINGS = [-80, -82, -84, -86, -88, -89]; // dashed parallels for orientation
+const LON_STEP = 30; // meridians every 30°
+const lonText = (lon) => (lon === 0 ? "0° · toward Earth" : lon === 180 ? "180°" : lon < 180 ? `${lon}° E` : `${360 - lon}° W`);
+/** "84.12° S, 35.40° E" for a map point. */
+export function llText(x, y) {
+  const [lat, lon] = xyToLL(x, y);
+  return `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "W" : "E"}`;
+}
 
 export class MapView {
   /**
@@ -49,6 +56,14 @@ export class MapView {
     this.card = root.querySelector(".map-card");
     this.crumbs = root.querySelector(".map-crumbs");
     this.zoomHint = root.querySelector(".map-zoomhint");
+    this.cursorLL = root.querySelector(".map-cursor-ll");
+    this.reset = root.querySelector(".map-reset");
+    this.homeTitle = root.querySelector(".map-title");
+    this.filter = root.querySelector(".map-filter");
+    this.filterBody = this.filter.querySelector(".filter-body");
+    this.filter.querySelector(".map-back").addEventListener("click", () => this.onHome());
+    /** Whether the user has chosen a Landing Time on the region map; until then the sites aren't coloured. */
+    this.picked = false;
     this.vb = { x: 0, y: 0, w: 1, h: 1 };
     this.mode = null;
     this.bindPanZoom();
@@ -59,11 +74,13 @@ export class MapView {
   size() { const r = this.stage.getBoundingClientRect(); return [Math.max(1, r.width), Math.max(1, r.height)]; }
   fit(b, pad = 0.06) {
     const [W, H] = this.size();
+    // Keep the box clear of the filter pane on the left (wide screens only; on phones it overlaps anyway).
+    const inset = this.mode === "region" && !this.filter.hidden && W > 760 ? this.filter.offsetWidth + 12 : 0, Wu = W - inset;
     let w = (b.xmax - b.xmin) * (1 + 2 * pad), h = (b.ymax - b.ymin) * (1 + 2 * pad);
-    if (w / h > W / H) h = (w * H) / W; else w = (h * W) / H;
-    const cx = (b.xmin + b.xmax) / 2, cy = (b.ymin + b.ymax) / 2;
+    if (w / h > Wu / H) h = (w * H) / Wu; else w = (h * Wu) / H;
+    const cx = (b.xmin + b.xmax) / 2, cy = (b.ymin + b.ymax) / 2, mpp = w / Wu;
     this.fitBox = b;
-    this.setVB({ x: cx - w / 2, y: -cy - h / 2, w, h });
+    this.setVB({ x: cx - (inset + Wu / 2) * mpp, y: -cy - h / 2, w: W * mpp, h });
   }
   refit() {
     if (this.flight) { if (this.flight.done) this.setVB(this.flightVB()); return; } // hold the hand-off frame; the zoom re-measures each step
@@ -87,7 +104,7 @@ export class MapView {
     let drag = null;
     this.svg.addEventListener("wheel", (e) => {
       e.preventDefault();
-      if (this.flight) return;
+      if (this.flight || this.mode === "home") return; // the home map is fixed
       const [mx, my] = this.toMap(e), f = Math.exp(e.deltaY * 0.0015);
       const vb = this.vb, w = Math.min(Math.max(vb.w * f, 2000), 700000);
       const k = w / vb.w;
@@ -98,7 +115,7 @@ export class MapView {
     this.svg.addEventListener("pointermove", (e) => {
       if (drag) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-        if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; this.svg.setPointerCapture(drag.id); } // capture only once it is a drag
+        if (!drag.moved && this.mode !== "home" && Math.hypot(dx, dy) > 4) { drag.moved = true; this.svg.setPointerCapture(drag.id); } // capture only once it is a drag
         if (drag.moved) {
           const r = this.svg.getBoundingClientRect(), s = drag.vb.w / r.width;
           this.userMoved = true;
@@ -106,14 +123,23 @@ export class MapView {
           return;
         }
       }
+      this.showCursorLL(e);
       this.onMove && this.onMove(e);
     });
     this.svg.addEventListener("pointerup", (e) => {
       const was = drag; drag = null;
       if (was && !was.moved) this.onClick && this.onClick(e, was);
     });
-    this.svg.addEventListener("pointerleave", () => this.onLeave && this.onLeave());
+    this.svg.addEventListener("pointerleave", () => { this.cursorLL.hidden = true; this.onLeave && this.onLeave(); });
     this.root.querySelector(".map-reset").addEventListener("click", () => { if (this.flight) return; this.userMoved = false; this.fit(this.fitBox); });
+  }
+
+  /** Latitude and longitude under the pointer, in the bottom-left corner of the map. */
+  showCursorLL(e) {
+    if (this.flight) { this.cursorLL.hidden = true; return; }
+    const [x, y] = this.toMap(e);
+    this.cursorLL.textContent = llText(x, y);
+    this.cursorLL.hidden = false;
   }
 
   /* ---------- labels ---------- */
@@ -131,24 +157,36 @@ export class MapView {
     this.endFlight();
     this.mode = "home";
     this.userMoved = false;
+    this.filter.hidden = true;
     this.svg.replaceChildren();
     this.labels.replaceChildren();
     this.svg.setAttribute("aria-label", "Map of the lunar south pole with the nine Artemis III candidate regions");
     const h = this.homeBasemap, [x0, y0, x1, y1] = h.extent_m;
     svgEl("image", { href: h.href, x: x0, y: -y1, width: x1 - x0, height: y1 - y0, preserveAspectRatio: "none", class: "map-img" }, this.svg);
+    const all = this.regions.map((r) => bbox(r.xy));
+    const box = { xmin: Math.min(...all.map((b) => b.xmin)) - 60000, // room for the "Peak near Cabeus B" label
+       xmax: Math.max(...all.map((b) => b.xmax)) + 25000, ymin: Math.min(...all.map((b) => b.ymin)) - 15000, ymax: Math.max(...all.map((b) => b.ymax)) + 15000 };
+    const inBox = (x, y) => x > box.xmin && x < box.xmax && y > box.ymin && y < box.ymax;
+    // Graticule: dashed parallels and meridians, labelled where they cross into the framed area.
     const g = svgEl("g", { class: "graticule" }, this.svg);
     for (const lat of LAT_RINGS) {
       const rho = 2 * 1737400 * Math.tan(Math.PI / 4 + (lat * Math.PI) / 360);
       svgEl("circle", { cx: 0, cy: 0, r: rho }, g);
-      this.addLabel({ x: rho * Math.SQRT1_2, y: -rho * Math.SQRT1_2, text: `${-lat}° S`, cls: "lat-label", a: "start" });
+      // label on the first of these bearings (between meridians) that falls inside the framed area
+      const at = [15, 345, 45, 315, 75, 285, 105, 255, 135, 225, 165, 195].map((d) => [rho * Math.sin((d * Math.PI) / 180), rho * Math.cos((d * Math.PI) / 180)]).find(([x, y]) => inBox(x, y));
+      if (at) this.addLabel({ x: at[0], y: at[1], text: `${-lat}° S`, cls: "lat-label", a: "middle" });
     }
-    for (const lon of [0, 90, 180, 270]) {
-      const a = (lon * Math.PI) / 180, r = 304000;
-      svgEl("line", { x1: 0, y1: 0, x2: r * Math.sin(a), y2: -r * Math.cos(a) }, g);
+    for (let lon = 0; lon < 360; lon += LON_STEP) {
+      const a = (lon * Math.PI) / 180, dx = Math.sin(a), dy = Math.cos(a), r = 400000;
+      svgEl("line", { x1: 0, y1: 0, x2: r * dx, y2: -r * dy, class: lon % 90 ? "minor" : "" }, g);
+      // label just inside the framed box, where the meridian leaves it
+      const tx = dx > 1e-9 ? box.xmax / dx : dx < -1e-9 ? box.xmin / dx : Infinity;
+      const ty = dy > 1e-9 ? box.ymax / dy : dy < -1e-9 ? box.ymin / dy : Infinity;
+      const t = Math.min(tx, ty) * 0.93;
+      this.addLabel({ x: t * dx, y: t * dy, text: lonText(lon), cls: `lon-label${lon % 90 ? " minor" : ""}`, a: "middle" });
     }
     svgEl("circle", { cx: 0, cy: 0, r: 2500, class: "pole" }, this.svg);
-    this.addLabel({ x: 0, y: -9000, text: "South Pole", cls: "pole-label", a: "middle" });
-    this.addLabel({ x: 0, y: 236000, text: "0° (toward Earth)", cls: "lat-label", a: "middle" });
+    this.addLabel({ x: 0, y: -9000, text: "South Pole · 90° S", cls: "pole-label", a: "middle" });
 
     this.polys = {};
     for (const r of this.regions) {
@@ -168,9 +206,10 @@ export class MapView {
     this.onLeave = () => this.hover(null);
     this.onClick = (e, press) => { const id = (press && press.region) || this.hovered; if (id) this.onRegion(id); };
 
-    const all = this.regions.map((r) => bbox(r.xy));
-    this.fit({ xmin: Math.min(...all.map((b) => b.xmin)) - 25000, xmax: Math.max(...all.map((b) => b.xmax)) + 25000, ymin: Math.min(...all.map((b) => b.ymin)) - 15000, ymax: Math.max(...all.map((b) => b.ymax)) + 15000 }, 0.04);
+    this.fit(box, 0.04);
     this.zoomHint.hidden = true;
+    this.reset.hidden = true; // nothing to reset: the home map doesn't zoom or pan
+    this.homeTitle.hidden = false;
     this.setCrumbs([{ text: "Lunar south pole" }]);
     this.renderHomeCard();
   }
@@ -212,6 +251,8 @@ export class MapView {
     this.endFlight();
     this.mode = "region";
     this.region = r;
+    this.reset.hidden = false;
+    this.homeTitle.hidden = true;
     this.userMoved = false;
     this.polys = null;
     this.svg.replaceChildren();
@@ -242,15 +283,16 @@ export class MapView {
     this.rankData = null;
     this.topIds = new Set();
 
-    this.fit({ xmin: e.xmin, xmax: e.xmax, ymin: e.ymin, ymax: e.ymax }, 0.05);
-    this.setCrumbs([{ text: "Lunar south pole", go: () => this.onHome() }, { text: r.name }]);
+    this.renderFilter(r, grid);
     this.renderRegionCard(r, grid, bm);
+    this.fit({ xmin: e.xmin, xmax: e.xmax, ymin: e.ymin, ymax: e.ymax }, 0.05);
+    this.setCrumbs([{ text: "Lunar south pole", go: () => this.onHome() }, { text: r.name }], { back: false });
     if (selectedCell) this.markCell(grid.byId(selectedCell), this.selRect);
 
     this.dem = null;
     this.demFor(id).then((dem) => { if (this.region === r) { this.dem = dem; this.renderCell(this.lastCell); } }).catch((err) => console.error(err));
     if (r.hasSiteData) this.teamSites(id).then((t) => { if (this.region === r) { this.teamSiteData = t; this.renderCell(this.lastCell); } }).catch((err) => console.error(err));
-    if (r.hasSiteData) this.loadTopTen(r, grid);
+    if (r.hasSiteData && this.picked) this.loadTopTen(r, grid);
 
     this.onMove = (ev) => {
       if (this.flying) return;
@@ -289,19 +331,8 @@ export class MapView {
         ${r.hasSiteData ? `<dt title="${ROBUSTNESS_TITLE}">Timing</dt><dd data-k="robust">—</dd><dt title="${WALKABLE_TITLE}">EVA walk</dt><dd data-k="walk">—</dd><dt class="wide">Rank</dt><dd class="wide" data-k="rank">—</dd>` : ""}
       </dl>
       ${r.hasSiteData ? `
-      <section class="map-top">
-        <span class="landing-head">Landing Time <span class="unit">UTC · 7-day stay</span></span>
-        <div class="time-row">
-        <label class="landing">
-          <input type="datetime-local" aria-label="Landing Time (UTC)" step="600" min="${formatUtc(SPAN_START).slice(0, 16)}" max="${formatUtc(SPAN_END - STEP_MS).slice(0, 16)}" value="${formatUtc(this.getLanding()).slice(0, 16)}">
-        </label>
-        <div class="steps" role="group" aria-label="Step the Landing Time">
-          <button type="button" data-step="-86400000" title="One day earlier">−1 d</button>
-          <button type="button" data-step="-3600000" title="One hour earlier">−1 h</button>
-          <button type="button" data-step="3600000" title="One hour later">+1 h</button>
-          <button type="button" data-step="86400000" title="One day later">+1 d</button>
-        </div>
-        </div>
+      <p class="pick-prompt"${this.picked ? " hidden" : ""}>Choose a landing <b>date</b> and <b>time</b> in the panel on the left to colour the sites by Sun and Earth coverage and list the top 10.</p>
+      <section class="map-top"${this.picked ? "" : " hidden"}>
         <div class="legend">
           <span title="The Sun and Earth stay in view for the whole 7-day stay"><i style="background:${rgb(FULL_HIGH)}"></i> In view all week</span>
           <span title="The Sun or Earth is blocked by terrain for part of the stay"><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Blocked at times</span>
@@ -312,18 +343,115 @@ export class MapView {
         <p class="hint top-status"></p>
         <ol class="top-list"></ol>
       </section>` : ""}`;
-    const input = this.card.querySelector(".landing input");
-    const setT = (t) => {
-      this.setLanding(t);
-      input.value = formatUtc(this.getLanding()).slice(0, 16); // snapped to the 10-minute grid and the span
-      this.loadTopTen(r, grid);
-    };
-    if (input) {
-      input.addEventListener("change", () => { const t = Date.parse(`${input.value}:00Z`); if (!Number.isNaN(t)) setT(t); });
-      for (const b of this.card.querySelectorAll(".map-top .steps button")) b.addEventListener("click", () => setT(this.getLanding() + Number(b.dataset.step)));
-    }
     const limit = this.card.querySelector(".slope-limit select");
-    if (limit) limit.addEventListener("change", () => { this.setSlopeLimit(slopeLimitOf(limit)); this.loadTopTen(r, grid); });
+    if (limit) limit.addEventListener("change", () => { this.setSlopeLimit(slopeLimitOf(limit)); if (this.picked) this.loadTopTen(r, grid); });
+  }
+
+  /* ---------- filter pane (top left of the region map): Landing date and time ---------- */
+  /** Show the coverage colours and the top 10 for the chosen Landing Time, or clear them (on = false). */
+  setPicked(on, r, grid) {
+    this.picked = on;
+    this.card.querySelector(".pick-prompt")?.toggleAttribute("hidden", on);
+    this.card.querySelector(".map-top")?.toggleAttribute("hidden", !on);
+    if (on) { this.loadTopTen(r, grid); return; }
+    this.topToken = (this.topToken || 0) + 1; // drop a ranking still in flight
+    this.rankData = null;
+    this.topIds = new Set();
+    this.topLayer.replaceChildren();
+    this.heatLayer.replaceChildren();
+    this.steepLayer.replaceChildren();
+    for (const l of this.labels.querySelectorAll(".top-label")) l.remove();
+    this.renderCell(this.lastCell);
+  }
+  renderFilter(r, grid) {
+    this.filter.hidden = false;
+    this.dark = null;
+    if (!r.hasSiteData) { this.filterBody.innerHTML = `<p class="filter-note">Landing Times for ${r.name} are coming soon.</p>`; return; }
+    const t = new Date(this.getLanding()), pad = (n) => String(n).padStart(2, "0");
+    this.calMonth = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1);
+    this.filterBody.innerHTML = `
+      <h2>Landing Time</h2>
+      <p class="filter-note">Pick a day, then a time (UTC). The crew stays 7 days.</p>
+      <div class="cal" role="group" aria-label="Landing date">
+        <div class="cal-head">
+          <button type="button" class="cal-nav" data-dm="-1" aria-label="Previous month">‹</button>
+          <span class="cal-month" aria-live="polite"></span>
+          <button type="button" class="cal-nav" data-dm="1" aria-label="Next month">›</button>
+        </div>
+        <div class="cal-grid"></div>
+      </div>
+      <div class="cal-key">
+        <span><i class="k-dark"></i> Dark all day: no sunlight anywhere in the region</span>
+        <span class="cal-status">Checking for dark days…</span>
+      </div>
+      <div class="time-pick">
+        <label>Hour <select class="t-hour" aria-label="Landing hour (UTC)">${Array.from({ length: 24 }, (_, h) => `<option value="${h}">${pad(h)}</option>`).join("")}</select></label>
+        <span class="colon">:</span>
+        <label>Minute <select class="t-min" aria-label="Landing minute (UTC)">${Array.from({ length: 6 }, (_, m) => `<option value="${m * 10}">${pad(m * 10)}</option>`).join("")}</select></label>
+        <span class="utc">UTC</span>
+      </div>
+      <p class="filter-picked" aria-live="polite"></p>
+      <p class="dark-warn" role="note" hidden></p>
+      <button type="button" class="filter-clear">Clear selection</button>`;
+    const hour = this.filterBody.querySelector(".t-hour"), min = this.filterBody.querySelector(".t-min");
+    hour.value = String(t.getUTCHours());
+    min.value = String(Math.floor(t.getUTCMinutes() / 10) * 10);
+    const dayOf = (ms) => ms - (((ms % DAY_MS) + DAY_MS) % DAY_MS);
+    this.pickDay = (day) => {
+      this.setLanding(day + (Number(hour.value) * 60 + Number(min.value)) * 60000);
+      this.picked = true; // before drawing, so the calendar marks the chosen day
+      this.drawCalendar();
+      this.setPicked(true, r, grid);
+    };
+    for (const s of [hour, min]) s.addEventListener("change", () => { if (this.picked) this.pickDay(dayOf(this.getLanding())); });
+    for (const b of this.filterBody.querySelectorAll(".cal-nav")) b.addEventListener("click", () => {
+      const d = new Date(this.calMonth);
+      this.calMonth = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + Number(b.dataset.dm), 1);
+      this.drawCalendar();
+    });
+    this.filterBody.querySelector(".filter-clear").addEventListener("click", () => { this.setPicked(false, r, grid); this.drawCalendar(); });
+    this.drawCalendar();
+    const status = (text) => { const st = this.filterBody.querySelector(".cal-status"); if (st) st.textContent = text; };
+    darkDays(r.id).then((days) => {
+      if (this.region !== r) return;
+      this.dark = new Set(days);
+      status(days.length ? `${days.length} dark ${days.length === 1 ? "day" : "days"} in the year, shown in black` : "No fully dark days in the year");
+      this.drawCalendar();
+    }).catch((err) => { console.error(err); status("Couldn't check for dark days"); });
+  }
+  /** The month grid. Days outside the Supported Span can't be picked; fully dark days are black but can be, with a warning. */
+  drawCalendar() {
+    const gridEl = this.filterBody.querySelector(".cal-grid");
+    if (!gridEl) return;
+    const m = new Date(this.calMonth), y = m.getUTCFullYear(), mo = m.getUTCMonth();
+    const s0 = new Date(SPAN_START), s1 = new Date(SPAN_END - 1);
+    const fmt = (ms, o) => new Date(ms).toLocaleDateString("en-GB", { ...o, timeZone: "UTC" });
+    this.filterBody.querySelector(".cal-month").textContent = fmt(this.calMonth, { month: "long", year: "numeric" });
+    const [prev, next] = this.filterBody.querySelectorAll(".cal-nav");
+    prev.disabled = this.calMonth <= Date.UTC(s0.getUTCFullYear(), s0.getUTCMonth(), 1);
+    next.disabled = this.calMonth >= Date.UTC(s1.getUTCFullYear(), s1.getUTCMonth(), 1);
+    const lead = (m.getUTCDay() + 6) % 7, nDays = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+    const chosen = this.picked ? new Date(this.getLanding()) : null;
+    const chosenDay = chosen && Date.UTC(chosen.getUTCFullYear(), chosen.getUTCMonth(), chosen.getUTCDate());
+    let html = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<span class="cal-dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
+    for (let d = 1; d <= nDays; d++) {
+      const day = Date.UTC(y, mo, d), out = day < SPAN_START || day >= SPAN_END, dark = !out && !!this.dark?.has(day), sel = day === chosenDay;
+      const why = out ? "Outside the supported year" : dark ? "Dark all day: no sunlight anywhere in the region (you can still pick it)" : "";
+      const label = fmt(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      html += `<button type="button" class="cal-day${dark ? " dark" : ""}${sel ? " sel" : ""}" data-day="${day}"${out ? " disabled" : ""}`
+        + ` aria-label="${label}${why ? `, ${why}` : ""}" title="${why || label}" aria-pressed="${sel}">${d}</button>`;
+    }
+    gridEl.innerHTML = html;
+    for (const b of gridEl.querySelectorAll(".cal-day:not([disabled])")) b.addEventListener("click", () => this.pickDay(Number(b.dataset.day)));
+    this.filterBody.querySelector(".filter-picked").innerHTML = chosen
+      ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 16)} UTC</b>`
+      : "No date chosen yet";
+    this.filterBody.querySelector(".filter-clear").disabled = !this.picked;
+    const warn = this.filterBody.querySelector(".dark-warn");
+    warn.hidden = !(chosen && this.dark?.has(chosenDay));
+    if (!warn.hidden) warn.innerHTML = `<b>Warning: dark day.</b> On this day the Sun stays below the local terrain horizon (Sun Clearance ≤ 0°) `
+      + `at every site in the region, all day: the whole region is in shadow. A crew landing now would start with no direct sunlight `
+      + `for solar power or lighting until the Sun clears the horizon. Check the coverage colours and the top 10 for later in the stay.`;
   }
 
   /** Rank every site for the shared Landing Time and draw the top 10 (team science port, in a worker). */
@@ -416,7 +544,7 @@ export class MapView {
       set("walk", walkableLabel(this.teamSiteData.walkableOf(cell.id)));
     }
     const e = this.rankData && this.rankData.byId.get(cell.id);
-    set("rank", e ? `${e.rank.toLocaleString()} of ${this.rankData.doc.sites.length.toLocaleString()}${this.topIds.has(cell.id) ? " · top 10" : ""} · ${coverageLabel(e)}` : this.region && this.region.hasSiteData ? "scoring…" : "—");
+    set("rank", e ? `${e.rank.toLocaleString()} of ${this.rankData.doc.sites.length.toLocaleString()}${this.topIds.has(cell.id) ? " · top 10" : ""} · ${coverageLabel(e)}` : !this.region?.hasSiteData ? "—" : this.picked ? "scoring…" : "pick a date and time");
   }
 
   /* ---------- fly-in to a Landing Site (hand-off to the 3D view) ---------- */
@@ -501,16 +629,16 @@ export class MapView {
     this.stage.querySelector(".flight-notice:not(.error)")?.remove();
   }
 
-  setCrumbs(items) { setBreadcrumbs(this.crumbs, items); }
+  setCrumbs(items, opts) { setBreadcrumbs(this.crumbs, items, opts); }
 }
 
 /**
  * Fill a breadcrumb <nav> with items [{ text, go? }] (the last is the current page). Below the top level it starts
  * with a "← <parent>" button, so going back up is one obvious click.
  */
-export function setBreadcrumbs(nav, items) {
+export function setBreadcrumbs(nav, items, { back: withBack = true } = {}) {
   const parent = items.length > 1 ? items[items.length - 2] : null;
-  const back = parent && parent.go
+  const back = withBack && parent && parent.go
     ? [Object.assign(document.createElement("button"), { type: "button", className: "back-btn", textContent: `← ${parent.text === "Lunar south pole" ? "All regions" : parent.text}`, onclick: parent.go, title: "Back (Esc)" })]
     : [];
   nav.replaceChildren(...back, ...items.flatMap((it, i) => {
