@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: MIT
-// Orientation window for the 3D site view: a small overhead map of the slice, drawn like the home map with 0°
-// (the Earth side) at the top. It shows the shaded topography, the 200 m site grid, the region edge, the chosen site
-// and a wedge for where the 3D camera stands and looks, so the 3D view can be related to 0° / Earth.
+// Orientation window for the 3D site view: a small piece of the region map around the site, drawn like the home and
+// region maps with 0° (the Earth side) at the top. It shows the terrain coloured by slope class (the 3D view's
+// <5° / 5–10° / >10° colours, shaded by the relief), the 200 m site grid, the region edge, the chosen site and a wedge
+// for where the 3D camera stands and looks, so the 3D view can be related to 0° / Earth.
 // Map coordinates are polar stereographic metres (src/polar.js): +y is toward 0°, as on the home map.
 
 const SIZE = 160; // CSS px; drawn at device resolution
 const SUN = "#f2b84b";
+/** Slope class colours, as in the 3D view's "Slope classes" shading (src/ui/patchview.js). */
+export const SLOPE_CLASSES = [[5, [70, 170, 110]], [10, [215, 200, 80]], [Infinity, [205, 70, 60]]];
+const slopeColour = (deg) => SLOPE_CLASSES.find(([max]) => deg < max)[1];
 
 export class OrientationInset {
   /** @param {HTMLElement} root  an element holding a <canvas class="inset-map"> and a <canvas class="inset-view"> */
@@ -25,7 +29,8 @@ export class OrientationInset {
   }
 
   /**
-   * Draw the slice: hillshade (light from the upper left, like the 2D maps) cut to the region outline, the site grid
+   * Draw the slice: slope classes over a hillshade (light from the upper left, like the 2D maps), cut to the region
+   * outline, the site grid
    * (200 m cells, or 1 km lines when cells would be under 4 px), the region edge and the chosen site.
    * @param {{sample:(x:number,y:number)=>number, center:{x:number,y:number}, sizeM:number, grid:object, outline?:number[][]}} p
    */
@@ -38,8 +43,10 @@ export class OrientationInset {
       const x = center.x - sizeM / 2 + (i + 0.5) * step, y = center.y + sizeM / 2 - (j + 0.5) * step;
       const gx = (sample(x + step, y) - sample(x - step, y)) / (2 * step), gy = (sample(x, y + step) - sample(x, y - step)) / (2 * step);
       const n = Math.hypot(gx, gy, 1), shade = Math.max(0, (-gx * lx - gy * ly + lz) / n);
-      const v = Math.round(40 + 190 * shade), o = (j * N + i) * 4;
-      img.data.set([v, v * 0.98, v * 0.94, 255], o);
+      // slope over 100 m, as the 3D view measures it, coloured by class and lit by the hillshade
+      const sx = (sample(x + 100, y) - sample(x - 100, y)) / 200, sy = (sample(x, y + 100) - sample(x, y - 100)) / 200;
+      const deg = (Math.atan(Math.hypot(sx, sy)) * 180) / Math.PI, k = 0.45 + 0.75 * shade, o = (j * N + i) * 4;
+      img.data.set([...slopeColour(deg).map((c) => Math.min(255, Math.round(c * k))), 255], o);
     }
     const tmp = Object.assign(document.createElement("canvas"), { width: N, height: N });
     tmp.getContext("2d").putImageData(img, 0, 0);

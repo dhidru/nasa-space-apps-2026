@@ -425,6 +425,7 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Renamed the mission in the app text to Artemis IV (source titles, dataset names and URLs left as published), set one 5 px gap between every home-map region name and its square, and removed the pickability notes from the calendar | `web/index.html`, `web/README.md`, `web/src/ui/` |
 | 2026-11-15 | Claude Code | Switched every time to typed 24-hour hh:mm:ss UTC (no AM/PM), finished the Artemis IV renaming in our own wording, locked the 3D view's rotation, moved Shading and Slice into hover menus over the 3D view, limited the slope slider to 0–10° and made the site view's Top 10 collapsible | `web/index.html`, `web/src/ui/`, `web/src/app/utctime*.ts`, `web/src/app/slope.ts`, `web/scripts/prepare-data.mjs`, `docs/`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | Cut the 3D slice to the region outline, reduced the slope classes to <5°, 5–10° and >10°, and added a 0°-Earth-up orientation window to the 3D view | `web/index.html`, `web/src/ui/patchview.js`, `web/src/ui/inset.js`, `web/src/ui/main.js`, `web/src/ui/style.css` |
+| 2026-11-15 | Claude Code | Turned off panning in the 3D view (scroll zooms only) and coloured the orientation window by slope class | `web/index.html`, `web/src/ui/patchview.js`, `web/src/ui/inset.js`, `web/src/ui/main.js`, `web/src/ui/style.css` |
 
 ## Media (images, icons, fonts, video, audio)
 

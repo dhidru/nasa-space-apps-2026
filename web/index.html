@@ -69,7 +69,7 @@
           <button class="go" type="submit">Go to site</button>
           <button type="button" id="now">Now</button>
         </div>
-        <p class="hint" id="hint">Drag to pan · scroll to zoom</p>
+        <p class="hint" id="hint">Scroll to zoom · click a site to open it</p>
       </form>
 
       <section class="readout" aria-live="polite">
@@ -129,6 +129,7 @@
       <figure class="inset" id="inset" aria-label="Orientation: overhead view of the slice, 0° (Earth side) at the top; the wedge is the 3D camera's view">
         <figcaption><i class="earth-dot" aria-hidden="true"></i>0° EARTH <span aria-hidden="true">↑</span></figcaption>
         <div class="inset-frame"><canvas class="inset-map"></canvas><canvas class="inset-view"></canvas></div>
+        <p class="inset-key" aria-label="Slope classes"><i style="background:rgb(70,170,110)"></i>&lt;5° <i style="background:rgb(215,200,80)"></i>5–10° <i style="background:rgb(205,70,60)"></i>&gt;10°</p>
       </figure>
       <svg class="compass" viewBox="-50 -50 100 100" role="img" aria-label="Sun and Earth direction at the site">
         <circle r="44" class="c-ring"/>

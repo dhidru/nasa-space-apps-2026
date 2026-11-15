@@ -291,7 +291,7 @@ async function slopeFor(lat, lon) {
 }
 
 /* ---------- 3D grid slice ---------- */
-const HINT = "Drag to pan · scroll to zoom";
+const HINT = "Scroll to zoom · click a site to open it";
 function ensureView() {
   if (view) return;
   view = new PatchView($("globe"), {

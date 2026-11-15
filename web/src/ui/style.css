@@ -118,6 +118,8 @@ dd b { font-weight: 500; color: var(--sun); }
 .inset-frame { position: relative; border-radius: 4px; overflow: hidden; background: #000; }
 .inset-frame canvas { display: block; }
 .inset-view { position: absolute; inset: 0; }
+.inset-key { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 5px 0 0; font: 10px var(--f-mono); color: var(--muted); }
+.inset-key i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-left: 4px; }
 @media (max-width: 1100px) { .inset-frame canvas { width: 120px !important; height: 120px !important; } }
 .compass { position: absolute; z-index: 5; pointer-events: none; width: 92px; height: 92px; right: 16px; top: 16px; }
 .c-ring { fill: rgba(14, 16, 21, .75); stroke: var(--line); }
