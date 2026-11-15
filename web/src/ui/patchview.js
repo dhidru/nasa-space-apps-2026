@@ -149,6 +149,7 @@ export class PatchView {
     this.light.shadow.camera.updateProjectionMatrix();
     this.applyLight();
 
+    this.stopIntro();
     if (!p.keepCamera || !this.framed) {
       const cy = (sample(center.x, center.y) - this.h0) * this.exag;
       this.controls.target.set(0, cy, 0);
@@ -157,7 +158,74 @@ export class PatchView {
       this.controls.minDistance = 200;
       this.controls.maxDistance = sizeM * 4;
       this.framed = true;
+      if (p.intro) this.playIntro();
     }
+    this.dirty = true;
+  }
+
+  /**
+   * Hand-off from the 2D map: start straight overhead on a flattened slice (matching the map's last frame),
+   * then tilt and swing into the default oblique view while the relief rises to the set exaggeration.
+   * Any pointer or wheel input on the canvas ends it at the final frame.
+   */
+  playIntro() {
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const target = this.controls.target.clone();
+    const end = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(target));
+    // Overhead distance that shows the whole slice, like the map's final view box.
+    const half = this.p.sizeM / 2, vfov = (this.camera.fov * Math.PI) / 360;
+    const fitH = half / Math.tan(vfov), fitW = half / (Math.tan(vfov) * this.camera.aspect);
+    const top = new THREE.Spherical(Math.max(fitH, fitW) * 1.04, 0.0001, 0); // theta 0: camera on +Z, so map north is up
+    const ms = 2200, t0 = performance.now();
+    const easeOut = (t) => 1 - Math.pow(1 - t, 3), easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    // shortest turn from theta 0 to the end azimuth
+    let dTheta = end.theta - top.theta;
+    dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));
+    this.controls.enabled = false;
+    const sph = new THREE.Spherical();
+    const frame = (now) => {
+      const t = Math.min(1, (now - t0) / ms);
+      // camera: hold overhead briefly, then tilt/turn; relief starts rising a little before the tilt
+      const kc = easeInOut(Math.min(1, Math.max(0, (t - 0.08) / 0.92)));
+      const kh = easeOut(Math.min(1, Math.max(0, (t - 0.04) / 0.8)));
+      const rise = 0.03 + 0.97 * kh;
+      this.mesh.scale.y = rise;
+      this.overlay.scale.y = rise;
+      this.overlay.visible = true;
+      sph.radius = top.radius + (end.radius - top.radius) * kc;
+      sph.phi = top.phi + (end.phi - top.phi) * kc;
+      sph.theta = top.theta + dTheta * kc;
+      const tgt = target.clone(); tgt.y *= rise;
+      this.controls.target.copy(tgt);
+      this.camera.position.setFromSpherical(sph).add(tgt);
+      this.camera.lookAt(tgt);
+      this.dirty = true;
+      if (t < 1) this.introRaf = requestAnimationFrame(frame);
+      else this.stopIntro();
+    };
+    this.introRaf = requestAnimationFrame(frame);
+    this.introEnd = { target, end };
+    const skip = () => this.stopIntro();
+    this.introSkip = skip;
+    const el = this.renderer.domElement;
+    el.addEventListener("pointerdown", skip, { once: true });
+    el.addEventListener("wheel", skip, { once: true, passive: true });
+    frame(t0);
+  }
+  stopIntro() {
+    if (!this.introEnd) return;
+    cancelAnimationFrame(this.introRaf);
+    const el = this.renderer.domElement;
+    el.removeEventListener("pointerdown", this.introSkip);
+    el.removeEventListener("wheel", this.introSkip);
+    const { target, end } = this.introEnd;
+    this.introEnd = null;
+    this.mesh.scale.y = 1;
+    this.overlay.scale.y = 1;
+    this.controls.target.copy(target);
+    this.camera.position.setFromSpherical(end).add(target);
+    this.controls.enabled = true;
+    this.controls.update();
     this.dirty = true;
   }
 
@@ -171,6 +239,7 @@ export class PatchView {
 
   setExag(v) {
     if (!this.p) { this.exag = v; return; }
+    this.stopIntro();
     const k = v / this.exag;
     this.exag = v;
     this.applyHeights();

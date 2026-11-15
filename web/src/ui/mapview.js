@@ -123,6 +123,7 @@ export class MapView {
 
   /* ---------- home ---------- */
   showHome() {
+    this.endFlight();
     this.mode = "home";
     this.userMoved = false;
     this.svg.replaceChildren();
@@ -204,6 +205,7 @@ export class MapView {
   async showRegion(id, selectedCell = null) {
     const r = this.regions.find((x) => x.id === id);
     if (!r) return this.onHome();
+    this.endFlight();
     this.mode = "region";
     this.region = r;
     this.userMoved = false;
@@ -245,6 +247,7 @@ export class MapView {
     if (r.hasSiteData) this.loadTopTen(r, grid);
 
     this.onMove = (ev) => {
+      if (this.flying) return;
       const [x, y] = this.toMap(ev), cell = grid.cellAt(x, y);
       this.markCell(cell, this.hoverRect);
       this.svg.style.cursor = cell ? "pointer" : "";
@@ -252,6 +255,7 @@ export class MapView {
     };
     this.onLeave = () => this.markCell(null, this.hoverRect);
     this.onClick = (ev) => {
+      if (this.flying) return;
       const [x, y] = this.toMap(ev), cell = grid.cellAt(x, y);
       if (cell) { this.markCell(cell, this.selRect); this.onSite(r.id, cell.id); }
     };
@@ -386,6 +390,62 @@ export class MapView {
     } else { if (!team) set("h", "loading…"); set("s", "loading…"); }
     const e = this.rankData && this.rankData.byId.get(cell.id);
     set("rank", e ? `${e.rank.toLocaleString()} of ${this.rankData.doc.sites.length.toLocaleString()}${e.top ? " · top 10" : ""} · ${coverageLabel(e)}` : this.region && this.region.hasSiteData ? "scoring…" : "—");
+  }
+
+  /* ---------- fly-in to a site (hand-off to the 3D view) ---------- */
+  /**
+   * Zoom the region map onto one cell, fading every other cell, the heatmap and the labels, and
+   * blacking out the map outside the sizeM square the 3D view will show. Resolves when the zoom ends;
+   * the map stays frozen on that frame until endFlight() (called by the next showHome/showRegion).
+   */
+  flyTo(cell, sizeM) {
+    if (this.mode !== "region" || !cell) return Promise.resolve();
+    this.endFlight();
+    this.flying = true;
+    this.markCell(null, this.hoverRect);
+    this.markCell(cell, this.selRect);
+    this.svg.style.cursor = "";
+    this.root.classList.add("flying");
+    const half = sizeM / 2, big = 1e7;
+    // Everything outside the slice square fades to the 3D scene's background colour.
+    this.flightMask = svgEl("path", {
+      d: `M${-big},${-big}h${2 * big}v${2 * big}h${-2 * big}z M${cell.x - half},${-(cell.y + half)}h${sizeM}v${sizeM}h${-sizeM}z`,
+      "fill-rule": "evenodd", class: "flight-mask",
+    }, this.svg);
+    this.svg.appendChild(this.selRect); // keep the chosen cell on top
+    // Final view box: the slice square, fitted to the stage like fit() does.
+    const [W, H] = this.size();
+    let w = sizeM * 1.04, h = sizeM * 1.04;
+    if (w / h > W / H) h = (w * H) / W; else w = (h * W) / H;
+    const to = { x: cell.x - w / 2, y: -cell.y - h / 2, w }, from = { ...this.vb };
+    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ms = reduce ? 0 : 900;
+    // Zoom in log space so the scale change feels even; pan follows the same curve.
+    const lw0 = Math.log(from.w), lw1 = Math.log(to.w);
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    return new Promise((resolve) => {
+      const t0 = performance.now();
+      const step = (now) => {
+        if (!this.flying) return resolve();
+        const t = ms ? Math.min(1, (now - t0) / ms) : 1, k = ease(t);
+        const w1 = Math.exp(lw0 + (lw1 - lw0) * k);
+        // keep the cell's screen position moving smoothly from where it was to the centre
+        const fx = (cell.x - from.x) / from.w, fy = (-cell.y - from.y) / from.h;
+        const ax = fx + (0.5 - fx) * k, ay = fy + (0.5 - fy) * k;
+        const h1 = (w1 * H) / W;
+        this.setVB({ x: cell.x - ax * w1, y: -cell.y - ay * h1, w: w1 });
+        this.flightMask.style.opacity = String(Math.min(1, Math.max(0, (k - 0.35) / 0.55)));
+        if (t < 1) this.flightRaf = requestAnimationFrame(step);
+        else resolve();
+      };
+      this.flightRaf = requestAnimationFrame(step);
+    });
+  }
+  endFlight() {
+    this.flying = false;
+    cancelAnimationFrame(this.flightRaf);
+    this.root.classList.remove("flying");
+    if (this.flightMask) { this.flightMask.remove(); this.flightMask = null; }
   }
 
   setCrumbs(items) {

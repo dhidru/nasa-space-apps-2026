@@ -68,3 +68,17 @@
 .map-top .landing { display: grid; gap: 4px; font-size: 12px; }
 .map-top .top-list { padding: 0; }
 .map-top .hint { margin: 0; }
+
+/* fly-in to a site: everything but the chosen cell fades while the map zooms onto it */
+.map-svg .grid, .map-svg .heat-cells, .map-svg .top-cells, .map-svg .region-outline, .map-svg .mask, .map-labels { transition: opacity .45s ease; }
+.mapview.flying .map-svg .grid, .mapview.flying .map-svg .heat-cells, .mapview.flying .map-svg .top-cells,
+.mapview.flying .map-svg .region-outline, .mapview.flying .map-svg .mask, .mapview.flying .map-labels { opacity: 0 !important; }
+.mapview.flying .map-svg { cursor: default; }
+.flight-mask { fill: #050608; opacity: 0; pointer-events: none; }
+.mapview.flying .cell-selected { stroke-width: 2.5; }
+/* cross-fade from the map to the 3D view */
+.mapview { transition: opacity .55s ease; }
+.mapview.leaving { opacity: 0; pointer-events: none; }
+.flight-loading { position: absolute; z-index: 4; left: 50%; bottom: 18px; transform: translateX(-50%); margin: 0; padding: 6px 12px; border-radius: 4px;
+  background: rgba(14,16,21,.85); border: 1px solid var(--line); font: 12px var(--f-mono); color: var(--muted); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .mapview, .map-svg .grid, .map-svg .heat-cells, .map-svg .top-cells, .map-svg .region-outline, .map-svg .mask, .map-labels { transition: none; } }
