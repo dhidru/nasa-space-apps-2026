@@ -15,8 +15,8 @@ import "./style.css";
 import "./map.css";
 import { D, ephemeris, latlon, enu, horizontal, phaseName, fromSite, useTeamPositions } from "./ephemeris.js";
 import { MoonData } from "./data.js";
-import { SYNODIC_DAYS, sampleEphemeris, siteSeries, summarize, slopeDeg, visibility, discAbove } from "./metrics.js";
-import { regionSites, loadSaved, saveSaved } from "./sites.js";
+import { SYNODIC_DAYS, sampleEphemeris, siteSeries, visibility, discAbove } from "./metrics.js";
+import { regionSites } from "./sites.js";
 import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadTeamRegion, loadAllPositions, siteTracks } from "./teamdata.js";
 import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
@@ -29,12 +29,11 @@ import { parseDateTime } from "../app/utctime.ts";
 import { bindViewMenus } from "./viewmenu.js";
 import { Calendar, calendarHtml } from "./calendar.js";
 import { OrientationInset } from "./inset.js";
-import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayVerdict, stayRange } from "./stayview.js";
+import { skyPlot, timeCharts, windowsView, stayTitle, stayVerdict, stayRange } from "./stayview.js";
 
 
 const BASE = `${import.meta.env.BASE_URL}tiles`;
 const START_DATE = "2026-11-18T12:00:00Z";
-const SITE_STEP_H = 2;     // sampling for the region table
 const CHART_STEP_H = 1;    // sampling for the timeline
 
 const $ = (id) => document.getElementById(id);
@@ -47,10 +46,9 @@ const el = {
   shade: $("shade"), slice: $("slice"), exag: $("exag"), exagOut: $("exagOut"), loading: $("loading"),
   cSun: $("cSun"), cEarth: $("cEarth"),
   chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
-  sitesBody: $("sitesBody"), sitesWindow: $("sitesWindow"), saveSite: $("saveSite"), sitesTable: $("sitesTable"),
   oRank: $("oRank"), top10: $("top10"), topValue: $("topValue"), topWhen: $("topWhen"), topStatus: $("topStatus"), topList: $("topList"),
   stay: $("stay"), stayTitle: $("stayTitle"), stayVerdict: $("stayVerdict"), siteId: $("siteId"), stayRange: $("stayRange"), stayStatus: $("stayStatus"),
-  stayDetail: $("stayDetail"), stayWindows: $("stayWindows"),
+  stayDetail: $("stayDetail"), stayWindows: $("stayWindows"), stayWindowsBox: $("stayWindowsBox"),
 };
 $("oRobustLabel").title = ROBUSTNESS_TITLE;
 el.oSlopeLabel.title = SLOPE_TITLE;
@@ -66,10 +64,6 @@ const fmtDark = (h) => (h >= 48 ? `${(h / 24).toFixed(1)} d` : `${Math.round(h)}
 let polarMeta, mapView, data, dataReady, view, curDem;
 let state = null, site = null; // site = {region, cell} in the site view
 const demCache = new Map();        // region id -> Promise<dem>
-let saved = loadSaved();
-const slopeCache = new Map();
-let siteRows = [];
-let sort = { key: null, dir: -1 };
 let chartSeries = [];
 
 let REGIONS = [];                  // the nine regions from the team's regions.json
@@ -78,7 +72,6 @@ let REGIONS = [];                  // the nine regions from the team's regions.j
 let landingMs = DEFAULT_LANDING;
 /** Top-10 Landing Slope limit in degrees, or null for any slope; shared by the map card and the 3D view. */
 let slopeLimitDeg = DEFAULT_SLOPE_LIMIT_DEG;
-const allSites = () => [...REGIONS, ...saved];
 const regionById = (id) => REGIONS.find((r) => r.id === id);
 
 /* ---------- team site data (sites.json + Horizons) for regions that have it ---------- */
@@ -105,7 +98,6 @@ function teamNow(team, eph) {
   const pick = (b) => ({ az: b.azimuthDeg[0], el: b.elevationDeg[0], clear: b.elevationDeg[0] - b.horizonElevationDeg[0] });
   return { sun: pick(t.sun), earth: pick(t.earth) };
 }
-const siteAt = (lat, lon) => allSites().find((s) => Math.abs(s.lat - lat) < 0.006 && Math.abs(wrapLon(s.lon - lon)) < 0.006);
 
 /* ---------- region terrain (80 m DEM) ---------- */
 function demFor(id) {
@@ -155,6 +147,8 @@ async function route() {
   if (!region) return go("#");
   landingMs = r.landing;
   if (!r.siteId) return showMap(() => mapView.showRegion(region.id, site && site.region.id === region.id ? site.cell.id : null));
+  // Site ids are read against the published sites (see siteGrid), so load them before looking the id up.
+  if (region.hasSiteData) await teamSitesFor(region.id).catch(() => null);
   const cell = siteGrid(region).byId(r.siteId);
   if (!cell) return go(`#${region.id}`);
   await showSite(region, cell);
@@ -338,12 +332,6 @@ function renderReadout(s) {
   return sunH;
 }
 
-async function slopeFor(lat, lon) {
-  const k = `${lat.toFixed(4)},${lon.toFixed(4)},${data.dems.length}`;
-  if (!slopeCache.has(k)) slopeCache.set(k, await slopeDeg(data, lat, lon));
-  return slopeCache.get(k);
-}
-
 /* ---------- 3D grid slice ---------- */
 const HINT = "Scroll to zoom · click a site to open it";
 function ensureView() {
@@ -377,7 +365,6 @@ async function apply() {
   const { cell, team } = site, dem = curDem;
   const eph = ephemeris(date);
   const h = team ? team.h : dem.at(cell.x, cell.y);
-  const windowChanged = !state || state.date.getTime() !== date.getTime();
   state = { lat: cell.lat, lon: cell.lon, date, eph, h };
   const sunH = renderReadout(state);
   el.oElev.textContent = `${Math.round(h).toLocaleString()} m`;
@@ -400,7 +387,7 @@ async function apply() {
   markNoStayDays(site.region);
   syncUrl();
   updateTopTen();
-  setTimeout(() => { updateTimeline(); if (windowChanged) updateSites(); else markActive(); }, 30);
+  setTimeout(updateTimeline, 30);
 }
 
 /** Cross out the region's No-Full-Stay Days on the site view's calendar (once per region). */
@@ -474,7 +461,7 @@ async function updateStay(cur, entry, token) {
     el.stayStatus.textContent = "";
     el.stayRange.textContent = stayRange(doc);
     el.stayVerdict.innerHTML = stayVerdict(doc);
-    el.stayDetail.innerHTML = `<h3>Over the 7-day stay</h3>${statsTable(doc)}<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth above the terrain</h3>${timeCharts(doc)}`;
+    el.stayDetail.innerHTML = `<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth above the terrain</h3>${timeCharts(doc)}`;
   } catch (e) {
     if (token !== topToken) return;
     console.error(e);
@@ -482,12 +469,14 @@ async function updateStay(cur, entry, token) {
   }
 }
 let windowsShown = false;
+// Landing Windows stay folded until the user opens them; each new site starts folded again.
 function resetWindows() {
   windowsShown = false;
-  el.stayWindows.innerHTML = `<button type="button" class="go" id="findWindows">Find Landing Windows</button>`;
-  el.stayWindows.querySelector("#findWindows").addEventListener("click", () => showWindows());
+  el.stayWindowsBox.open = false;
+  el.stayWindows.replaceChildren();
 }
 function refreshWindows() { if (windowsShown) showWindows(); }
+el.stayWindowsBox.addEventListener("toggle", () => { if (el.stayWindowsBox.open && !windowsShown) showWindows(); });
 async function showWindows() {
   const cur = site, key = windowsKey;
   if (!cur) return;
@@ -538,91 +527,6 @@ function renderChart() {
     },
   });
 }
-
-/* ---------- region comparison ---------- */
-async function updateSites() {
-  if (!state) return;
-  const t0 = new Date(state.date.getTime() - (SYNODIC_DAYS / 2) * 86400000);
-  const t1 = new Date(state.date.getTime() + (SYNODIC_DAYS / 2) * 86400000);
-  const short = (d) => `${d.toLocaleString("en", { month: "short", timeZone: "UTC" })} ${d.getUTCDate()}`;
-  el.sitesWindow.textContent = `${short(t0)} – ${short(t1)}`;
-  const samples = sampleEphemeris(state.date, SYNODIC_DAYS, SITE_STEP_H);
-  siteRows = allSites().map((s) => ({ site: s, metrics: { ...summarize(siteSeries(data, s.lat, s.lon, samples), SITE_STEP_H), slope: null } }));
-  renderSites();
-  await Promise.all(siteRows.map(async (r) => { r.metrics.slope = await slopeFor(r.site.lat, r.site.lon); }));
-  renderSites();
-}
-
-function renderSites() {
-  const rows = [...siteRows];
-  if (sort.key) {
-    rows.sort((a, b) => {
-      const va = sort.key === "name" ? a.site.name : a.metrics[sort.key];
-      const vb = sort.key === "name" ? b.site.name : b.metrics[sort.key];
-      if (va === null) return 1;
-      if (vb === null) return -1;
-      return (typeof va === "string" ? va.localeCompare(vb) : va - vb) * sort.dir;
-    });
-  }
-  el.sitesTable.querySelectorAll("th button").forEach((b) => {
-    if (b.dataset.sort === sort.key) b.setAttribute("aria-sort", sort.dir > 0 ? "ascending" : "descending");
-    else b.removeAttribute("aria-sort");
-  });
-  el.sitesBody.replaceChildren(...rows.map(({ site: s, metrics: m }) => {
-    const tr = document.createElement("tr");
-    tr.dataset.id = s.id;
-    tr.tabIndex = 0;
-    tr.innerHTML = `
-      <td><div class="site-name"><span>${escapeHtml(s.name)}${s.size ? `<small class="site-size">${s.size[0].toFixed(0)} × ${s.size[1].toFixed(0)} km</small>` : ""}</span>${s.custom ? `<button type="button" class="remove" aria-label="Remove ${escapeHtml(s.name)}">×</button>` : ""}</div></td>
-      <td class="num">${m.sunPct.toFixed(0)}%<span class="bar bar-sun"><i style="width:${m.sunPct.toFixed(0)}%"></i></span></td>
-      <td class="num">${m.earthPct.toFixed(0)}%<span class="bar bar-earth"><i style="width:${m.earthPct.toFixed(0)}%"></i></span></td>
-      <td class="num">${fmtDark(m.longestDarkH)}</td>
-      <td class="num">${m.slope === null ? '<span class="pending">…</span>' : `${m.slope.toFixed(1)}°`}</td>`;
-    const open = () => {
-      if (s.region) { go(`#${s.id}`); return; }
-      const f = cellFor(s.lat, s.lon);
-      if (f) go(`#${f.region.id}/${f.cell.id}`);
-    };
-    tr.addEventListener("click", (e) => {
-      if (e.target.closest(".remove")) { removeSite(s.id); return; }
-      open();
-    });
-    tr.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
-    return tr;
-  }));
-  markActive();
-}
-
-function markActive() {
-  const r = site && site.region;
-  el.sitesBody.querySelectorAll("tr").forEach((tr) => tr.classList.toggle("active", !!r && tr.dataset.id === r.id));
-}
-
-function removeSite(id) {
-  saved = saved.filter((s) => s.id !== id);
-  saveSaved(saved);
-  siteRows = siteRows.filter((r) => r.site.id !== id);
-  renderSites();
-}
-
-el.saveSite.addEventListener("click", () => {
-  const { lat, lon, errs } = readInputs();
-  if (errs.length) { el.hint.textContent = errs.join(" "); return; }
-  if (siteAt(lat, lon)) { el.hint.textContent = "That spot is already in the list."; return; }
-  const name = site ? `${site.region.name} · ${site.cell.id}` : `${fmtLat(lat)}, ${fmtLon(lon)}`;
-  saved.push({ id: `saved-${Date.now()}`, name, lat, lon, custom: true });
-  saveSaved(saved);
-  updateSites();
-  el.hint.textContent = "Saved to this browser's list.";
-});
-
-el.sitesTable.querySelector("thead").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-sort]");
-  if (!b) return;
-  const key = b.dataset.sort;
-  sort = sort.key === key ? { key, dir: -sort.dir } : { key, dir: key === "name" || key === "longestDarkH" || key === "slope" ? 1 : -1 };
-  renderSites();
-});
 
 /* ---------- boot ---------- */
 async function boot() {

@@ -43,7 +43,7 @@ export function slopeLimitHtml(limitDeg) {
       <p class="slope-note" id="${id}-note">${slopeNote(off ? null : v)}</p>
     </div>`;
 }
-const slopeNote = (deg) => (deg === null ? "Slope ignored. Any site can make the top 10." : `Sites steeper than ${deg}° are shaded and left out of the top 10.`);
+const slopeNote = (deg) => (deg === null ? "Slope ignored." : `Steeper sites are hatched and left out of the top 10.`);
 /** The limit set in a control made by slopeLimitHtml (`root` is the control or an element inside it): degrees, or null. */
 export function slopeLimitOf(root) {
   const ctl = root.closest(".slope-ctl") ?? root.querySelector(".slope-ctl");

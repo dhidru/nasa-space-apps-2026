@@ -49,7 +49,7 @@
 .region { fill: rgba(242,184,75,.32); stroke: var(--sun); stroke-width: 2.4; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .12s;
   filter: drop-shadow(0 0 2px rgba(0,0,0,.7)); }
 .region.hover, .region:focus-visible { fill: rgba(242,184,75,.5); stroke-width: 3; outline: none; }
-.region-outline { fill: none; stroke: var(--sun); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.region-outline { fill: none; stroke: var(--sun); stroke-width: 2; stroke-linecap: square; vector-effect: non-scaling-stroke; pointer-events: none; }
 .mask { fill: rgba(5,6,8,.55); pointer-events: none; }
 .grid { fill: none; stroke: rgba(231,228,220,.9); stroke-width: .6; vector-effect: non-scaling-stroke; pointer-events: none; }
 .cell-hover { fill: rgba(242,184,75,.35); stroke: var(--sun); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -260,3 +260,25 @@
 /* Fixed-height days on the region calendar: with aspect-ratio the grid under-counted its height, so a six-row month's
    last row spilled over the key below it. */
 .map-side .cal-day { aspect-ratio: auto; height: 42px; }
+
+/* The chosen Surface Stay as one outlined band, on every calendar: each day of it (landing day included) draws the
+   same 2px teal top and bottom line with inset shadows rather than borders, so the edges run straight and unbroken
+   across a row. Day numbers sit at the bottom of the cell, under the date, instead of on the top line. */
+.cal-day.sel, .cal-day.stay { border-color: transparent; --band-t: inset 0 2px var(--stay); --band-b: inset 0 -2px var(--stay);
+  box-shadow: var(--band-t), var(--band-b); }
+.cal-day.sel { box-shadow: var(--band-t), var(--band-b), inset 2px 0 var(--stay); border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+.cal-day.stay.band-start { border-left-color: transparent; box-shadow: var(--band-t), var(--band-b), inset 2px 0 var(--stay); }
+.cal-day.stay.band-end { border-right-color: transparent; box-shadow: var(--band-t), var(--band-b), inset -2px 0 var(--stay); }
+.cal-day.sel.band-end { box-shadow: var(--band-t), var(--band-b), inset 2px 0 var(--stay), inset -2px 0 var(--stay); }
+.cal-day.stay::after { left: 0; right: 0; top: auto; bottom: 2px; font-size: 8px; font-weight: 800; color: var(--stay); }
+.cal-day.sel::after { bottom: 2px; }
+/* the region calendar's taller days have room for "DAY n" */
+.map-side .cal-day.stay::after { content: "DAY " attr(data-n); letter-spacing: .06em; }
+.map-side .cal-day.sel::after, .map-side .cal-day.stay::after { bottom: 3px; }
+/* Calendar key on one line. */
+.mapview:not(.home) .cal-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.mapview:not(.home) .cal-key .cal-status { flex-basis: 100%; }
+
+/* Team name, top right of the map header */
+.map-head .team-name { margin: 0 0 0 auto; padding: 5px 12px; border: 1px solid var(--line-strong); border-radius: 99px;
+  font: 700 14px var(--f-ui); letter-spacing: .04em; color: var(--sun); white-space: nowrap; }

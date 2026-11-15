@@ -399,22 +399,37 @@ export class MapView {
     const hatch = svgEl("pattern", { id: "steep-hatch", class: "steep-hatch", patternUnits: "userSpaceOnUse", width: GRID_M / 2, height: GRID_M / 2, patternTransform: "rotate(45)" }, svgEl("defs", {}, this.svg));
     svgEl("line", { x1: GRID_M / 4, y1: 0, x2: GRID_M / 4, y2: GRID_M / 2 }, hatch);
 
-    const grid = (this.grid = siteGrid(r)), e = grid.extent;
-    // dim everything outside the region
+    const grid = (this.grid = siteGrid(r));
+    // Dim everything outside the sites, draw the 200 m cell edges and the region border. The border traces the site
+    // cells rather than the USGS outline (they differ by up to half a cell), so the coverage colours fill it exactly.
     const outer = `M${left},${-top}h${bw}v${bh}h${-bw}z`;
-    const inner = `M${e.xmin},${-e.ymax}H${e.xmax}V${-e.ymin}H${e.xmin}z`;
-    svgEl("path", { d: outer + inner, class: "mask clears-on-flight", "fill-rule": "evenodd" }, this.svg);
-    // grid lines on the 200 m cell edges
-    let d = "";
-    for (let x = e.xmin; x <= e.xmax + 1; x += GRID_M) d += `M${x},${-e.ymax}V${-e.ymin}`;
-    for (let y = e.ymin; y <= e.ymax + 1; y += GRID_M) d += `M${e.xmin},${-y}H${e.xmax}`;
-    this.gridPath = svgEl("path", { d, class: "grid clears-on-flight" }, this.svg);
-    svgEl("polygon", { points: r.xy.map(([x, y]) => `${x},${-y}`).join(" "), class: "region-outline clears-on-flight" }, this.svg);
+    const mask = svgEl("path", { class: "mask clears-on-flight", "fill-rule": "evenodd" }, this.svg);
+    const gaps = svgEl("path", { class: "mask clears-on-flight" }, this.svg); // cells in the box with no site
+    this.gridPath = svgEl("path", { class: "grid clears-on-flight" }, this.svg);
+    const border = svgEl("path", { class: "region-outline clears-on-flight" }, this.svg);
+    this.drawLattice = () => {
+      const e = grid.extent, inner = `M${e.xmin},${-e.ymax}H${e.xmax}V${-e.ymin}H${e.xmin}z`;
+      let d = "";
+      for (let x = e.xmin; x <= e.xmax + 1; x += GRID_M) d += `M${x},${-e.ymax}V${-e.ymin}`;
+      for (let y = e.ymin; y <= e.ymax + 1; y += GRID_M) d += `M${e.xmin},${-y}H${e.xmax}`;
+      const paths = grid.outlinePaths();
+      mask.setAttribute("d", outer + inner);
+      gaps.setAttribute("d", paths.gaps);
+      this.gridPath.setAttribute("d", d);
+      border.setAttribute("d", paths.border);
+      const sub = this.card.querySelector(".sub-count");
+      if (sub) sub.textContent = grid.count.toLocaleString();
+    };
+    // Once sites.json is in, the grid switches to the published sites (see siteGrid); redraw if that moved it.
+    this.syncLattice = () => { if (grid.refresh()) this.drawLattice(); };
+    this.drawLattice();
+    const e = grid.extent;
     this.hoverRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-hover", visibility: "hidden" }, this.svg);
     this.selRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-selected", visibility: "hidden" }, this.svg);
     this.heatLayer = svgEl("g", { class: "heat-cells clears-on-flight" }, this.svg);
     this.steepLayer = svgEl("g", { class: "steep-cells clears-on-flight" }, this.svg);
     this.topLayer = svgEl("g", { class: "top-cells clears-on-flight" }, this.svg);
+    this.svg.insertBefore(border, this.topLayer); // over the heatmap, so the colours never hide half its line
     this.rankData = null;
     this.topIds = new Set();
 
@@ -426,7 +441,7 @@ export class MapView {
 
     this.dem = null;
     this.demFor(id).then((dem) => { if (this.region === r) { this.dem = dem; this.renderCell(this.lastCell); } }).catch((err) => console.error(err));
-    if (r.hasSiteData) this.teamSites(id).then((t) => { if (this.region === r) { this.teamSiteData = t; this.renderCell(this.lastCell); } }).catch((err) => console.error(err));
+    if (r.hasSiteData) this.teamSites(id).then((t) => { if (this.region === r) { this.syncLattice(); this.teamSiteData = t; this.renderCell(this.lastCell); } }).catch((err) => console.error(err));
     if (r.hasSiteData && this.picked) this.loadTopTen(r, grid);
 
     this.onMove = (ev) => {
@@ -459,7 +474,7 @@ export class MapView {
     const [w, h] = sizeKm(r);
     this.card.innerHTML = `
       <h2>${r.name}</h2>
-      <p class="sub">${w.toFixed(0)} × ${h.toFixed(0)} km · ${grid.count.toLocaleString()} sites</p>
+      <p class="sub">${w.toFixed(0)} × ${h.toFixed(0)} km · <span class="sub-count">${grid.count.toLocaleString()}</span> sites</p>
       <dl class="cell-read" id="cellRead">
         <dt>Site</dt><dd data-k="id" class="placeholder">hover a site</dd>
         <dt>Elevation</dt><dd data-k="h">—</dd>
@@ -507,15 +522,15 @@ export class MapView {
       <p class="filter-note">Pick a landing day and UTC time. The crew stays 7 days.</p>
       ${calendarHtml()}
       <div class="cal-key">
-        <span><i class="k-land"></i> Landing day</span>
-        <span><i class="k-stay"></i> Rest of the stay</span>
-        <span><i class="k-nostay"></i> No full week from this day</span>
+        <span><i class="k-land"></i>Land</span>
+        <span><i class="k-stay"></i>Stay</span>
+        <span title="No site in the region has a full 7-day window starting this day"><i class="k-nostay"></i>No full week</span>
         <span class="cal-status">Checking which days work…</span>
       </div>
       <div class="time-pick">
         <label>UTC time <input class="t-hms" type="text" inputmode="numeric" maxlength="5" autocomplete="off" spellcheck="false" aria-label="Landing time, 24-hour UTC, hh:mm" placeholder="hh:mm"></label>
       </div>
-      <p class="filter-note time-note">Snaps to 10 minutes. Use ↑ ↓ to step.</p>
+      <p class="filter-note time-note">10-minute steps. ↑ ↓ to change.</p>
       <p class="filter-picked" aria-live="polite"></p>
       <p class="nostay-warn" role="note" hidden></p>
       <button type="button" class="filter-clear">Clear selection</button>
@@ -604,15 +619,14 @@ export class MapView {
     this.cal.draw();
     this.filterBody.querySelector(".filter-picked").innerHTML = chosen
       ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 16)} UTC</b>`
-        + (this.region && featuredLanding(this.region.id) === this.getLanding() ? `<br><span class="featured-note">Best time for this region. Each site's own best times are under Landing Windows.</span>` : "")
+        + (this.region && featuredLanding(this.region.id) === this.getLanding() ? `<br><span class="featured-note" title="Each site's own best times are under Landing Windows.">Best time for this region.</span>` : "")
       : "No date chosen yet";
     this.filterBody.querySelector(".filter-clear").disabled = !this.picked;
     const warn = this.filterBody.querySelector(".nostay-warn");
     warn.hidden = !(chosen && this.noStay?.has(chosenDay));
     if (warn.hidden) return;
     const next = this.nearestGoodDay(chosenDay);
-    warn.innerHTML = `<b>No full week from this day.</b> No site here keeps the Sun and Earth in view for 7 days from this day. `
-      + `The colours show the best partial options.`
+    warn.innerHTML = `<b>No full week from this day.</b> Colours show the best partial stays.`
       + (next ? `<button type="button" class="go nostay-jump">Jump to ${fmt(next.day, { weekday: "short", day: "numeric", month: "short" })}, the ${next.after ? "next" : "nearest"} day that works</button>` : "");
     warn.querySelector(".nostay-jump")?.addEventListener("click", async (e) => {
       const btn = e.currentTarget, r = this.region;
@@ -648,6 +662,7 @@ export class MapView {
         if (token === this.topToken && status) status.textContent = `Scoring sites… ${Math.round(f * 100)} %`;
       }), this.teamSites(r.id).catch(() => null)]);
       if (token !== this.topToken || this.region !== r) return;
+      this.syncLattice();
       this.rankData = res;
       const limitDeg = this.getSlopeLimit(), top = topUnderSlope(res, team, limitDeg);
       this.topIds = new Set(top.map((e) => e.site_id));
