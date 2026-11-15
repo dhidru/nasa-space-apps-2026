@@ -320,10 +320,6 @@ the design work doesn't wait on the pipeline.
   Coverage (landing-criteria.md §2).~~ Done: `pipeline.robustness` stores it in
   `sites.json` (data-contract §5.3); the map readout, the site overview and both
   top-10 lists show it.
-- Distance to the nearest permanently shadowed region (PGDA LPSR shapefile), as
-  a proxy for ice.
-- Fraction of the Sun's disk that is visible, instead of center only.
-- A "prioritize Sun / prioritize Earth" ranking toggle.
 - Check every point in the 100 m circle, not just the center (the lander can
   touch down anywhere within 100 m of the target). Landing Slope already does
   this; Clearance is still judged at the center only.
@@ -345,6 +341,11 @@ Not planned for this challenge. We may add these afterwards.
   already shows, and our sources give no Artemis roughness limit to check it
   against. Assessing hazards needs higher-resolution data, such as LROC NAC
   images or meter-scale DEMs, and a published limit for the Artemis landers.
+- **Distance to the nearest permanently shadowed region** (PGDA LPSR
+  shapefile), as a proxy for ice and science value (landing-criteria.md §2
+  #10).
+- **Fraction of the Sun's disk that is visible**, instead of judging Line of
+  Sight at the Sun's center only (landing-criteria.md §1).
 
 ## 14. Rules that apply
 

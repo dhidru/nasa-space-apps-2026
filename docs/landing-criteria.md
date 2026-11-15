@@ -62,7 +62,7 @@ Ordered by how directly they come from NASA and how cheap they are for us.
 | 7 | **Variable Surface Stay length** | G26 (5.75–6.25 days), R22 (6.5 days) | **Covered by design:** the fixed 7-day Surface Stay is longer than every stay NASA gives, so Full Coverage over 7 days means Full Coverage over any of them from the same Landing Time. A stay-length setting is future development (design.md §13) |
 | 8 | **Approach lighting** | HLS25 slide 27: light along the approach path helps, and the approach differs for each landing chance | Not modeled. It needs the approach trajectory, so it's out of scope; we can list it as a limitation |
 | 9 | **Long-term visibility thresholds** | HLS25 slides 25–26 mask out ground with under 25% Earth visibility or under 5% Sun visibility. GL24 uses Sun ≥33% and direct-to-Earth ≥50% of the time | We already require 100% over the actual stay, which is stricter. These could be optional context columns, but the PGDA long-term maps have no stated license (ATTRIBUTIONS.md), so we'd compute them ourselves |
-| 10 | **Science value** (access to permanently shadowed regions with water ice, South Pole–Aitken material) | R24 (science potential), GL24 | The distance-to-PSR stretch goal already covers part of this |
+| 10 | **Science value** (access to permanently shadowed regions with water ice, South Pole–Aitken material) | R24 (science potential), GL24 | Not covered. Distance to the nearest PSR is listed under Future development (design.md §13) |
 
 ## 3. Landing Slope checked against NASA's slope map
 
