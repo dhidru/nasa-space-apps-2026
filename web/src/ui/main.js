@@ -26,6 +26,7 @@ import { PatchView, gridSampler, sunVector } from "./patchview.js";
 import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
 import { parseDateTime } from "../app/utctime.ts";
 import { bindViewMenus } from "./viewmenu.js";
+import { OrientationInset } from "./inset.js";
 import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
 
 
@@ -300,6 +301,7 @@ function ensureView() {
         : HINT;
     },
     onPick: (c) => go(`#${site.region.id}/${c.id}`),
+    inset: new OrientationInset($("inset")),
   });
   view.setExag(parseFloat(el.exag.value));
   view.setMode(el.shade.value);
