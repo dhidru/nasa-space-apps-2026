@@ -23,9 +23,10 @@ import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView, setBreadcrumbs } from "./mapview.js";
 import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
-import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
+import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute, noFullStayDays, SPAN_START, SPAN_END } from "./ranking.js";
 import { parseDateTime } from "../app/utctime.ts";
 import { bindViewMenus } from "./viewmenu.js";
+import { Calendar, calendarHtml } from "./calendar.js";
 import { OrientationInset } from "./inset.js";
 import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
 
@@ -38,7 +39,7 @@ const CHART_STEP_H = 1;    // sampling for the timeline
 const $ = (id) => document.getElementById(id);
 const el = {
   app: $("app"), mapview: $("mapview"), crumbs: $("crumbs"),
-  form: $("form"), lat: $("lat"), lon: $("lon"), date: $("date"), time: $("time"),
+  form: $("form"), lat: $("lat"), lon: $("lon"), date: $("date"), dateGhost: $("dateGhost"), time: $("time"), sideSlope: $("sideSlope"),
   now: $("now"), hint: $("hint"), chip: $("chip"), when: $("when"),
   oSunEl: $("oSunEl"), oSunAz: $("oSunAz"), oLst: $("oLst"), oSub: $("oSub"), oEarth: $("oEarth"), oPhase: $("oPhase"),
   oElev: $("oElev"), oSlope: $("oSlope"), oSlopeLabel: $("oSlopeLabel"), oRobust: $("oRobust"), oWalk: $("oWalk"),
@@ -46,7 +47,7 @@ const el = {
   cSun: $("cSun"), cEarth: $("cEarth"),
   chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
   sitesBody: $("sitesBody"), sitesWindow: $("sitesWindow"), saveSite: $("saveSite"), sitesTable: $("sitesTable"),
-  oRank: $("oRank"), top10: $("top10"), topWhen: $("topWhen"), topStatus: $("topStatus"), topList: $("topList"),
+  oRank: $("oRank"), top10: $("top10"), topValue: $("topValue"), topWhen: $("topWhen"), topStatus: $("topStatus"), topList: $("topList"),
   stay: $("stay"), stayTitle: $("stayTitle"), stayRange: $("stayRange"), stayStatus: $("stayStatus"),
   stayDetail: $("stayDetail"), stayWindows: $("stayWindows"),
 };
@@ -252,7 +253,47 @@ function readInputs() {
 function setInputs(lat, lon, date) {
   if (lat !== null) { el.lat.value = lat.toFixed(4); el.lon.value = lon.toFixed(4); }
   if (date) { const iso = date.toISOString(); el.date.value = iso.slice(0, 10); el.time.value = iso.slice(11, 19); }
+  paintDateMask();
+  if (date && !Number.isNaN(date.getTime())) siteCal.setChosen(date.getTime());
 }
+
+/* ---------- Date: the shared calendar, always open, plus a typed field with a grey yyyy-mm-dd mask ---------- */
+const DATE_FORMAT = "yyyy-mm-dd";
+/** Show the grey format behind the typed part: "2027-0" shows as 2027-0 then a grey "m-dd". */
+function paintDateMask() {
+  const v = el.date.value;
+  el.dateGhost.innerHTML = `<i>${escapeHtml(v)}</i>${DATE_FORMAT.slice(v.length)}`;
+}
+$("siteCal").innerHTML = calendarHtml("Landing date");
+// Picking a day keeps the typed time of day.
+const siteCal = new Calendar($("siteCal"), {
+  onPick: (day) => {
+    const { date } = readInputs();
+    const tod = Number.isNaN(date.getTime()) ? 0 : ((date.getTime() % 86400000) + 86400000) % 86400000;
+    setInputs(null, null, new Date(day + tod));
+    apply();
+  },
+});
+el.date.addEventListener("input", () => {
+  // digits only; the dashes go in by themselves
+  const dg = el.date.value.replace(/\D/g, "").slice(0, 8);
+  el.date.value = dg.slice(0, 4) + (dg.length > 4 ? `-${dg.slice(4, 6)}` : "") + (dg.length > 6 ? `-${dg.slice(6)}` : "");
+  paintDateMask();
+  el.date.classList.remove("bad");
+  if (el.date.value.length < DATE_FORMAT.length) return;
+  const { date } = readInputs();
+  const t = date.getTime();
+  if (Number.isNaN(t)) { el.date.classList.add("bad"); el.hint.textContent = "That date doesn't exist. Use yyyy-mm-dd."; return; }
+  if (t < SPAN_START || t >= SPAN_END) {
+    el.date.classList.add("bad");
+    el.hint.textContent = `Pick a date from ${formatUtc(SPAN_START).slice(0, 10)} to ${formatUtc(SPAN_END - 86400000).slice(0, 10)}.`;
+    return;
+  }
+  siteCal.setChosen(t);
+  apply();
+});
+paintDateMask();
+siteCal.draw();
 
 
 /* ---------- readout ---------- */
@@ -342,9 +383,26 @@ async function apply() {
   view.setSun(sun, sunH.clear !== undefined ? discAbove(sunH.clear, 0, 0.267)
     : visibility(data, cell.lat * D, cell.lon * D, fromSite(eph, cell.lat, cell.lon, h).sun, 0.267 * D));
   landingMs = snapLandingTime(date.getTime());
+  siteCal.setChosen(date.getTime());
+  markNoStayDays(site.region);
   syncUrl();
   updateTopTen();
   setTimeout(() => { updateTimeline(); if (windowChanged) updateSites(); else markActive(); }, 30);
+}
+
+/** Cross out the region's No-Full-Stay Days on the site view's calendar (once per region). */
+let noStayRegion = null;
+function markNoStayDays(region) {
+  if (noStayRegion === region.id) return;
+  noStayRegion = region.id;
+  siteCal.noStay = null;
+  siteCal.draw();
+  if (!region.hasSiteData) return;
+  noFullStayDays(region.id).then((days) => {
+    if (noStayRegion !== region.id) return;
+    siteCal.noStay = new Set(days);
+    siteCal.draw();
+  }).catch((e) => console.error(e));
 }
 
 /* ---------- top 10 Landing Sites (team ranking, computed in a worker) ---------- */
@@ -353,13 +411,16 @@ async function updateTopTen() {
   const token = ++topToken, cur = site;
   if (!cur || !cur.region.hasSiteData) {
     el.top10.hidden = true;
+    el.sideSlope.hidden = true;
     el.stay.hidden = true;
     el.oRank.textContent = "— (no team site data)";
     if (view) view.setMarks([]);
     return;
   }
   el.top10.hidden = false;
-  el.topWhen.textContent = `from ${formatUtc(landingMs).slice(0, 19).replace("T", " ")} UTC`;
+  el.sideSlope.hidden = false;
+  el.topWhen.textContent = `Ranked for a stay from ${formatUtc(landingMs).slice(0, 19).replace("T", " ")} UTC · ${slopeLimitDeg === null ? "no slope filter" : `max slope ${slopeLimitDeg}°`}`;
+  el.topValue.textContent = "…";
   el.topStatus.textContent = "Scoring sites…";
   el.oRank.textContent = "…";
   try {
@@ -418,10 +479,12 @@ async function showWindows() {
     const doc = await windows(cur.region.id, cur.cell.id);
     if (key !== windowsKey) return;
     el.stayWindows.innerHTML = windowsView(doc, landingMs);
-    el.stayWindows.querySelectorAll("tr[data-t]").forEach((tr) => tr.addEventListener("click", () => {
-      setInputs(null, null, new Date(parseUtc(tr.dataset.t)));
-      apply();
-    }));
+    // Table rows and the green Full Coverage runs on the strip both set the Landing Time.
+    el.stayWindows.querySelectorAll("[data-t]").forEach((n) => {
+      const land = () => { setInputs(null, null, new Date(parseUtc(n.dataset.t))); apply(); };
+      n.addEventListener("click", land);
+      if (n.matches(".seg-full")) n.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); land(); } });
+    });
   } catch (e) {
     if (key !== windowsKey) return;
     console.error(e);
@@ -432,8 +495,10 @@ function renderTopList(top, cur, tr) {
   fillTopList(el.topList, top, {
     team: tr,
     activeId: cur.cell.id,
-    onPick: (e) => go(`#${cur.region.id}/${e.site_id}`),
+    onPick: (e) => { openTop(false); go(`#${cur.region.id}/${e.site_id}`); },
   });
+  const k = top.findIndex((e) => e.site_id === cur.cell.id);
+  el.topValue.textContent = k >= 0 ? `#${k + 1} of ${top.length}` : `${top.length} sites`;
 }
 
 /* ---------- timeline ---------- */
@@ -551,10 +616,10 @@ async function boot() {
   REGIONS = regionSites(regions);
   // Team SPICE positions (2026-2027) replace Astronomy Engine's Sun/Earth vectors once they arrive.
   loadAllPositions().then((p) => { useTeamPositions(p); if (site && !el.app.hidden) apply(); }).catch((e) => console.error(e));
-  const topSlope = $("topSlope");
+  // The site view's Max slope sits in the left pane; the region map has its own copy in the Landing Time picker.
   const showSlopeLimit = () => {
-    topSlope.innerHTML = slopeLimitHtml(slopeLimitDeg);
-    bindSlopeLimit(topSlope, (limit) => { slopeLimitDeg = limit; updateTopTen(); });
+    el.sideSlope.innerHTML = slopeLimitHtml(slopeLimitDeg);
+    bindSlopeLimit(el.sideSlope, (limit) => { slopeLimitDeg = limit; updateTopTen(); });
   };
   showSlopeLimit();
   mapView = new MapView(el.mapview, {
@@ -598,20 +663,18 @@ el.now.addEventListener("click", () => {
   apply();
 });
 bindViewMenus(el.app);
-// The site view's Top 10 can be collapsed (click its heading); the choice is remembered in this browser.
-{
-  const btn = $("topToggle"), body = $("topBody"), KEY = "top10-collapsed";
-  const set = (collapsed) => {
-    body.hidden = collapsed;
-    btn.setAttribute("aria-expanded", String(!collapsed));
-    el.top10.classList.toggle("collapsed", collapsed);
-    try { localStorage.setItem(KEY, collapsed ? "1" : "0"); } catch { /* storage blocked: still works for this visit */ }
-  };
-  let startCollapsed = false;
-  try { startCollapsed = localStorage.getItem(KEY) === "1"; } catch { /* no storage */ }
-  set(startCollapsed);
-  btn.addEventListener("click", () => set(!body.hidden));
-}
+// The site view's Top 10 is a menu in the 3D view's top bar: hover or click opens it, Esc or leaving closes it.
+const topBtn = $("topToggle");
+function openTop(on) { el.top10.classList.toggle("open", on); topBtn.setAttribute("aria-expanded", String(on)); }
+let topHoverAt = 0; // a click right after the hover opened the menu keeps it open instead of closing it
+el.top10.addEventListener("pointerenter", () => { topHoverAt = performance.now(); openTop(true); });
+el.top10.addEventListener("pointerleave", () => openTop(false));
+topBtn.addEventListener("click", () => openTop(performance.now() - topHoverAt < 500 || !el.top10.classList.contains("open")));
+el.top10.addEventListener("focusout", (e) => { if (!el.top10.contains(e.relatedTarget)) openTop(false); });
+el.top10.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.preventDefault(); openTop(false); topBtn.focus(); }
+  if (e.key === "ArrowDown" && !el.top10.classList.contains("open")) { e.preventDefault(); openTop(true); el.topList.querySelector("button")?.focus(); }
+});
 el.shade.addEventListener("change", () => { if (view) view.setMode(el.shade.value); });
 el.slice.addEventListener("change", () => { if (view && curDem) loadPatch(curDem); });
 el.exag.addEventListener("input", () => {
