@@ -1,7 +1,10 @@
-# Lunar Site Viewer (web/)
+# Lunar Site Viewer (viewer/)
 
 A dashboard for choosing a landing site in NASA's nine Artemis III candidate regions near the lunar south pole.
 It reads the team pipeline's output in `../data/processed/site-data` (see `docs/data-contract.md`).
+
+This is a separate app from the team's main front end in `../web/` (React + the TypeScript science port). It
+adds a 3D terrain slice and a lunar-day timeline; it is here to test hosting on GitHub Pages and to compare.
 
 1. **South pole map**: the team's hillshade of the pole with the nine regions from `regions.json`. Hover a region
    to highlight it, click to open it.
@@ -48,8 +51,8 @@ state a license for that ASU-derived map. `npm run data -- --with-color` builds 
 
 ## Deploy: GitHub Pages
 
-`.github/workflows/pages.yml` builds this folder and publishes `web/dist` to GitHub Pages on pushes to `main` that
-touch `web/` or the site data, or by hand from the Actions tab. `BASE_PATH` sets the URL prefix (`/<repo>/`).
+`.github/workflows/pages.yml` builds this folder and publishes `viewer/dist` to GitHub Pages on pushes to `main` that
+touch `viewer/` or the site data, or by hand from the Actions tab. `BASE_PATH` sets the URL prefix (`/<repo>/`).
 A repo admin has to set **Settings → Pages → Source: GitHub Actions** once. Pages sites are public.
 
 To check a Pages build locally:

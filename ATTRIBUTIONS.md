@@ -105,7 +105,7 @@ Each dataset below also has a conventions card in
 ### NASA SVS CGI Moon Kit (global LOLA elevation map only)
 - **Type:** Data
 - **Used for:** The coarse global elevation tiles and shadow grid the viewer uses for its 3D terrain beyond the
-  80 m region DEMs and for the far-horizon ray march (`web/scripts/prepare-data.mjs` → `web/public/tiles`, built at
+  80 m region DEMs and for the far-horizon ray march (`viewer/scripts/prepare-data.mjs` → `viewer/public/tiles`, built at
   deploy time, not committed). File: `ldem_16.tif` (66 MB). We do **not** use the kit's colour map by default
   (see Requirements).
 - **Source:** https://svs.gsfc.nasa.gov/4720

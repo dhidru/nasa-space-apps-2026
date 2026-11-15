@@ -87,8 +87,8 @@ Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks 
 src/            Application / analysis source code
 data/raw/       Original downloaded datasets (large files git-ignored)
 data/processed/ Pipeline output; site-data/ is committed for the front end
-web/            Lunar Site Viewer front end (Vite + three.js), reads site-data; see web/README.md
-.github/        GitHub Pages workflow that builds and publishes web/
+viewer/         Lunar Site Viewer (Vite + three.js, 3D terrain), reads site-data; see viewer/README.md
+.github/        GitHub Pages workflow that builds and publishes viewer/
 notebooks/      Exploration notebooks
 docs/           Write-ups, diagrams, presentation material
 assets/         Images, logos, media for the demo
