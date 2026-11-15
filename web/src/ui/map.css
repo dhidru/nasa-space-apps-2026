@@ -5,6 +5,9 @@
 .crumbs button { background: none; border: 0; padding: 0; font: inherit; color: var(--fg); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
 .crumbs button:hover { color: var(--sun); text-decoration-color: var(--sun); }
 .crumbs .sep { color: var(--faint); }
+.crumbs .back-btn { align-self: center; margin-right: 6px; padding: 3px 10px; border: 1px solid var(--line-strong); border-radius: 99px; background: #15181f;
+  font-weight: 600; color: var(--fg); text-decoration: none; }
+.crumbs .back-btn:hover { border-color: var(--sun); color: var(--sun); }
 .crumbs span:last-child { color: var(--sun); }
 .panel header .crumbs { flex-basis: 100%; }
 
@@ -98,7 +101,7 @@
 .mapview.flying .cell-selected { stroke-width: 2.5; }
 .flight-mask { fill: var(--scene-bg); opacity: 0; pointer-events: none; }
 /* cross-fade from the map to the 3D view */
-.mapview { transition: opacity .55s ease; }
+.mapview { transition: opacity .3s ease-out; }
 .mapview.leaving { opacity: 0; pointer-events: none; }
 .flight-notice { position: absolute; z-index: 4; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: calc(100% - 32px); margin: 0; padding: 6px 12px; border-radius: 4px;
   background: rgba(14,16,21,.85); border: 1px solid var(--line); font: 12px var(--f-mono); color: var(--muted); pointer-events: none; }

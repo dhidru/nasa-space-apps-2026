@@ -166,8 +166,8 @@ export class PatchView {
 
   /**
    * Hand-off from the 2D map: start straight overhead on a flattened slice (the map's last frame, which the map
-   * lines up with this canvas), hold it while the map fades out, then tilt and swing into the default oblique view
-   * while the relief rises to the set exaggeration. Any pointer or wheel input on the canvas jumps to the final
+   * lines up with this canvas), then at once tilt and swing into the default oblique view while the relief rises
+   * to the set exaggeration. Any pointer or wheel input on the canvas jumps to the final
    * frame; the controls stay on, so that first drag already orbits.
    */
   playIntro() {
@@ -180,11 +180,12 @@ export class PatchView {
     const fitDist = Math.max(half / tanV, half / (tanV * this.camera.aspect)) * SLICE_FIT_MARGIN;
     const top = new THREE.Spherical(fitDist, 0.0001, 0); // theta 0: camera on +Z, so map north is up as on the map
     const dTheta = Math.atan2(Math.sin(end.theta - top.theta), Math.cos(end.theta - top.theta)); // shortest turn
-    const ms = 2600, t0 = performance.now(), sph = new THREE.Spherical();
+    const ms = 2200, t0 = performance.now(), sph = new THREE.Spherical();
     const frame = (now) => {
       const t = Math.min(1, (now - t0) / ms);
-      // The map's cross-fade takes ~0.55 s: the relief starts rising under it, the camera tilts once it has gone.
-      const reliefK = easeOutCubic(phase(t, 0.12, 0.7)), tiltK = easeInOutCubic(phase(t, 0.22, 0.78));
+      // No hold: the relief starts rising and the camera starts tilting at once, under the map's short cross-fade,
+      // so the motion carries straight on from the map's zoom.
+      const reliefK = easeOutCubic(phase(t, 0, 0.7)), tiltK = easeInOutCubic(t);
       const heightScale = 0.03 + 0.97 * reliefK;
       this.mesh.scale.y = this.overlay.scale.y = heightScale;
       sph.set(top.radius + (end.radius - top.radius) * tiltK, top.phi + (end.phi - top.phi) * tiltK, top.theta + dTheta * tiltK);

@@ -485,7 +485,7 @@ export class MapView {
     if (!this.flight) return;
     this.stage.querySelector(".flight-notice")?.remove();
     this.root.classList.add("leaving");
-    this.flight.fadeTimer = setTimeout(() => { this.root.hidden = true; this.endFlight(); }, prefersReducedMotion() ? 0 : 600);
+    this.flight.fadeTimer = setTimeout(() => { this.root.hidden = true; this.endFlight(); }, prefersReducedMotion() ? 0 : 320);
   }
   /** The site view couldn't open: give the map back, zoomed where it is, with the reason. */
   abortFlight(message) {
@@ -501,12 +501,22 @@ export class MapView {
     this.stage.querySelector(".flight-notice:not(.error)")?.remove();
   }
 
-  setCrumbs(items) {
-    this.crumbs.replaceChildren(...items.flatMap((it, i) => {
-      const n = it.go ? Object.assign(document.createElement("button"), { type: "button", textContent: it.text, onclick: it.go }) : Object.assign(document.createElement("span"), { textContent: it.text });
-      return i ? [Object.assign(document.createElement("span"), { className: "sep", textContent: "›" }), n] : [n];
-    }));
-  }
+  setCrumbs(items) { setBreadcrumbs(this.crumbs, items); }
+}
+
+/**
+ * Fill a breadcrumb <nav> with items [{ text, go? }] (the last is the current page). Below the top level it starts
+ * with a "← <parent>" button, so going back up is one obvious click.
+ */
+export function setBreadcrumbs(nav, items) {
+  const parent = items.length > 1 ? items[items.length - 2] : null;
+  const back = parent && parent.go
+    ? [Object.assign(document.createElement("button"), { type: "button", className: "back-btn", textContent: `← ${parent.text === "Lunar south pole" ? "All regions" : parent.text}`, onclick: parent.go, title: "Back (Esc)" })]
+    : [];
+  nav.replaceChildren(...back, ...items.flatMap((it, i) => {
+    const n = it.go ? Object.assign(document.createElement("button"), { type: "button", textContent: it.text, onclick: it.go }) : Object.assign(document.createElement("span"), { textContent: it.text });
+    return i ? [Object.assign(document.createElement("span"), { className: "sep", textContent: "›" }), n] : [n];
+  }));
 }
 
 export { xyToLL };

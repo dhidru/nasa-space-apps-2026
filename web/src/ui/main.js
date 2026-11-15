@@ -20,7 +20,7 @@ import { regionSites, loadSaved, saveSaved } from "./sites.js";
 import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadTeamRegion, loadAllPositions, siteTracks } from "./teamdata.js";
 import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
-import { MapView } from "./mapview.js";
+import { MapView, setBreadcrumbs } from "./mapview.js";
 import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
 import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
@@ -223,18 +223,18 @@ async function showSite(region, cell) {
 }
 
 function renderCrumbs() {
-  const items = [
-    { text: "Lunar south pole", hash: "" },
-    { text: site.region.name, hash: `#${site.region.id}` },
+  setBreadcrumbs(el.crumbs, [
+    { text: "Lunar south pole", go: () => go("#") },
+    { text: site.region.name, go: () => go(`#${site.region.id}`) },
     { text: `Site ${site.cell.id}` },
-  ];
-  el.crumbs.replaceChildren(...items.flatMap((it, i) => {
-    const n = it.hash !== undefined
-      ? Object.assign(document.createElement("button"), { type: "button", textContent: it.text, onclick: () => go(it.hash || "#") })
-      : Object.assign(document.createElement("span"), { textContent: it.text });
-    return i ? [Object.assign(document.createElement("span"), { className: "sep", textContent: "›" }), n] : [n];
-  }));
+  ]);
 }
+/** Esc goes up one level: site view -> region map -> all regions (not while typing in a field). */
+window.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || e.defaultPrevented || e.target.closest?.("input, select, textarea")) return;
+  if (site && !el.app.hidden) go(`#${site.region.id}`);
+  else if (mapView && mapView.mode === "region" && !mapView.flying) go("#");
+});
 
 /* ---------- inputs ---------- */
 function readInputs() {
