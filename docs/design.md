@@ -307,9 +307,13 @@ the design work doesn't wait on the pipeline.
 
 ## 12. Stretch goals (unordered; the team picks the order)
 
-- Slope filter or column (from the LOLA slope maps, LDSM). NASA's limits are
-  under 10° for landing at the 100 m scale and under 20° for EVA within 2 km;
-  the ground doesn't need to be flat out to 2 km (landing-criteria.md §1–2).
+- ~~Landing slope filter and column: NASA's limit is under 10° at the 100 m
+  scale (landing-criteria.md §1–2).~~ Done: `pipeline.slope` stores each site's
+  Landing Slope in `sites.json` (data-contract §5.3), computed from our 20 m DEM
+  and checked against the LOLA slope map (landing-criteria.md §3). The top 10
+  can be limited to sites under 10° or 8°.
+- EVA slope: the share of ground within 2 km that's under 20° (NASA's EVA
+  limit, landing-criteria.md §2).
 - ~~Timing robustness column: the share of the Supported Span with Full
   Coverage (landing-criteria.md §2).~~ Done: `pipeline.robustness` stores it in
   `sites.json` (data-contract §5.3); the map readout, the site overview and both
@@ -322,7 +326,8 @@ the design work doesn't wait on the pipeline.
 - User-set Observer Height.
 - A "prioritize Sun / prioritize Earth" ranking toggle.
 - Check every point in the 100 m circle, not just the center (the lander can
-  touch down anywhere within 100 m of the target).
+  touch down anywhere within 100 m of the target). Landing Slope already does
+  this; Clearance is still judged at the center only.
 
 ## 13. Rules that apply
 

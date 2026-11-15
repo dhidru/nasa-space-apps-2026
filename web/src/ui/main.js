@@ -16,9 +16,9 @@ import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadTeamRegion, loadAl
 import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView } from "./mapview.js";
-import { fillTopList } from "./toplist.js";
+import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
-import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
+import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
 import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
 
 
@@ -33,7 +33,7 @@ const el = {
   form: $("form"), lat: $("lat"), lon: $("lon"), date: $("date"), time: $("time"),
   now: $("now"), hint: $("hint"), chip: $("chip"), when: $("when"),
   oSunEl: $("oSunEl"), oSunAz: $("oSunAz"), oLst: $("oLst"), oSub: $("oSub"), oEarth: $("oEarth"), oPhase: $("oPhase"),
-  oElev: $("oElev"), oSlope: $("oSlope"), oRobust: $("oRobust"),
+  oElev: $("oElev"), oSlope: $("oSlope"), oSlopeLabel: $("oSlopeLabel"), oRobust: $("oRobust"),
   shade: $("shade"), slice: $("slice"), exag: $("exag"), exagOut: $("exagOut"), loading: $("loading"),
   cSun: $("cSun"), cEarth: $("cEarth"),
   chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
@@ -43,6 +43,7 @@ const el = {
   stayDetail: $("stayDetail"), stayWindows: $("stayWindows"),
 };
 $("oRobustLabel").title = ROBUSTNESS_TITLE;
+el.oSlopeLabel.title = SLOPE_TITLE;
 
 const compass16 = (az) => ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][Math.round(az / 22.5) % 16];
 const fmtLat = (v) => `${Math.abs(v).toFixed(2)}° ${v >= 0 ? "N" : "S"}`;
@@ -64,6 +65,8 @@ let REGIONS = [];                  // the nine regions from the team's regions.j
 // Landing Time (UTC ms, 10-minute grid, inside the Supported Span) shared by the region map and the site view:
 // the start of the 7-day Surface Stay that the team's ranking scores.
 let landingMs = DEFAULT_LANDING;
+/** Top-10 Landing Slope limit in degrees, or null for any slope; shared by the map card and the 3D view. */
+let slopeLimitDeg = DEFAULT_SLOPE_LIMIT_DEG;
 const allSites = () => [...REGIONS, ...saved];
 const regionById = (id) => REGIONS.find((r) => r.id === id);
 
@@ -82,7 +85,7 @@ async function teamFor(region, cell) {
   if (!region.hasSiteData) return null;
   const tr = await teamSitesFor(region.id), h = tr.heightOf(cell.id);
   if (h === undefined) return null;
-  return { h, robustness: tr.robustnessOf(cell.id), tracks: (vectors) => siteTracks(tr, cell.id, vectors) };
+  return { h, robustness: tr.robustnessOf(cell.id), slope: tr.slopeOf(cell.id), tracks: (vectors) => siteTracks(tr, cell.id, vectors) };
 }
 /** Sun/Earth azimuth, elevation and Clearance at one instant from the team's track(), or null without km vectors. */
 function teamNow(team, eph) {
@@ -313,7 +316,8 @@ async function apply() {
   state = { lat: cell.lat, lon: cell.lon, date, eph, h };
   const sunH = renderReadout(state);
   el.oElev.textContent = `${Math.round(h).toLocaleString()} m`;
-  el.oSlope.textContent = `${dem.slope(cell.x, cell.y).toFixed(1)}°`;
+  el.oSlope.textContent = team?.slope !== undefined ? slopeLabel(team.slope) : `${dem.slope(cell.x, cell.y).toFixed(1)}°`;
+  el.oSlopeLabel.textContent = team?.slope !== undefined ? "Landing slope" : "Slope (site)";
   el.oRobust.textContent = team ? robustnessLabel(team.robustness) : "— (no team site data)";
   const sun = sunVector(sunH.az, sunH.el, cell.lon);
   view.setSun(sun, 1);
@@ -351,12 +355,13 @@ async function updateTopTen() {
       if (token === topToken) el.topStatus.textContent = `Scoring every Landing Site over the Surface Stay… ${Math.round(f * 100)} %`;
     }), teamSitesFor(cur.region.id).catch(() => null)]);
     if (token !== topToken) return;
-    el.topStatus.textContent = "";
+    const top = topUnderSlope(r, tr, slopeLimitDeg);
+    el.topStatus.textContent = slopeLimitDeg !== null && !tr?.region.landingSlopeDeg ? "No Landing Slopes for this region, so the slope limit is off." : "";
     const grid = siteGrid(cur.region);
-    renderTopList(r, cur, tr);
+    renderTopList(top, cur, tr);
     const me = r.byId.get(cur.cell.id);
-    el.oRank.textContent = me ? `${me.rank.toLocaleString()} of ${r.doc.sites.length.toLocaleString()}${me.top ? " · top 10" : ""} · ${coverageLabel(me)}` : "—";
-    view.setMarks(r.top.map((e) => ({ cell: grid.byId(e.site_id), color: coverageColor(e) })).filter((m) => m.cell));
+    el.oRank.textContent = me ? `${me.rank.toLocaleString()} of ${r.doc.sites.length.toLocaleString()}${top.some((e) => e.site_id === me.site_id) ? " · top 10" : ""} · ${coverageLabel(me)}` : "—";
+    view.setMarks(top.map((e) => ({ cell: grid.byId(e.site_id), color: coverageColor(e) })).filter((m) => m.cell));
     updateStay(cur, me, token);
   } catch (e) {
     if (token !== topToken) return;
@@ -411,9 +416,10 @@ async function showWindows() {
     el.stayWindows.innerHTML = `<p class="status">Couldn't find Landing Windows: ${escapeHtml(e.message)}</p>`;
   }
 }
-function renderTopList(r, cur, tr) {
-  fillTopList(el.topList, r.top, {
+function renderTopList(top, cur, tr) {
+  fillTopList(el.topList, top, {
     robustnessOf: tr ? (id) => tr.robustnessOf(id) : undefined,
+    slopeOf: tr ? (id) => tr.slopeOf(id) : undefined,
     activeId: cur.cell.id,
     onPick: (e) => go(`#${cur.region.id}/${e.site_id}`),
   });
@@ -534,9 +540,14 @@ async function boot() {
   REGIONS = regionSites(regions);
   // Team SPICE positions (2026-2027) replace Astronomy Engine's Sun/Earth vectors once they arrive.
   loadAllPositions().then((p) => { useTeamPositions(p); if (site && !el.app.hidden) apply(); }).catch((e) => console.error(e));
+  const topSlope = $("topSlope");
+  const showSlopeLimit = () => { topSlope.innerHTML = slopeLimitHtml(slopeLimitDeg); };
+  showSlopeLimit();
+  topSlope.addEventListener("change", (ev) => { slopeLimitDeg = slopeLimitOf(ev.target); updateTopTen(); });
   mapView = new MapView(el.mapview, {
     homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
     ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); syncUrl(); },
+    getSlopeLimit: () => slopeLimitDeg, setSlopeLimit: (deg) => { slopeLimitDeg = deg; showSlopeLimit(); },
     onRegion: (id) => go(`#${id}`),
     onSite: (rid, cid) => flyToSite(rid, cid),
     onHome: () => go("#"),

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { makeRegion, type SiteRecord } from "./data";
 
-const site = (id: string, robustness?: number): SiteRecord => ({
+const site = (id: string, robustness?: number, slope?: number): SiteRecord => ({
   site_id: id, x_m: 0, y_m: 0, lat_deg: -89, lon_deg: 0, terrain_height_m: 0,
   ...(robustness === undefined ? {} : { timing_robustness_fraction: robustness }),
+  ...(slope === undefined ? {} : { landing_slope_deg: slope }),
 });
 const horizons = (n: number) => ({ nSites: n, nAzimuths: 4, scale: 0.01, values: new Int16Array(n * 4) });
 const region = (sites: SiteRecord[]) =>
@@ -15,5 +16,14 @@ describe("Timing Robustness from sites.json", () => {
   });
   it("is null when the pipeline hasn't computed it for every site", () => {
     expect(region([site("a", 0.25), site("b")]).timingRobustness).toBeNull();
+  });
+});
+
+describe("Landing Slope from sites.json", () => {
+  it("is read per site, in sites.json order", () => {
+    expect(Array.from(region([site("a", 1, 12.5), site("b", 1, 3.25)]).landingSlopeDeg!)).toEqual([12.5, 3.25]);
+  });
+  it("is null when the pipeline hasn't computed it for every site", () => {
+    expect(region([site("a", 1, 12.5), site("b", 1)]).landingSlopeDeg).toBeNull();
   });
 });

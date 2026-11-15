@@ -64,4 +64,6 @@ ranking code. Python stays the reference implementation. There is no server.
   Robustness covers every Landing Time in the Supported Span, which is too slow
   to compute per site in the browser. So `pipeline.robustness` stores it in
   `sites.json` (data-contract §5.3) and the browser only reads it. It has no
-  TypeScript port, so it can't drift from the Python.
+  TypeScript port, so it can't drift from the Python. Landing Slope works the
+  same way (`pipeline.slope`); it needs the 20 m DEM, which the site doesn't ship.
+  The browser only applies the slope limit when it picks the top 10.

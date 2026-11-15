@@ -22,6 +22,8 @@ export interface Region {
   azimuthStepDeg: number;
   /** Timing Robustness per site (data-contract §5.3), or null if sites.json doesn't have it for every site. */
   timingRobustness: Float64Array | null;
+  /** Landing Slope per site in degrees (data-contract §5.3), or null if sites.json doesn't have it for every site. */
+  landingSlopeDeg: Float64Array | null;
 }
 
 export interface SiteRecord {
@@ -32,6 +34,7 @@ export interface SiteRecord {
   lon_deg: number;
   terrain_height_m: number;
   timing_robustness_fraction?: number;
+  landing_slope_deg?: number;
 }
 
 export interface SitesDoc {
@@ -66,6 +69,7 @@ export function makeRegion(doc: SitesDoc, horizons: Horizons): Region {
     azimuthStepDeg: 360 / horizons.nAzimuths,
     timingRobustness: doc.sites.every((s) => s.timing_robustness_fraction !== undefined)
       ? col((s) => s.timing_robustness_fraction!) : null,
+    landingSlopeDeg: doc.sites.every((s) => s.landing_slope_deg !== undefined) ? col((s) => s.landing_slope_deg!) : null,
   };
 }
 

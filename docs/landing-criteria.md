@@ -53,9 +53,9 @@ Ordered by how directly they come from NASA and how cheap they are for us.
 
 | # | Criterion | Source | What we could do |
 |---|---|---|---|
-| 1 | **Landing slope under 10°** across the 100 m site | HLS25 slides 21, 23 | A slope column and filter from the LOLA slope product or from our 20 m DEM. Mark sites over 10° (and over 8°) as not landable. This is the clearest gap |
+| 1 | **Landing slope under 10°** across the 100 m site | HLS25 slides 21, 23 | **Covered:** Landing Slope, the steepest 100 m-scale slope in the site's circle, from our 20 m DEM (`pipeline.slope`, data-contract §5.3). The top 10 can be limited to sites under 10° (default) or 8°. Checked against NASA's slope map in §3 |
 | 2 | **EVA slope under 20° within 2 km** | HLS25 slides 21, 24 | Per site: the share of ground within 2 km that's under 20°. GL24 shows a stricter version: slope ≤5° over at least 25% of a 2 km zone |
-| 3 | **Check the whole 100 m circle**, not just the center | HLS25 slide 28 (100 m landing accuracy), R22 | The lander can touch down anywhere in the circle, so take the worst slope and the worst Clearance over it. This is already a stretch goal; the sources now back it |
+| 3 | **Check the whole 100 m circle**, not just the center | HLS25 slide 28 (100 m landing accuracy), R22 | The lander can touch down anywhere in the circle, so take the worst slope and the worst Clearance over it. **Slope is covered** (Landing Slope is the worst over the circle); Clearance is still judged at the center |
 | 4 | **Slope variability and surface hazards** (craters, block fields, rough terrain) | G26 | A roughness column (LOLA roughness). Our 20 m DEM can't see boulders, so say so in the UI |
 | 5 | **Robustness to timing** | G26 favors regions that stay robust across mission epochs and are less sensitive to seasons and timing uncertainty | **Covered:** Timing Robustness, the share of Landing Times in the Supported Span that give Full Coverage, per site (`pipeline.robustness`, data-contract §5.3) |
 | 6 | **Landing opportunities are discrete** | HLS25 slide 20: from the NRHO, a lander can descend only once every 6.5 days (about 55 chances a year), and only about 28 NRHO departures a year are possible | We treat every 10-minute Landing Time as possible. At minimum, say in the UI that real landing chances are much rarer. Modeling them needs trajectory data we don't have |
@@ -63,3 +63,40 @@ Ordered by how directly they come from NASA and how cheap they are for us.
 | 8 | **Approach lighting** | HLS25 slide 27: light along the approach path helps, and the approach differs for each landing chance | Not modeled. It needs the approach trajectory, so it's out of scope; we can list it as a limitation |
 | 9 | **Long-term visibility thresholds** | HLS25 slides 25–26 mask out ground with under 25% Earth visibility or under 5% Sun visibility. GL24 uses Sun ≥33% and direct-to-Earth ≥50% of the time | We already require 100% over the actual stay, which is stricter. These could be optional context columns, but the PGDA long-term maps have no stated license (ATTRIBUTIONS.md), so we'd compute them ourselves |
 | 10 | **Science value** (access to permanently shadowed regions with water ice, South Pole–Aitken material) | R24 (science potential), GL24 | The distance-to-PSR stretch goal already covers part of this |
+
+## 3. Landing Slope checked against NASA's slope map
+
+Checked on 2026-11-15. We compute Landing Slope from the LOLA 20 m DEM
+(`LDEM_80S_20M`) rather than from NASA's LOLA slope map (`LDSM_85S_40M`,
+same PDS data set; ATTRIBUTIONS.md), because:
+
+- **Coverage.** LDSM at 40 m covers only 85–90°S. Peak Near Cabeus B and
+  Nobile Rim 2 lie entirely north of that, and Nobile Rim 1 partly. The
+  coarser LDSM (120 m) is too coarse for a 100 m site. The 20 m DEM covers
+  all 8 regions with one method.
+- **Sampling.** LDSM measures slope along the laser tracks from three
+  successive shots (a 30–120 m baseline, says its label). About 69% of its
+  pixels are fill (DN 0, which would read as 45°). The DEM has a height at
+  every 20 m pixel, so we can take the worst slope over the whole circle.
+
+To check the method, we compared each site's Landing Slope with the steepest
+LDSM pixel (fill skipped) whose center is within the same 100 m circle. Every
+region LDSM reaches:
+
+| Region | Sites with LDSM data | Median, ours / LDSM | Correlation | Agree on < 10° | Under 10°, ours / LDSM | Agree on < 8° |
+|---|---|---|---|---|---|---|
+| Mons Mouton | 94% | 14.1° / 13.7° | 0.91 | 89% | 25% / 28% | 92% |
+| Malapert Massif | 90% | 20.4° / 19.4° | 0.94 | 96% | 8% / 9% | 97% |
+| Haworth | 97% | 12.9° / 12.7° | 0.87 | 88% | 29% / 31% | 91% |
+| Slater Plain | 98% | 10.9° / 10.6° | 0.89 | 89% | 43% / 45% | 89% |
+| de Gerlache Rim 2 | 99% | 15.3° / 15.0° | 0.93 | 93% | 19% / 20% | 95% |
+| Nobile Rim 1 | 89% | 20.9° / 19.7° | 0.92 | 95% | 13% / 14% | 96% |
+
+The two agree closely. Ours is slightly stricter (0.2–1.2° steeper at the
+median, 1–3 points fewer sites under 10°), as expected: LDSM's sparse track
+pixels can miss the steepest spot in a circle. Disagreements are sites close
+to the limit. `tests/test_slope_ldsm.py` (slow) repeats the Mons Mouton row.
+
+Neither source can see boulders or small craters below about 20–40 m, so a
+site under 10° here still needs higher-resolution imagery before a real
+landing (§2 row 4).

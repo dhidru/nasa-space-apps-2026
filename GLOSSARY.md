@@ -71,3 +71,7 @@ _Avoid_: Failing, degraded
 **Timing Robustness**:
 The share of Landing Times in the Supported Span for which a Landing Site has Full Coverage over the Surface Stay. It says how well a site holds up if the Landing Time slips, and it doesn't depend on the chosen Landing Time.
 _Avoid_: Reliability, availability, uptime
+
+**Landing Slope**:
+The steepest ground slope anywhere in a Landing Site's 100 m circle, each slope measured over a 100 m patch (NASA's 100 m scale). NASA's landing limit is under 10°. It doesn't depend on the Landing Time.
+_Avoid_: Site slope, gradient, steepness

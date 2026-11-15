@@ -281,8 +281,22 @@ def build_sites(cx: float, cy: float) -> list[dict]:
             lat, lon = xy_to_ll(x, y)
             sites.append({"site_id": f"r{row:03d}c{col:03d}", "x_m": r(x, 1), "y_m": r(y, 1),
                           "lat_deg": r(lat, 6), "lon_deg": r(lon, 6),
-                          "terrain_height_m": r(terrain_height(x, y, cx, cy), 1)})
+                          "terrain_height_m": r(terrain_height(x, y, cx, cy), 1),
+                          "landing_slope_deg": r(mock_landing_slope(x, y, cx, cy), 2)})
     return sites
+
+
+def mock_landing_slope(x: float, y: float, cx: float, cy: float) -> float:
+    """Approximate Landing Slope (data-contract §5.3): the steepest 100 m central-difference slope at the
+    center and 8 points 60 m out. The real pipeline fits a plane to every 20 m DEM pixel in the circle."""
+    worst = 0.0
+    for k in range(9):
+        px = x + (60 * math.cos(k * math.pi / 4) if k else 0.0)
+        py = y + (60 * math.sin(k * math.pi / 4) if k else 0.0)
+        gx = (terrain_height(px + 50, py, cx, cy) - terrain_height(px - 50, py, cx, cy)) / 100
+        gy = (terrain_height(px, py + 50, cx, cy) - terrain_height(px, py - 50, cx, cy)) / 100
+        worst = max(worst, math.degrees(math.atan(math.hypot(gx, gy))))
+    return worst
 
 
 def build_horizons(sites: list[dict], cx: float, cy: float) -> array.array:

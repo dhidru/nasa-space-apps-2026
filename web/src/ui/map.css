@@ -61,6 +61,10 @@
 /* top 10 on the region map */
 .heat-cells { opacity: .55; pointer-events: none; }
 .heat { stroke: none; shape-rendering: crispEdges; }
+/* Sites at or over the Landing Slope limit: darkened, so the landable ground stands out. */
+.steep-cells { pointer-events: none; }
+.steep { fill: #000; fill-opacity: .55; stroke: none; shape-rendering: crispEdges; }
+.map-top .slope-limit { margin: 4px 0 6px; }
 .top-cell { fill-opacity: .9; stroke: #fff !important; stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
 .map-label.top-label { font: 600 11px var(--f-mono); color: #fff; background: rgba(14,16,21,.85); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; cursor: pointer; }
 .map-top { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }

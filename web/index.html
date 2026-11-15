@@ -77,7 +77,7 @@
           <dt>Earth from site</dt><dd id="oEarth">—</dd>
           <dt>Phase (from Earth)</dt><dd id="oPhase">—</dd>
           <dt>Site elevation</dt><dd id="oElev">—</dd>
-          <dt>Slope (site)</dt><dd id="oSlope">—</dd>
+          <dt id="oSlopeLabel">Slope (site)</dt><dd id="oSlope">—</dd>
           <dt>Rank (stay from this time)</dt><dd id="oRank">—</dd>
           <dt id="oRobustLabel">Timing robustness (year)</dt><dd id="oRobust">—</dd>
         </dl>
@@ -144,9 +144,10 @@
           <h2>Top 10 Landing Sites</h2>
           <small id="topWhen">—</small>
         </header>
+        <div id="topSlope"></div>
         <p class="hint" id="topStatus"></p>
         <ol class="top-list" id="topList"></ol>
-        <p class="hint">Ranked by the team's Clearance scoring for a 7-day Surface Stay starting at the chosen time (snapped to 10 minutes): Full Coverage first, then the worst-case minimum Clearance of Sun and Earth. Sites in the list are at least 2 km apart. Click one to open it; they are outlined in the 3D view.</p>
+        <p class="hint">Ranked by the team's Clearance scoring for a 7-day Surface Stay starting at the chosen time (snapped to 10 minutes): Full Coverage first, then the worst-case minimum Clearance of Sun and Earth. Sites in the list are at least 2 km apart and, unless you choose "any", have a Landing Slope under the chosen limit (the steepest 100 m-scale slope anywhere in the site's 100 m circle). Click one to open it; they are outlined in the 3D view.</p>
       </section>
       <section class="stay" id="stay" hidden aria-label="Surface Stay">
         <header>

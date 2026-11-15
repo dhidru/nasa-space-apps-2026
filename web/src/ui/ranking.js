@@ -8,6 +8,8 @@ import { science } from "../science/client.ts";
 export { snapLandingTime, formatUtc, parseUtc, compactUtc, SPAN_START, SPAN_END, STAY_STEPS, STEP_MS, STEP_S, HOUR_MS, DAY_MS } from "../science/time.ts";
 export { coverageLabel, coverageColor, pct, robustnessLabel, ROBUSTNESS_TITLE, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb, SUN_COLOR, EARTH_COLOR, LOS_COLOR, BLOCKED_COLOR } from "../app/coverage.ts";
 export { DEFAULT_LANDING, parseRoute, formatRoute } from "../app/route.ts";
+export { slopeLabel, underSlopeLimit, SLOPE_TITLE, SLOPE_LIMITS_DEG, DEFAULT_SLOPE_LIMIT_DEG } from "../app/slope.ts";
+import { topWithinSlope } from "../app/slope.ts";
 
 function lru(map, key, make, limit) {
   if (!map.has(key)) {
@@ -33,6 +35,14 @@ export function ranking(regionId, landing, progress) {
   })), 6);
   if (hit && progress) progress(1);
   return p;
+}
+
+/**
+ * The top 10 of ranking `r` among sites with a Landing Slope under `limitDeg` (null: any slope), using the team
+ * region `team` (loadTeamRegion) for positions and slopes. Without `team`, the ranking's own top 10.
+ */
+export function topUnderSlope(r, team, limitDeg) {
+  return team ? topWithinSlope(r.doc.sites, team.region, limitDeg) : r.top;
 }
 
 const details = new Map();

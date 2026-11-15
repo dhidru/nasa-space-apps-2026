@@ -5,6 +5,8 @@ card in docs/data-contract.md §9. Add both before adding a source here.
 
     python -m pipeline.fetch small          # SPICE kernels (~44 MB); checks the USGS outlines
     python -m pipeline.fetch lola80         # LDEM_80S_80M, full file (116 MB)
+    python -m pipeline.fetch ldsm85         # LDSM_85S_40M slope map, full file (115 MB); only for the
+                                            # Landing Slope cross-check in tests/test_slope_ldsm.py
     python -m pipeline.fetch lola20 REGION_ID  # LDEM_80S_20M, only the lines around one region
                                             # (needs the USGS outlines; ~100 MB for one region)
 """
@@ -73,6 +75,11 @@ def fetch_lola80() -> None:
         _get(LOLA_BASE + f"ldem_80s_80m.{ext}", RAW / "lola" / f"ldem_80s_80m.{ext}")
 
 
+def fetch_ldsm85() -> None:
+    for ext in ("lbl", "img"):
+        _get(LOLA_BASE + f"ldsm_85s_40m.{ext}", RAW / "lola" / f"ldsm_85s_40m.{ext}")
+
+
 # Near-field Horizon range (5 km) plus the base-map margin, with room to spare.
 BAND_MARGIN_M = 8_000.0
 
@@ -102,6 +109,8 @@ if __name__ == "__main__":
         fetch_small()
     elif cmd == "lola80":
         fetch_lola80()
+    elif cmd == "ldsm85":
+        fetch_ldsm85()
     elif cmd == "lola20":
         fetch_lola20_for_region(sys.argv[2])
     else:

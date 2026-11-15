@@ -140,6 +140,15 @@ Fields:
     site with any Full Coverage Landing Time, and never 1 for a site with any
     Partial one. The mock data's values are approximate: the mock generator
     samples every 6 hours instead of every 10 minutes.
+  - `landing_slope_deg` (optional): the site's Landing Slope in degrees, rounded
+    to 2 decimals. For every 20 m pixel of LOLA `LDEM_80S_20M`, the 100 m-scale
+    slope is the tilt of the least-squares plane through the 5 × 5 pixels around
+    it (a 100 m × 100 m patch), on the ground: the map gradient times the
+    stereographic scale factor `k = 1 + (ρ / 2R)²`. The site's value is the
+    steepest of these over the pixels whose centers are within 100 m of the site
+    center. `pipeline.slope` adds it after `pipeline.build`. The front end treats
+    a missing value as "not computed". The mock values are approximate (central
+    differences at 9 points of the circle).
 - **The order of `sites[]` is the row order of the Horizons (`horizons.bin.gz`).**
 
 ### 5.4 Site-to-site distance
@@ -394,6 +403,26 @@ card. Nothing else in the pipeline reads a source file directly.
   "preliminary".
 - **Conversion on load:** multiply DN by 0.5 to get meters. Map pixels to x/y
   with the formula above. No change of frame, datum or longitude sign.
+
+### LOLA LDSM_85S_40M slope map (PDS3 GDR, product version V2.0)
+Used only to check Landing Slope (`tests/test_slope_ldsm.py`, which reads it
+itself); nothing in the pipeline or the site uses it.
+- **File(s):** `ldsm_85s_40m.img` (115,034,112 bytes, 7,584 × 7,584) with its `.lbl` label.
+- **Source / license:** https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ · see ATTRIBUTIONS.md (LOLA entry)
+- **Frame:** `COORDINATE_SYSTEM_NAME = "MEAN EARTH/POLAR AXIS OF DE421"`, as for the LDEMs.
+- **Projection:** `POLAR STEREOGRAPHIC`, `CENTER_LATITUDE = -90`, `CENTER_LONGITUDE = 0`,
+  sphere `A_AXIS_RADIUS = 1737.4 km`, east-positive. Pixel centers as for the LDEMs, with
+  `LINE_PROJECTION_OFFSET = SAMPLE_PROJECTION_OFFSET = 3791.5`.
+- **Units:** int16 DN, `LSB_INTEGER`. `SLOPE = DN · 0.0015 + 45` degrees
+  (`SCALING_FACTOR = 0.0015`, `OFFSET = 45.`): DN −30,000 is flat, DN 0 is 45°.
+- **Ranges and signs:** `DERIVED_MINIMUM = -29999`, `DERIVED_MAXIMUM = 4187` (0.0015° to 51.3°).
+- **Resolution:** 40 m/px, covering 85°S–90°S only (`MAXIMUM_LATITUDE = -85`). The
+  slope itself comes from three successive laser shots along a track, over a
+  30–120 m baseline (label `DESCRIPTION`); the pixel `DESCRIPTION` says 40 m.
+- **Reference height / datum:** not applicable (slopes).
+- **No-data value:** none declared, but pixels off the laser tracks are DN 0
+  (exactly 45°), about 69% of the map. We treat DN 0 as no data.
+- **Conversion on load:** DN 0 → no data; otherwise DN · 0.0015 + 45.
 
 ### USGS Artemis III region outlines (`A3_9regions-lonlat-simplified.zip`)
 - **File(s):** `A3_9regions-lonlat-simplified.zip` (637,136 bytes) from

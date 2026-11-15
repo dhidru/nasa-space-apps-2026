@@ -64,10 +64,13 @@ Each dataset below also has a conventions card in
 - **Used for:** Terrain for the Horizons, the site terrain heights and the
   hillshade base maps. Products used: `LDEM_80S_20M` (20 m/px, near field and region
   base map) and `LDEM_80S_80M` (80 m/px, far field and home base map), product
-  version V2.0, created 2017-06-15.
+  version V2.0, created 2017-06-15. Also `LDSM_85S_40M` (40 m/px slope map, V2.0,
+  created 2012-06-15), only to check our Landing Slope (`tests/test_slope_ldsm.py`);
+  it isn't shipped. Its label shows the same data set and no other restriction.
 - **Source:** NASA PDS Geosciences Node,
   https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/
-  (`ldem_80s_20m.img` 1,848,320,000 bytes, `ldem_80s_80m.img` 115,520,000 bytes, with their `.lbl` labels).
+  (`ldem_80s_20m.img` 1,848,320,000 bytes, `ldem_80s_80m.img` 115,520,000 bytes, `ldsm_85s_40m.img`
+  115,034,112 bytes, with their `.lbl` labels).
   Mission page: https://pds-geosciences.wustl.edu/missions/lro/lola.htm
 - **Accessed:** 2026-11-14
 - **License / permission:** NASA open data. The NASA Planetary Science Division
@@ -79,7 +82,7 @@ Each dataset below also has a conventions card in
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** Neumann, G.A. (2010). *LRO Lunar Orbiter Laser Altimeter Gridded Digital Elevation Models*,
   LRO-L-LOLA-4-GDR-V1.0 [Data set]. NASA Planetary Data System. https://doi.org/10.17189/1520642.
-  Products LDEM_80S_20M and LDEM_80S_80M (V2.0). The DOI comes from the PDS Geosciences DOI list; the
+  Products LDEM_80S_20M and LDEM_80S_80M (V2.0), and LDSM_85S_40M (V2.0). The DOI comes from the PDS Geosciences DOI list; the
   author and year come from the data set catalog's CITATION_DESC.
 
 ### NAIF SPICE generic kernels (DE440 ephemeris, lunar orientation, leap seconds)
@@ -403,6 +406,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Found and read NASA sources on Artemis III landing requirements (two releases, the 2025 Space Apps HLS presentation, two LPSC abstracts, one of them provided by the team); mapped them to our design decisions, listed the criteria we don't cover yet, and corrected the "flat within 2 km" wording | `docs/landing-criteria.md`, `docs/design.md`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Added the Timing Robustness stretch goal: each site's share of Supported Span Landing Times with Full Coverage, computed once by a new `pipeline.robustness` step into `sites.json` (contract, schema, mock generator, glossary, ADR note), shown in the map readout, the site overview and both top-10 lists; tests in Python and TypeScript, two-axis code review | `src/pipeline/`, `tests/`, `contract/`, `data/processed/site-data/regions/*/sites.json`, `web/`, `docs/`, `GLOSSARY.md`, `README.md`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | Follow-ups from the Timing Robustness review: one shared top-10 list builder for the map card and the 3D view (`web/src/ui/toplist.js`), with escaped text and a column header (Site, Coverage over the stay, Worst, Year) on fixed-width columns; confirmed the MIT headers in `web/src/ui` are required by that code's license | `web/src/ui/toplist.js`, `web/src/ui/main.js`, `web/src/ui/mapview.js`, `web/src/ui/style.css`, `web/src/ui/map.css`, `ATTRIBUTIONS.md` |
+| 2026-11-15 | Claude Code | Added the landing slope stretch goal: compared NASA's LOLA slope map (LDSM_85S_40M) with slopes from our 20 m DEM for the team's choice of source; a new `pipeline.slope` step stores each site's Landing Slope (steepest 100 m-scale slope in its circle) in `sites.json` (contract, schema, mock generator, glossary, ADR note), a slow test checks it against LDSM, and the web app shows it and can limit the top 10 to sites under 10° or 8°; tests in Python and TypeScript, two-axis code review | `src/pipeline/`, `tests/`, `contract/`, `data/processed/site-data/regions/*/sites.json`, `web/`, `docs/`, `GLOSSARY.md`, `README.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 

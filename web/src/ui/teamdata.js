@@ -43,7 +43,8 @@ export function loadRegionBasemap(region) {
 
 /**
  * A region's sites and Horizons, via loadRegion. Adds heightOf(siteId): terrain height (m), and
- * robustnessOf(siteId): Timing Robustness (0–1, data-contract §5.3), undefined if the pipeline didn't compute it.
+ * robustnessOf(siteId): Timing Robustness (0–1, data-contract §5.3), and slopeOf(siteId): Landing Slope (deg, §5.3),
+ * each undefined if the pipeline didn't compute it.
  * `region.siteIndex` maps site ids to rows; Horizons are decoded once.
  */
 export async function loadTeamRegion(regionId) {
@@ -57,6 +58,10 @@ export async function loadTeamRegion(regionId) {
     robustnessOf(siteId) {
       const i = region.siteIndex.get(siteId);
       return i === undefined || !region.timingRobustness ? undefined : region.timingRobustness[i];
+    },
+    slopeOf(siteId) {
+      const i = region.siteIndex.get(siteId);
+      return i === undefined || !region.landingSlopeDeg ? undefined : region.landingSlopeDeg[i];
     },
   };
 }

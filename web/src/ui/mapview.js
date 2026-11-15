@@ -6,8 +6,8 @@
 import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
 import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
-import { fillTopList } from "./toplist.js";
-import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
+import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
+import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, topUnderSlope, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}, parent) => {
@@ -38,7 +38,8 @@ export class MapView {
    * @param {HTMLElement} root  the #mapview element
    * @param {{ homeBasemap:object, regionBasemap:(region)=>Promise<object>, teamSites:(id)=>Promise<object|null>,
    *           regions:object[], onRegion:(id)=>void, onSite:(regionId, cellId)=>void,
-   *           onHome:()=>void, demFor:(id)=>Promise<object> }} opts
+   *           onHome:()=>void, demFor:(id)=>Promise<object>, getLanding:()=>number, setLanding:(t)=>void,
+   *           getSlopeLimit:()=>number|null, setSlopeLimit:(deg:number|null)=>void }} opts
    */
   constructor(root, opts) {
     Object.assign(this, opts);
@@ -239,8 +240,10 @@ export class MapView {
     this.hoverRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-hover", visibility: "hidden" }, this.svg);
     this.selRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-selected", visibility: "hidden" }, this.svg);
     this.heatLayer = svgEl("g", { class: "heat-cells clears-on-flight" }, this.svg);
+    this.steepLayer = svgEl("g", { class: "steep-cells clears-on-flight" }, this.svg);
     this.topLayer = svgEl("g", { class: "top-cells clears-on-flight" }, this.svg);
     this.rankData = null;
+    this.topIds = new Set();
 
     this.fit({ xmin: e.xmin, xmax: e.xmax, ymin: e.ymin, ymax: e.ymax }, 0.05);
     this.setCrumbs([{ text: "Lunar south pole", go: () => this.onHome() }, { text: r.name }]);
@@ -289,7 +292,7 @@ export class MapView {
         <dt>Latitude</dt><dd data-k="lat">—</dd>
         <dt>Longitude</dt><dd data-k="lon">—</dd>
         <dt>Elevation</dt><dd data-k="h">—</dd>
-        <dt>Slope (200 m)</dt><dd data-k="s">—</dd>
+        <dt data-k="sl">Slope (200 m)</dt><dd data-k="s">—</dd>
         ${r.hasSiteData ? `<dt>Rank</dt><dd data-k="rank">—</dd><dt title="${ROBUSTNESS_TITLE}">Timing robustness</dt><dd data-k="robust">—</dd>` : ""}
       </dl>
       ${r.hasSiteData ? `
@@ -308,8 +311,10 @@ export class MapView {
           <span><i style="background:${rgb(FULL_HIGH)}"></i> Full coverage (darker = more Clearance)</span>
           <span><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Partial (by the weaker of Sun and Earth)</span>
           <span><i class="outlined"></i> Top 10 (at least 2 km apart)</span>
+          <span><i class="steep"></i> Landing slope over the limit</span>
         </div>
         <h3>Top 10 Landing Sites</h3>
+        ${slopeLimitHtml(this.getSlopeLimit())}
         <p class="hint top-status"></p>
         <ol class="top-list"></ol>
       </section>` : ""}
@@ -317,7 +322,7 @@ export class MapView {
         ? "Team data: site heights from the pipeline's sites.json; Sun and Earth Clearance in the 3D view use the team's Horizons."
         : "Team site data (heights, Horizons) for this region is coming soon. Heights here are from the 80 m LOLA DEM."}</p>
       <button type="button" class="back">← All regions</button>
-      <p class="credits">Hillshade: ${bm.source} (NASA, public domain). Slope: LOLA 80 m DEM. Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
+      <p class="credits">Hillshade: ${bm.source} (NASA, public domain). ${r.hasSiteData ? "Landing slope: LOLA 20 m DEM." : "Slope: LOLA 80 m DEM."} Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
     this.card.querySelector(".back").addEventListener("click", () => this.onHome());
     const input = this.card.querySelector(".landing input");
     const setT = (t) => {
@@ -329,6 +334,8 @@ export class MapView {
       input.addEventListener("change", () => { const t = Date.parse(`${input.value}:00Z`); if (!Number.isNaN(t)) setT(t); });
       for (const b of this.card.querySelectorAll(".map-top .steps button")) b.addEventListener("click", () => setT(this.getLanding() + Number(b.dataset.step)));
     }
+    const limit = this.card.querySelector(".slope-limit select");
+    if (limit) limit.addEventListener("change", () => { this.setSlopeLimit(slopeLimitOf(limit)); this.loadTopTen(r, grid); });
   }
 
   /** Rank every site for the shared Landing Time and draw the top 10 (team science port, in a worker). */
@@ -336,8 +343,10 @@ export class MapView {
     const token = (this.topToken = (this.topToken || 0) + 1), landing = this.getLanding();
     const status = this.card.querySelector(".top-status"), list = this.card.querySelector(".map-top .top-list");
     this.rankData = null;
+    this.topIds = new Set();
     this.topLayer.replaceChildren();
     this.heatLayer.replaceChildren();
+    this.steepLayer.replaceChildren();
     for (const l of this.labels.querySelectorAll(".top-label")) l.remove();
     if (status) status.textContent = "Scoring every Landing Site over the Surface Stay…";
     if (list) list.replaceChildren();
@@ -347,6 +356,8 @@ export class MapView {
       }), this.teamSites(r.id).catch(() => null)]);
       if (token !== this.topToken || this.region !== r) return;
       this.rankData = res;
+      const limitDeg = this.getSlopeLimit(), top = topUnderSlope(res, team, limitDeg);
+      this.topIds = new Set(top.map((e) => e.site_id));
       // Coverage heatmap: every site coloured by coverage, one path per colour.
       const byColor = new Map(), h = GRID_M / 2;
       for (const e of res.doc.sites) {
@@ -356,17 +367,33 @@ export class MapView {
         byColor.set(c, (byColor.get(c) || "") + `M${cell.x - h},${-(cell.y + h)}h${GRID_M}v${GRID_M}h${-GRID_M}z`);
       }
       for (const [c, d] of byColor) svgEl("path", { d, fill: c, class: "heat" }, this.heatLayer);
+      // Shade the sites at or over the slope limit.
+      const steep = (e) => !underSlopeLimit(team?.slopeOf(e.site_id), limitDeg);
+      const hasSlope = !!team?.region.landingSlopeDeg;
+      if (hasSlope && limitDeg !== null) {
+        let d = "";
+        for (const e of res.doc.sites) {
+          const cell = steep(e) && grid.byId(e.site_id);
+          if (cell) d += `M${cell.x - h},${-(cell.y + h)}h${GRID_M}v${GRID_M}h${-GRID_M}z`;
+        }
+        if (d) svgEl("path", { d, class: "steep" }, this.steepLayer);
+      }
       const nFull = res.doc.sites.filter((x) => x.coverage === "full").length;
-      if (status) status.textContent = `${nFull.toLocaleString()} of ${res.doc.sites.length.toLocaleString()} sites have Full Coverage. Sites in the list are at least 2 km apart.`;
-      res.top.forEach((e, i) => {
+      const nFullFlat = hasSlope && limitDeg !== null ? res.doc.sites.filter((x) => x.coverage === "full" && !steep(x)).length : null;
+      if (status) status.textContent = `${nFull.toLocaleString()} of ${res.doc.sites.length.toLocaleString()} sites have Full Coverage`
+        + (nFullFlat === null ? "" : `, ${nFullFlat.toLocaleString()} of them with a Landing Slope under ${limitDeg}°`)
+        + `. Sites in the list are at least 2 km apart.`
+        + (limitDeg !== null && !hasSlope ? " (No Landing Slopes for this region, so the slope limit is off.)" : "");
+      top.forEach((e, i) => {
         const cell = grid.byId(e.site_id);
         if (!cell) return;
         svgEl("rect", { x: cell.x - GRID_M / 2, y: -(cell.y + GRID_M / 2), width: GRID_M, height: GRID_M, class: "top-cell", style: `fill:${coverageColor(e)};stroke:${coverageColor(e)}` }, this.topLayer);
         const lab = this.addLabel({ x: cell.x + GRID_M, y: cell.y + GRID_M, text: String(i + 1), cls: "top-label", a: "start", id: e.site_id });
         lab.addEventListener("click", () => this.onSite(r.id, e.site_id));
       });
-      if (list) fillTopList(list, res.top, {
+      if (list) fillTopList(list, top, {
         robustnessOf: team ? (id) => team.robustnessOf(id) : undefined,
+        slopeOf: team ? (id) => team.slopeOf(id) : undefined,
         onPick: (e) => this.onSite(r.id, e.site_id),
         onHover: (e) => { const cell = grid.byId(e.site_id); if (cell) { this.markCell(cell, this.hoverRect); this.renderCell(cell); } },
       });
@@ -387,13 +414,17 @@ export class MapView {
     const teamH = this.teamSiteData ? this.teamSiteData.heightOf(cell.id) : undefined;
     const team = teamH !== undefined;
     if (team) set("h", `${Math.round(teamH).toLocaleString()} m`);
+    const teamSlope = this.teamSiteData ? this.teamSiteData.slopeOf(cell.id) : undefined;
+    if (teamSlope !== undefined) set("s", slopeLabel(teamSlope));
+    const label = this.card.querySelector('[data-k="sl"]');
+    if (label) { label.textContent = teamSlope !== undefined ? "Landing slope" : "Slope (200 m)"; label.title = teamSlope !== undefined ? SLOPE_TITLE : ""; }
     if (this.dem) {
       if (!team) set("h", `${Math.round(this.dem.at(cell.x, cell.y)).toLocaleString()} m`);
-      set("s", `${this.dem.slope(cell.x, cell.y).toFixed(1)}°`);
-    } else { if (!team) set("h", "loading…"); set("s", "loading…"); }
+      if (teamSlope === undefined) set("s", `${this.dem.slope(cell.x, cell.y).toFixed(1)}°`);
+    } else { if (!team) set("h", "loading…"); if (teamSlope === undefined) set("s", "loading…"); }
     if (this.teamSiteData) set("robust", robustnessLabel(this.teamSiteData.robustnessOf(cell.id)));
     const e = this.rankData && this.rankData.byId.get(cell.id);
-    set("rank", e ? `${e.rank.toLocaleString()} of ${this.rankData.doc.sites.length.toLocaleString()}${e.top ? " · top 10" : ""} · ${coverageLabel(e)}` : this.region && this.region.hasSiteData ? "scoring…" : "—");
+    set("rank", e ? `${e.rank.toLocaleString()} of ${this.rankData.doc.sites.length.toLocaleString()}${this.topIds.has(cell.id) ? " · top 10" : ""} · ${coverageLabel(e)}` : this.region && this.region.hasSiteData ? "scoring…" : "—");
   }
 
   /* ---------- fly-in to a Landing Site (hand-off to the 3D view) ---------- */
