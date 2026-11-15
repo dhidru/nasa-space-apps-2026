@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: MIT */
+/* Breadcrumbs and the 2D south polar / region maps. */
+/* ---------- breadcrumbs ---------- */
+.crumbs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 12px; color: var(--muted); min-width: 0; }
+.crumbs button { background: none; border: 0; padding: 0; font: inherit; color: var(--fg); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.crumbs button:hover { color: var(--sun); text-decoration-color: var(--sun); }
+.crumbs .sep { color: var(--faint); }
+.crumbs span:last-child { color: var(--sun); }
+.panel header .crumbs { flex-basis: 100%; }
+
+/* ---------- 2D maps ---------- */
+.mapview {
+  position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--bg);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.map-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.map-head h1 { margin: 0; font-size: 17px; font-weight: 650; }
+.map-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+.map-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #050608; }
+.map-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; }
+.map-img { image-rendering: auto; }
+.map-card { border-left: 1px solid var(--line); padding: 16px; gap: 12px; }
+.map-card h2 { margin: 0; font-size: 16px; font-weight: 650; }
+.map-card .sub { margin: 0; font: 12px var(--f-mono); color: var(--muted); }
+.map-card .team-note { margin: 0; padding: 8px 10px; border-left: 2px solid var(--sun); background: var(--sun-dim); font-size: 12px; line-height: 1.45; }
+.map-card .credits { margin-top: auto; padding: 10px 0 0; border-top: 1px solid var(--line); }
+.map-reset { position: absolute; z-index: 3; right: 12px; top: 12px; font-size: 12px; padding: 6px 10px; background: rgba(14,16,21,.85); }
+.map-zoomhint { position: absolute; z-index: 3; left: 50%; top: 12px; transform: translateX(-50%); margin: 0; padding: 6px 10px; border-radius: 4px; background: rgba(14,16,21,.85); border: 1px solid var(--line); font-size: 12px; color: var(--muted); pointer-events: none; }
+
+.graticule circle, .graticule line { fill: none; stroke: rgba(231,228,220,.16); stroke-width: 1; vector-effect: non-scaling-stroke; stroke-dasharray: 4 4; }
+.pole { fill: var(--fg); }
+.region { fill: rgba(242,184,75,.12); stroke: var(--sun); stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .12s; }
+.region.hover, .region:focus-visible { fill: rgba(242,184,75,.38); stroke-width: 2.5; outline: none; }
+.region-outline { fill: none; stroke: var(--sun); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.mask { fill: rgba(5,6,8,.55); pointer-events: none; }
+.grid { fill: none; stroke: rgba(231,228,220,.9); stroke-width: .6; vector-effect: non-scaling-stroke; pointer-events: none; }
+.cell-hover { fill: rgba(242,184,75,.35); stroke: var(--sun); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+.cell-selected { fill: none; stroke: #fff; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+.map-labels { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.map-label { position: absolute; white-space: nowrap; transform: translate(-50%, -50%); font: 12px var(--f-ui); color: var(--muted); text-shadow: 0 0 3px #000, 0 0 6px #000; }
+.map-label.anchor-start { transform: translate(0, -50%); }
+.map-label.anchor-end { transform: translate(-100%, -50%); }
+.region-label { pointer-events: auto; cursor: pointer; background: rgba(7,8,11,.72); border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; font-weight: 600; font-size: 12.5px; color: var(--fg); text-shadow: none; }
+.region-label.hover { border-color: var(--sun); color: var(--sun-ink); background: var(--sun); }
+.pole-label { font-size: 11px; }
+.lat-label { font: 10.5px var(--f-mono); color: rgba(231,228,220,.5); }
+
+.region-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.region-list button { width: 100%; text-align: left; display: grid; gap: 2px; padding: 8px 10px; background: transparent; border: 1px solid transparent; }
+.region-list button small { font: 11px var(--f-mono); color: var(--faint); }
+.region-list button:hover, .region-list button.hover { border-color: var(--sun); background: var(--sun-dim); }
+.cell-read { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--field); }
+.map-card .back { justify-self: start; }
+
+@media (max-width: 800px) {
+  .map-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .map-card { border-left: 0; border-top: 1px solid var(--line); max-height: 42vh; }
+}

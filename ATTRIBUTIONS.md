@@ -102,6 +102,22 @@ Each dataset below also has a conventions card in
   - Acton, C., Bachman, N., Semenov, B., Wright, E. (2017). A look toward the future in the handling of space science mission geometry. *Planetary and Space Science*. https://doi.org/10.1016/j.pss.2017.02.013 (as listed on https://naif.jpl.nasa.gov/naif/credit.html)
   - Park, R.S., Folkner, W.M., Williams, J.G., Boggs, D.H. (2021). The JPL Planetary and Lunar Ephemerides DE440 and DE441. *The Astronomical Journal*, 161(3), 105. https://doi.org/10.3847/1538-3881/abd414
 
+### NASA SVS CGI Moon Kit (global LOLA elevation map only)
+- **Type:** Data
+- **Used for:** The coarse global elevation tiles and shadow grid the viewer uses for its 3D terrain beyond the
+  80 m region DEMs and for the far-horizon ray march (`viewer/scripts/prepare-data.mjs` → `viewer/public/tiles`, built at
+  deploy time, not committed). File: `ldem_16.tif` (66 MB). We do **not** use the kit's colour map by default
+  (see Requirements).
+- **Source:** https://svs.gsfc.nasa.gov/4720
+- **Accessed:** 2026-11-14
+- **License / permission:** Public domain. The SVS help page (https://svs.gsfc.nasa.gov/help/) says "All of our
+  content is in the public domain (unless otherwise noted)". The CGI Moon Kit page notes no exception.
+- **Requirements:** The page asks: "Please give credit for this item to: NASA's Scientific Visualization Studio".
+  The kit's colour map is adapted from the LROC WAC mosaic (Arizona State University) and its license isn't stated,
+  so the viewer doesn't download or ship it (`prepare-data --with-color` builds it locally only).
+- **Status:** ✅ elevation map (checked by Claude Code, 2026-11-14) · ⚠️ colour map: not used
+- **Citation:** NASA's Scientific Visualization Studio (2019). *CGI Moon Kit* (ID 4720). Visualizer: Ernie Wright; scientist: Noah Petro. https://svs.gsfc.nasa.gov/4720
+
 > NASA data is generally free to use, but check each dataset's own page. Some
 > NASA-hosted data comes from partners (ESA, JAXA, commercial providers) under
 > different terms. See [NASA Images and Media Usage Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/)
@@ -220,6 +236,22 @@ Each dataset below also has a conventions card in
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** Vite, Vitest and TypeScript contributors [Software]. https://vite.dev, https://vitest.dev, https://www.typescriptlang.org
 
+### Lunar Site Viewer (`viewer/`), with three.js and Astronomy Engine
+- **Type:** Code/Library
+- **Used for:** A second, separate front end in `viewer/` (Vite + three.js + Astronomy Engine), built on the team's
+  `data/processed/site-data` and deployed to GitHub Pages by `.github/workflows/pages.yml`. The viewer code was
+  written by a team member with Claude, started from a Claude design chat; it is MIT-licensed (`viewer/LICENSE`),
+  which is compatible with our Apache 2.0.
+- **Source:** three.js https://github.com/mrdoob/three.js (npm `three@0.160.0`); Astronomy Engine
+  https://github.com/cosinekitty/astronomy (npm `astronomy-engine@2.1.19`). Build-time only: Vite `5.4.11`,
+  geotiff `2.1.3`, pngjs `7.0.0`.
+- **Accessed:** 2026-11-14
+- **License / permission:** All MIT, from each installed package's `package.json`. `npm run licenses` in `viewer/`
+  lists the shipped tree (3 packages, all MIT).
+- **Requirements:** Keep the MIT notices; the build keeps legal comments. Credits are in `viewer/THIRD_PARTY_NOTICES.md`.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** three.js authors. *three.js* [Software, MIT]. https://threejs.org/ · Cross, D. *Astronomy Engine* [Software, MIT]. https://github.com/cosinekitty/astronomy
+
 ## Tools
 
 ### Git
@@ -278,22 +310,25 @@ Each dataset below also has a conventions card in
 ### GitHub Actions and GitHub Pages, with the official `actions/*` workflow actions
 - **Type:** Tool
 - **Used for:** Building, testing and publishing the web app to GitHub Pages
-  (`.github/workflows/pages.yml`). The workflow references these actions by
+  (`.github/workflows/pages.yml`), with the Lunar Site Viewer (`viewer/`) built into the same site under `/viewer/`. The workflow references these actions by
   version; none of their code is copied into the repo or the site:
   `actions/checkout@v7` (v7.0.1), `actions/setup-node@v7` (v7.1.0),
-  `actions/upload-pages-artifact@v5` (v5.0.0) and `actions/deploy-pages@v5` (v5.0.1).
+  `actions/upload-pages-artifact@v5` (v5.0.0), `actions/deploy-pages@v5` (v5.0.1) and `actions/cache@v4`
+  (caches the viewer's NASA elevation files between runs).
 - **Source:** https://github.com/actions/checkout, https://github.com/actions/setup-node,
-  https://github.com/actions/upload-pages-artifact, https://github.com/actions/deploy-pages;
+  https://github.com/actions/upload-pages-artifact, https://github.com/actions/deploy-pages,
+  https://github.com/actions/cache;
   service: https://docs.github.com/en/pages
 - **Accessed:** 2026-11-14
 - **License / permission:** Each action is MIT ([checkout](https://github.com/actions/checkout/blob/main/LICENSE),
   [setup-node](https://github.com/actions/setup-node/blob/main/LICENSE),
   [upload-pages-artifact](https://github.com/actions/upload-pages-artifact/blob/main/LICENSE),
-  [deploy-pages](https://github.com/actions/deploy-pages/blob/main/LICENSE)).
+  [deploy-pages](https://github.com/actions/deploy-pages/blob/main/LICENSE),
+  [cache](https://github.com/actions/cache/blob/main/LICENSE)).
   The Actions and Pages services fall under the
   [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service)
   and the [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
-  (1 GB site, 100 GB/month soft bandwidth limit; our site is about 11 MB).
+  (1 GB site, 100 GB/month soft bandwidth limit; the web app is about 11 MB and the viewer adds about 47 MB).
 - **Requirements:** None for our use. We only run the actions on GitHub's
   runners and don't redistribute them. MIT is compatible with Apache 2.0.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
@@ -350,6 +385,9 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Measured region data sizes, tested a long-term-average site filter on Mons Mouton and recorded the decision to keep Mons Mouton Plateau "coming soon" | `docs/design.md`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Checked the npm licenses; built the web front end (React + OpenLayers) and the TypeScript port of the clearance, ranking and Landing Windows code, test-first against the committed Python results; added the build plugins for site data and third-party notices | `web/`, `.claude/launch.json`, `docs/`, `README.md`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Checked the licenses of the official GitHub Actions; wrote the GitHub Pages deploy workflow (tests, build, publish) and checked the built site under the Pages subpath | `.github/workflows/pages.yml`, `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Moved the Lunar Site Viewer (started from a Claude design chat, first hosted on Vercel) into the repo; switched it to the team's site-data (regions, outlines, hillshades, `sites.json` heights, Horizons for Clearance, SPICE positions); fixed the overlapping-region lookup; made the unlicensed CGI Moon Kit colour map opt-in; added the GitHub Pages workflow; checked the viewer's Clearance against the pipeline's golden site detail | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
+| 2026-11-14 | Claude Code | Moved the Lunar Site Viewer from `web/` to `viewer/` so it sits beside the team's React front end, merged `main` and resolved the attribution conflicts | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
+| 2026-11-14 | Claude Code | Merged `main` again: dropped the viewer's separate Pages workflow and added the viewer build to the team's workflow, so it publishes under `/viewer/` on the same site | `.github/workflows/pages.yml`, `viewer/`, `ATTRIBUTIONS.md`, `README.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
