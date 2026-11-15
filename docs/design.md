@@ -2,7 +2,8 @@
 
 Status: agreed by the team on 2026-11-14 in a design interview with Claude Code.
 Terms in **bold capitals** (Landing Region, Clearance, …) are defined in
-[GLOSSARY.md](../GLOSSARY.md).
+[GLOSSARY.md](../GLOSSARY.md). The NASA sources behind these decisions, and the
+criteria we don't cover yet, are in [landing-criteria.md](landing-criteria.md).
 
 ## 1. Purpose
 
@@ -61,7 +62,8 @@ a specific Artemis mission number.
 
 ## 4. Landing Sites
 
-- A site is a circle with a **100 m radius**.
+- A site is a circle with a **100 m radius**. NASA's 2022 release defines a
+  site this way, and the landing accuracy is 100 m (landing-criteria.md §1).
 - Site centers sit on a **200 m grid** inside the region, so neighboring circles
   touch but don't overlap. That's about 6,400 sites for Mons Mouton and about
   10,000 for a 20 km region.
@@ -305,15 +307,20 @@ the design work doesn't wait on the pipeline.
 
 ## 12. Stretch goals (unordered; the team picks the order)
 
-- Slope filter or column (from the LOLA slope maps, LDSM). This also covers the
-  "flat within about 2 km" guidance.
+- Slope filter or column (from the LOLA slope maps, LDSM). NASA's limits are
+  under 10° for landing at the 100 m scale and under 20° for EVA within 2 km;
+  the ground doesn't need to be flat out to 2 km (landing-criteria.md §1–2).
+- Timing robustness column: the share of the Supported Span with Full
+  Coverage (landing-criteria.md §2).
+- Surface Stay length as a setting (NASA gives 5.75–6.5 days).
 - Distance to the nearest permanently shadowed region (PGDA LPSR shapefile), as
   a proxy for ice.
 - Roughness filter or column (LOLA roughness, LDRM).
 - Fraction of the Sun's disk that is visible, instead of center only.
 - User-set Observer Height.
 - A "prioritize Sun / prioritize Earth" ranking toggle.
-- Check every point in the 100 m circle, not just the center.
+- Check every point in the 100 m circle, not just the center (the lander can
+  touch down anywhere within 100 m of the target).
 
 ## 13. Rules that apply
 

@@ -398,6 +398,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Combined the two front ends at the team's request: the Lunar Site Viewer is now the site's front end at the root, running on the web app's data and science code (siteData and notices plugins, fetchSiteData/readJson/loadRegion/loadPositions, track, the science worker, coverage and route helpers); ported the web app's coverage heatmap, stats table, sky plot, time charts and Landing Windows to the viewer; moved the web app to `/app/`; checked ranking, site detail and Landing Windows against the committed results | `viewer/`, `.github/workflows/pages.yml`, `README.md`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | At the team's request, merged the two front ends into one app in `web/` at the site root: the viewer's UI moved to `web/src/ui` on top of `web/src/science` (science client, loaders, track, worker); the React pages, React and OpenLayers were removed; added the web app's link format with the Landing Time, Landing Time step buttons, "coming soon" badges, name and footer links to the UI; one Pages build with nothing at `/viewer/` or `/app/`; checked ranking, site detail and Landing Windows against the committed results | `web/`, `viewer/` (removed), `.github/workflows/pages.yml`, `README.md`, `docs/`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Made the build use a separate LOLA 20 m band per region, downloaded the bands and computed sites and Horizons for the 7 remaining regions that fit a static site (all but Mons Mouton Plateau) | `src/pipeline/build.py`, `tests/test_build.py`, `data/processed/site-data/`, `docs/design.md`, `README.md`, `web/README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Found and read NASA sources on Artemis III landing requirements (two releases, the 2025 Space Apps HLS presentation, two LPSC abstracts, one of them provided by the team); mapped them to our design decisions, listed the criteria we don't cover yet, and corrected the "flat within 2 km" wording | `docs/landing-criteria.md`, `docs/design.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
@@ -421,7 +422,8 @@ _None yet._
 - **Type:** Information
 - **Used for:** The list and names of the 9 Landing Regions. `src/pipeline/regions.py` and the mock
   generator write its title and URL into `regions.json` → `source`. We use only the region names
-  (facts) and a link; no text or images are copied.
+  (facts) and a link; no text or images are copied. Also cited for the selection criteria in
+  `docs/landing-criteria.md`.
 - **Source:** https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/
 - **Accessed:** 2026-11-14
 - **License / permission:** NASA web content; see the [NASA Images and Media Usage Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/).
@@ -429,6 +431,61 @@ _None yet._
 - **Requirements:** Don't use NASA logos or imply NASA endorsement.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** NASA (2024, October 28). *NASA Provides Update on Artemis III Moon Landing Regions* [News release 24-136]. https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/
+
+### NASA news release 22-089, "NASA Identifies Candidate Regions for Landing Next Americans on Moon" (2022-08-19)
+- **Type:** Information
+- **Used for:** Backing for the 100 m site radius, the 6.5-day surface stay, the selection criteria
+  (slope, lighting, communication with Earth) and the link between sites and launch timing
+  (`docs/landing-criteria.md`, `docs/design.md` §4). Facts and one short quote only; no images copied.
+- **Source:** https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/
+- **Accessed:** 2026-11-14
+- **License / permission:** NASA web content; see the [NASA Images and Media Usage Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/).
+- **Requirements:** Credit NASA. Don't use NASA logos or imply NASA endorsement.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** NASA (2022, August 19). *NASA Identifies Candidate Regions for Landing Next Americans on Moon* [News release 22-089]. https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/
+
+### "Artemis Human Landing System Overview", NASA presentation for the 2025 Space Apps Challenge (NTRS 20250009323)
+- **Type:** Information
+- **Used for:** The "Key Artemis III Landing Requirements" (slide 21: within 6° of the pole, landing slope
+  under 10° at 100 m, EVA slope under 20° within 2 km, direct-to-Earth comms, surface and approach
+  lighting, land within 100 m of a target) and the context on slides 19–28. Cited in
+  `docs/landing-criteria.md` and `docs/design.md`. Facts and short quotes only; no slides or images copied.
+- **Source:** https://ntrs.nasa.gov/citations/20250009323 (PDF: https://ntrs.nasa.gov/api/citations/20250009323/downloads/ArtemisOverview2025IntSPAPPSChallenge.pdf)
+- **Accessed:** 2026-11-14
+- **License / permission:** NASA Technical Reports Server record, distribution "Public". The record notes that
+  "Portions of document may include copyright protected material", so we cite facts only and copy no
+  slides, images or logos.
+- **Requirements:** Credit NASA and the authors. Don't reuse slide images or the NASA and Artemis logos on them.
+- **Status:** ✅ for citing facts (checked by Claude Code, 2026-11-14)
+- **Citation:** Ortiz, L., & Dwyer Cianciolo, A. (2025, October 4). *Artemis Human Landing System Overview: NASA 2025 International SPACE APPS Challenge* [Presentation]. NASA. NTRS 20250009323. https://ntrs.nasa.gov/citations/20250009323
+
+### George et al. (2026), "Artemis III Site Selection Update: Down-Selection from 13 to 9 Candidate Regions" (LPSC 2026)
+- **Type:** Information (conference abstract by NASA authors)
+- **Used for:** Why the 9 regions were chosen: the 5.75–6.25-day surface stay, illumination for the whole
+  stay, direct-to-Earth visibility, slope variability and surface hazards, robustness across mission
+  epochs, and the need for more than one region. Cited in `docs/landing-criteria.md`. Paraphrase and
+  short quotes only; no figures copied.
+- **Source:** https://www.hou.usra.edu/meetings/lpsc2026/pdf/1901.pdf (provided by the team)
+- **Accessed:** 2026-11-14
+- **License / permission:** No license is stated on the abstract. The authors are from NASA and Booz Allen
+  Hamilton. Citing and paraphrasing a published abstract is normal scholarly use; we copy no text
+  beyond short quotes and no figures.
+- **Requirements:** Cite the authors and the conference. Don't copy the abstract text or the region image.
+- **Status:** ✅ for citing (checked by Claude Code, 2026-11-14)
+- **Citation:** George, T., Rubio, M. A., Lawrence, S. J., & Curell, P. (2026). Artemis III Site Selection Update: Down-Selection from 13 to 9 Candidate Regions. *57th Lunar and Planetary Science Conference*, Abstract #1901. https://www.hou.usra.edu/meetings/lpsc2026/pdf/1901.pdf
+
+### Gracy & Lee (2024), "Candidate Landing Sites for Artemis 3 in Two NASA Candidate Landing Regions Nearest the Lunar South Pole" (LPSC 2024)
+- **Type:** Information (conference abstract; research, not a NASA requirement)
+- **Used for:** Supporting evidence for the 2 km on-foot exploration range and for example site
+  thresholds (slope ≤5° over 25% of a 2 km zone, Sun ≥33%, direct-to-Earth ≥50%). Cited in
+  `docs/landing-criteria.md`. Paraphrase only; no figures copied.
+- **Source:** https://www.hou.usra.edu/meetings/lpsc2024/pdf/1695.pdf
+- **Accessed:** 2026-11-14
+- **License / permission:** No license is stated on the abstract. Citing and paraphrasing is normal
+  scholarly use; we copy no text or figures.
+- **Requirements:** Cite the authors and the conference.
+- **Status:** ✅ for citing (checked by Claude Code, 2026-11-14)
+- **Citation:** Gracy, S., & Lee, P. (2024). Candidate Landing Sites for Artemis 3 in Two NASA Candidate Landing Regions Nearest the Lunar South Pole. *55th Lunar and Planetary Science Conference*, Abstract #1695. https://www.hou.usra.edu/meetings/lpsc2024/pdf/1695.pdf
 
 ### NASA Moon Fact Sheet (NSSDCA)
 - **Type:** Information
