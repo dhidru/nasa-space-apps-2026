@@ -21,7 +21,7 @@ import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadTeamRegion, loadAl
 import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView, setBreadcrumbs } from "./mapview.js";
-import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
+import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
 import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
 import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
@@ -547,9 +547,11 @@ async function boot() {
   // Team SPICE positions (2026-2027) replace Astronomy Engine's Sun/Earth vectors once they arrive.
   loadAllPositions().then((p) => { useTeamPositions(p); if (site && !el.app.hidden) apply(); }).catch((e) => console.error(e));
   const topSlope = $("topSlope");
-  const showSlopeLimit = () => { topSlope.innerHTML = slopeLimitHtml(slopeLimitDeg); };
+  const showSlopeLimit = () => {
+    topSlope.innerHTML = slopeLimitHtml(slopeLimitDeg);
+    bindSlopeLimit(topSlope, (limit) => { slopeLimitDeg = limit; updateTopTen(); });
+  };
   showSlopeLimit();
-  topSlope.addEventListener("change", (ev) => { slopeLimitDeg = slopeLimitOf(ev.target); updateTopTen(); });
   mapView = new MapView(el.mapview, {
     homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
     ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); syncUrl(); },
