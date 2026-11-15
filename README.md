@@ -83,7 +83,9 @@ Run these from `src/`:
    Landing Windows into `regions/mons-mouton/results/` (seconds; repeat `--landing-time` for more).
 8. `python ../contract/validate.py ../data/processed/site-data`: check the output against the data contract.
 
-Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks that need the downloaded data.
+Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks that need the downloaded data,
+including the validation against SPICE's own azimuth/elevation routine and known lunar orbit facts
+(design.md §10).
 
 ### Web app
 
