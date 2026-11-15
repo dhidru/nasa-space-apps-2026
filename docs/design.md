@@ -34,8 +34,9 @@ a specific Artemis mission number.
   Massif, Mons Mouton Plateau, Mons Mouton, Nobile Rim 1, Nobile Rim 2, de
   Gerlache Rim 2, and Slater Plain.
 - The **Demo Region** is **Mons Mouton** (a 16 × 16 km square). We compute it
-  first, and the demo uses it. If there's time, we run the pipeline for the
-  other 8.
+  first, and the demo uses it. On 2026-11-14 we ran the pipeline for the other
+  7 regions that fit a static site, so 8 of the 9 have site data. Only Mons
+  Mouton Plateau doesn't (see below).
 - We first chose Mons Mouton Plateau, but its USGS outline turned out to be
   76.9 × 57.9 km (about 111,000 sites, a 320 MB Horizons file and about 50 min
   of compute). The team switched to Mons Mouton on 2026-11-14 because it fits

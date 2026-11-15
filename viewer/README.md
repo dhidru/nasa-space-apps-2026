@@ -10,7 +10,7 @@ adds a 3D terrain slice and a lunar-day timeline; it is here to test hosting on 
    to highlight it, click to open it.
 2. **Region grid**: the region's 200 m Landing Site grid (ids `r###c###` from the top-left, as in `sites.json`) over
    the team's region hillshade. Hover a cell to read its elevation and slope, click it to open the site. In regions
-   with team site data (today: Mons Mouton) the elevation comes from `sites.json`.
+   with team site data (every region except Mons Mouton Plateau) the elevation comes from `sites.json`.
 3. **Site view**: a 3D slice of terrain (2 to 16 km) around the site, drawn with three.js from the 80 m LOLA DEM.
    Shade it with a relief light, real sunlight with cast shadows for any date and time, or slope classes. Around it:
    Sun and Earth readouts, a timeline of Sun and Earth elevation over one lunar day, and a table comparing the nine
@@ -22,7 +22,7 @@ adds a 3D terrain slice and a lunar-day timeline; it is here to test hosting on 
 | Data | Source |
 |---|---|
 | Regions, outlines, home and region hillshades | team `site-data` (`regions.json`, `outline.geojson`, `basemap.*`) |
-| Site heights, Horizons (Mons Mouton) | team `site-data` (`sites.json`, `horizons.bin.gz`) |
+| Site heights, Horizons (8 regions; not Mons Mouton Plateau) | team `site-data` (`sites.json`, `horizons.bin.gz`) |
 | Sun/Earth vectors, 2026–2027 | team `site-data/ephemeris` (SPICE, MOON_ME); Astronomy Engine outside those years |
 | 3D terrain, slopes, far-horizon ray march where there are no team Horizons | NASA tiles built by `scripts/prepare-data.mjs` (LOLA 80 m polar DEM and the SVS CGI Moon Kit global DEM) |
 

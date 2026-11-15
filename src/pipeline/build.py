@@ -16,17 +16,20 @@ import sys
 import time
 import zlib
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 
 from .horizon import compute_horizons, encode_horizons, quantize_horizons
-from .lola import DemGrid, open_lola
+from .lola import DemGrid, lines_covering, open_lola
 from .projection import xy_to_lonlat
 from .regions import NASA_SOURCE, REGIONS, Outline, load_outlines
 from .sites import build_site_grid
 
 SCHEMA_VERSION = 1
-DEMO_REGION = "mons-mouton"  # design.md §3
+# Every region except Mons Mouton Plateau, which is too large for a static site (design.md §3).
+SITE_REGIONS = frozenset({"peak-near-cabeus-b", "haworth", "malapert-massif", "mons-mouton", "nobile-rim-1",
+                          "nobile-rim-2", "de-gerlache-rim-2", "slater-plain"})
 SITE_SPACING_M = 200.0
 SITE_RADIUS_M = 100.0
 OBSERVER_HEIGHT_M = 2.0
@@ -149,8 +152,10 @@ def write_region_sites(folder: Path, outline: Outline, near: DemGrid, far: DemGr
     return len(sites)
 
 
-def build_dataset(out: Path, outlines: dict[str, Outline], *, far: DemGrid, near: DemGrid,
-                  site_regions: set[str], horizon_kw: dict | None = None, home_pixel_m: float = 400.0) -> None:
+def build_dataset(out: Path, outlines: dict[str, Outline], *, far: DemGrid,
+                  near: DemGrid | Callable[[Outline], DemGrid], site_regions: set[str],
+                  horizon_kw: dict | None = None, home_pixel_m: float = 400.0) -> None:
+    """`near` is one 20 m DEM for every region, or a function that returns the one for a region's outline."""
     out = Path(out)
     horizon_kw = horizon_kw or {}
     # Home map: the whole far DEM.
@@ -170,9 +175,11 @@ def build_dataset(out: Path, outlines: dict[str, Outline], *, far: DemGrid, near
         write_outline(folder, outline)
         has_sites = rid in site_regions
         if has_sites:
-            write_basemap(folder, region_extent(outline, near.pixel_m), near.pixel_m, [(near, LOLA_20M)])
+            near_dem = near(outline) if callable(near) else near
+            write_basemap(folder, region_extent(outline, near_dem.pixel_m), near_dem.pixel_m, [(near_dem, LOLA_20M)])
             t0 = time.time()
-            n = write_region_sites(folder, outline, near, far, horizon_kw)
+            n = write_region_sites(folder, outline, near_dem, far, horizon_kw)
+            del near_dem
             print(f"{rid}: {n} sites, Horizons in {time.time() - t0:.0f} s")
         else:
             write_basemap(folder, region_extent(outline, far.pixel_m), far.pixel_m, [(far, LOLA_80M)])
@@ -188,13 +195,33 @@ def build_dataset(out: Path, outlines: dict[str, Outline], *, far: DemGrid, near
                                        "source": NASA_SOURCE, "regions": entries})
 
 
+def near_band_loader(lola_dir: Path) -> Callable[[Outline], DemGrid]:
+    """Opens the downloaded LDEM_80S_20M band (pipeline.fetch lola20 REGION) that covers a region."""
+    from .fetch import BAND_MARGIN_M
+
+    lbl = lola_dir / "ldem_80s_20m.lbl"
+    bands = []
+    for img in lola_dir.glob("ldem_80s_20m_lines*.img"):
+        info = json.loads(img.with_suffix(".band.json").read_text())
+        bands.append((int(info["first_line"]), int(info["first_line"]) + int(info["n_lines"]), img))
+
+    def load(outline: Outline) -> DemGrid:
+        y = outline.xy_m[:, 1]
+        first, end = lines_covering(lbl, y.min() - BAND_MARGIN_M, y.max() + BAND_MARGIN_M)
+        for a, b, img in sorted(bands, key=lambda t: t[1] - t[0]):  # smallest band first: less memory
+            if a <= first and end <= b:
+                return open_lola(lbl, img)
+        raise FileNotFoundError(f"{outline.region_id}: no 20 m band covers lines {first}-{end}; "
+                                f"run python -m pipeline.fetch lola20 {outline.region_id}")
+
+    return load
+
+
 def main(out: Path) -> None:
     shp = next((RAW / "usgs" / "A3_9regions-lonlat-simplified").rglob("*.shp"))
     outlines = load_outlines(shp)
     far = open_lola(RAW / "lola" / "ldem_80s_80m.lbl", RAW / "lola" / "ldem_80s_80m.img")
-    band = next((RAW / "lola").glob("ldem_80s_20m_lines*.img"))
-    near = open_lola(RAW / "lola" / "ldem_80s_20m.lbl", band)
-    build_dataset(out, outlines, far=far, near=near, site_regions={DEMO_REGION})
+    build_dataset(out, outlines, far=far, near=near_band_loader(RAW / "lola"), site_regions=set(SITE_REGIONS))
 
 
 if __name__ == "__main__":

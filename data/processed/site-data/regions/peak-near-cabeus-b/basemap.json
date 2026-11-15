@@ -1,1 +1,1 @@
-{"schema_version":1,"mock":false,"image":"basemap.png","extent_m":[-192000.0,58000.0,-168000.0,82000.0],"pixel_size_m":80.0,"width_px":300,"height_px":300,"source":"LOLA LDEM_80S_80M (PDS LRO-L-LOLA-4-GDR-V1.0), hillshade"}
+{"schema_version":1,"mock":false,"image":"basemap.png","extent_m":[-192000.0,58000.0,-168000.0,82000.0],"pixel_size_m":20.0,"width_px":1200,"height_px":1200,"source":"LOLA LDEM_80S_20M (PDS LRO-L-LOLA-4-GDR-V1.0), hillshade"}

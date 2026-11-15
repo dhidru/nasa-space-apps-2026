@@ -389,6 +389,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Moved the Lunar Site Viewer from `web/` to `viewer/` so it sits beside the team's React front end, merged `main` and resolved the attribution conflicts | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Merged `main` again: dropped the viewer's separate Pages workflow and added the viewer build to the team's workflow, so it publishes under `/viewer/` on the same site | `.github/workflows/pages.yml`, `viewer/`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | At the team's request (no unlicensed data), validated our Sun/Earth azimuth and elevation against SPICE's own `azlcpo` routine and against Moon Fact Sheet values (tilt, synodic month, Earth distance, full/new moon); checked the fact sheet's terms | `tests/test_validation_spice.py`, `tests/test_validation_orbit.py`, `docs/design.md`, `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Made the build use a separate LOLA 20 m band per region, downloaded the bands and computed sites and Horizons for the 7 remaining regions that fit a static site (all but Mons Mouton Plateau) | `src/pipeline/build.py`, `tests/test_build.py`, `data/processed/site-data/`, `docs/design.md`, `README.md`, `viewer/README.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
