@@ -37,13 +37,13 @@ export function slopeLimitHtml(limitDeg) {
       <div class="slope-row"><label for="${id}">Max slope</label><output>${off ? "off" : `${v}°`}</output></div>
       <div class="slope-track">
         <input id="${id}" type="range" min="0" max="${SLOPE_MAX_DEG}" step="1" value="${v}"${off ? " disabled" : ""} aria-describedby="${id}-note">
-        <div class="slope-ticks" aria-hidden="true">${[0, 2, 4, 6, 8, 10].map((d) => `<span${d === NASA_SLOPE_DEG ? ' class="nasa"' : ""} style="left:${pct(d)}">${d}°${d === NASA_SLOPE_DEG ? " NASA" : ""}</span>`).join("")}</div>
+        <div class="slope-ticks" aria-hidden="true">${[0, 2, 4, 6, 8, 10].map((d) => `<span${d === NASA_SLOPE_DEG ? ' class="nasa"' : ""} style="left:${pct(d)}">${d}°${d === NASA_SLOPE_DEG ? " <small>NASA</small>" : ""}</span>`).join("")}</div>
       </div>
-      <label class="slope-off"><input type="checkbox"${off ? " checked" : ""}> No slope filter (slope isn't a priority)</label>
+      <label class="slope-off"><input type="checkbox"${off ? " checked" : ""}> Ignore slope</label>
       <p class="slope-note" id="${id}-note">${slopeNote(off ? null : v)}</p>
     </div>`;
 }
-const slopeNote = (deg) => (deg === null ? "Slope ignored: every site can make the top 10." : `Sites at or over ${deg}° are shaded and left out of the top 10.`);
+const slopeNote = (deg) => (deg === null ? "Slope ignored. Any site can make the top 10." : `Sites steeper than ${deg}° are shaded and left out of the top 10.`);
 /** The limit set in a control made by slopeLimitHtml (`root` is the control or an element inside it): degrees, or null. */
 export function slopeLimitOf(root) {
   const ctl = root.closest(".slope-ctl") ?? root.querySelector(".slope-ctl");

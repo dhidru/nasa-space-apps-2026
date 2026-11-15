@@ -21,8 +21,8 @@ describe("the top 10 within a slope limit", () => {
   it("skips steep sites, so a site they used to block can take their place", () => {
     expect(top(slopes, 10)).toEqual(["b", "c", "d"]);
   });
-  it("needs the slope to be under the limit, not at it", () => {
-    expect(top(slopes, 8)).toEqual(["b"]);
+  it("keeps a site at the limit and leaves out only steeper ones", () => {
+    expect(top(slopes, 8)).toEqual(["b", "d"]);
   });
   it("ignores the limit when the region has no Landing Slopes", () => {
     expect(top(null, 10)).toEqual(["a", "c", "d"]);
@@ -31,9 +31,11 @@ describe("the top 10 within a slope limit", () => {
 
 describe("slopeLabel", () => {
   it("rounds down to 0.1 deg, so a site under the limit never shows the limit itself", () => {
-    expect(slopeLabel(9.99)).toBe("9.9°");
+    expect(slopeLabel(9.99)).toBe("10.0°");
+    expect(slopeLabel(10.01)).toBe("10.1°");
+    expect(slopeLabel(5)).toBe("5.0°");
     expect(slopeLabel(12)).toBe("12.0°");
-    expect(slopeLabel(0.04)).toBe("0.0°");
+    expect(slopeLabel(0.04)).toBe("0.1°");
   });
   it("shows a dash when the value wasn't computed", () => {
     expect(slopeLabel(undefined)).toBe("—");
