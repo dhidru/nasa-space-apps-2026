@@ -9,7 +9,7 @@ import {
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const deg = (v) => `${v.toFixed(2)}°`;
-const utc = (s) => s.replace("T", " ").slice(0, 16) + " UTC";
+const utc = (s) => s.replace("T", " ").slice(0, 19) + " UTC";
 
 /* ---------- stats over the Surface Stay (StatsTable.tsx) ---------- */
 export function statsTable(doc) {
@@ -112,12 +112,12 @@ export function windowsView(doc, landing) {
   const dur = (h) => (h < 48 ? `${h.toFixed(1)} h` : `${(h / 24).toFixed(1)} d`);
   return strip + `<table class="windows-list"><thead><tr><th>#</th><th>Window (UTC)</th><th>Length</th><th>Best Landing Time</th><th>Worst-case</th></tr></thead><tbody>
     ${doc.windows.map((w) => `<tr data-t="${esc(w.best_landing_time_utc)}" title="Set this Landing Time"><td>${w.rank}</td>
-      <td>${w.start_utc.slice(0, 16).replace("T", " ")} → ${w.end_utc.slice(0, 16).replace("T", " ")}${w.contains_partial_gaps ? " *" : ""}</td>
-      <td>${dur(w.duration_h)}</td><td><button type="button" class="link">${w.best_landing_time_utc.slice(0, 16).replace("T", " ")}</button></td>
+      <td>${w.start_utc.slice(0, 19).replace("T", " ")} → ${w.end_utc.slice(0, 19).replace("T", " ")}${w.contains_partial_gaps ? " *" : ""}</td>
+      <td>${dur(w.duration_h)}</td><td><button type="button" class="link">${w.best_landing_time_utc.slice(0, 19).replace("T", " ")}</button></td>
       <td>${w.best_worst_case_min_clearance_deg.toFixed(2)}°</td></tr>`).join("")}
   </tbody></table>${doc.windows.some((w) => w.contains_partial_gaps) ? `<p class="fine">* Includes short Partial gaps (under ${doc.merge_gap_h} h) that were merged into the window.</p>` : ""}`;
 }
 
 /** Header line for the panel: site, rank and coverage. */
 export const stayTitle = (siteId, entry) => `Landing Site ${esc(siteId)}${entry ? ` <span class="sub">· rank ${entry.rank.toLocaleString()} · ${esc(coverageLabel(entry))}</span>` : ""}`;
-export const stayRange = (doc) => `Surface Stay ${formatUtc(parseUtc(doc.landing_time_utc)).slice(0, 16).replace("T", " ")} to ${doc.stay_end_utc.slice(0, 16).replace("T", " ")} UTC`;
+export const stayRange = (doc) => `Surface Stay ${formatUtc(parseUtc(doc.landing_time_utc)).slice(0, 19).replace("T", " ")} to ${doc.stay_end_utc.slice(0, 19).replace("T", " ")} UTC`;

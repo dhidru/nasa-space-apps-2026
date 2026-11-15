@@ -431,7 +431,7 @@ itself); nothing in the pipeline or the site uses it.
   (exactly 45°), about 69% of the map. We treat DN 0 as no data.
 - **Conversion on load:** DN 0 → no data; otherwise DN · 0.0015 + 45.
 
-### USGS Artemis III region outlines (`A3_9regions-lonlat-simplified.zip`)
+### USGS candidate region outlines (`A3_9regions-lonlat-simplified.zip`)
 - **File(s):** `A3_9regions-lonlat-simplified.zip` (637,136 bytes) from
   release DOI 10.5066/P1MEQ6UK, downloaded 2026-11-14 through the ScienceBase
   CAPTCHA. It contains a polygon shapefile (`.shp/.shx/.dbf/.prj/.cpg`), a

@@ -57,7 +57,7 @@ a specific Artemis mission number.
 - Regions without computed site data still open their region map, with a
   hillshade and outline. A banner says "Site analysis for this region is coming
   soon." The demo never shows a disabled or broken page.
-- Region outlines come from the USGS Artemis III candidate navigational grids
+- Region outlines come from the USGS candidate landing region navigational grids
   release (CC0, verified; see ATTRIBUTIONS.md).
 
 ## 4. Landing Sites

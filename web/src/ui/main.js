@@ -24,6 +24,8 @@ import { MapView, setBreadcrumbs } from "./mapview.js";
 import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
 import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
+import { parseDateTime } from "../app/utctime.ts";
+import { bindViewMenus } from "./viewmenu.js";
 import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
 
 
@@ -55,7 +57,7 @@ const compass16 = (az) => ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S"
 const fmtLat = (v) => `${Math.abs(v).toFixed(2)}° ${v >= 0 ? "N" : "S"}`;
 const fmtLon = (v) => `${Math.abs(v).toFixed(2)}° ${v >= 0 ? "E" : "W"}`;
 const wrapLon = (v) => ((((v + 180) % 360) + 360) % 360) - 180;
-const fmtUTC = (d) => `${d.toISOString().replace("T", " ").slice(0, 16)} UTC`;
+const fmtUTC = (d) => `${d.toISOString().replace("T", " ").slice(0, 19)} UTC`;
 const fmtDark = (h) => (h >= 48 ? `${(h / 24).toFixed(1)} d` : `${Math.round(h)} h`);
 
 let polarMeta, mapView, data, dataReady, view, curDem;
@@ -239,17 +241,18 @@ window.addEventListener("keydown", (e) => {
 /* ---------- inputs ---------- */
 function readInputs() {
   const lat = parseFloat(el.lat.value), lonRaw = parseFloat(el.lon.value);
-  const date = new Date(`${el.date.value}T${el.time.value || "00:00"}:00Z`);
+  const date = parseDateTime(el.date.value, el.time.value);
   const errs = [];
   if (!(lat >= -90 && lat <= 90)) errs.push("Latitude must be between −90 and 90.");
   if (!(lonRaw >= -180 && lonRaw <= 360)) errs.push("Longitude must be between −180 and 360.");
-  if (Number.isNaN(date.getTime())) errs.push("Enter a date and time.");
+  if (Number.isNaN(date.getTime())) errs.push("Enter a date as yyyy-mm-dd and a 24-hour UTC time as hh:mm:ss.");
   return { lat, lon: wrapLon(lonRaw), date, errs };
 }
 function setInputs(lat, lon, date) {
   if (lat !== null) { el.lat.value = lat.toFixed(4); el.lon.value = lon.toFixed(4); }
-  if (date) { const iso = date.toISOString(); el.date.value = iso.slice(0, 10); el.time.value = iso.slice(11, 16); }
+  if (date) { const iso = date.toISOString(); el.date.value = iso.slice(0, 10); el.time.value = iso.slice(11, 19); }
 }
+
 
 /* ---------- readout ---------- */
 function renderReadout(s) {
@@ -287,7 +290,7 @@ async function slopeFor(lat, lon) {
 }
 
 /* ---------- 3D grid slice ---------- */
-const HINT = "Drag to turn · right-drag to pan · scroll to zoom";
+const HINT = "Drag to pan · scroll to zoom";
 function ensureView() {
   if (view) return;
   view = new PatchView($("globe"), {
@@ -354,7 +357,7 @@ async function updateTopTen() {
     return;
   }
   el.top10.hidden = false;
-  el.topWhen.textContent = `from ${formatUtc(landingMs).slice(0, 16).replace("T", " ")} UTC`;
+  el.topWhen.textContent = `from ${formatUtc(landingMs).slice(0, 19).replace("T", " ")} UTC`;
   el.topStatus.textContent = "Scoring sites…";
   el.oRank.textContent = "…";
   try {
@@ -588,10 +591,25 @@ for (const b of document.querySelectorAll("#form .steps button")) b.addEventList
   apply();
 });
 el.now.addEventListener("click", () => {
-  const d = new Date(); d.setUTCSeconds(0, 0);
+  const d = new Date(); d.setUTCMilliseconds(0);
   setInputs(null, null, d);
   apply();
 });
+bindViewMenus(el.app);
+// The site view's Top 10 can be collapsed (click its heading); the choice is remembered in this browser.
+{
+  const btn = $("topToggle"), body = $("topBody"), KEY = "top10-collapsed";
+  const set = (collapsed) => {
+    body.hidden = collapsed;
+    btn.setAttribute("aria-expanded", String(!collapsed));
+    el.top10.classList.toggle("collapsed", collapsed);
+    try { localStorage.setItem(KEY, collapsed ? "1" : "0"); } catch { /* storage blocked: still works for this visit */ }
+  };
+  let startCollapsed = false;
+  try { startCollapsed = localStorage.getItem(KEY) === "1"; } catch { /* no storage */ }
+  set(startCollapsed);
+  btn.addEventListener("click", () => set(!body.hidden));
+}
 el.shade.addEventListener("change", () => { if (view) view.setMode(el.shade.value); });
 el.slice.addEventListener("change", () => { if (view && curDem) loadPatch(curDem); });
 el.exag.addEventListener("input", () => {

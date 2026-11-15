@@ -53,10 +53,10 @@
         </div>
         <div class="row">
           <label for="date">Date <span class="unit">UTC</span>
-            <input id="date" type="date" required>
+            <input id="date" type="text" inputmode="numeric" placeholder="yyyy-mm-dd" maxlength="10" autocomplete="off" spellcheck="false" required>
           </label>
-          <label for="time">Time <span class="unit">UTC</span>
-            <input id="time" type="time" step="60" required>
+          <label for="time">Time <span class="unit">UTC, 24 h</span>
+            <input id="time" type="text" inputmode="numeric" placeholder="hh:mm:ss" maxlength="8" autocomplete="off" spellcheck="false" required>
           </label>
         </div>
         <div class="steps" role="group" aria-label="Step the time">
@@ -69,7 +69,7 @@
           <button class="go" type="submit">Go to site</button>
           <button type="button" id="now">Now</button>
         </div>
-        <p class="hint" id="hint">Drag to turn · right-drag to pan · scroll to zoom</p>
+        <p class="hint" id="hint">Drag to pan · scroll to zoom</p>
       </form>
 
       <section class="readout" aria-live="polite">
@@ -93,21 +93,6 @@
       </section>
 
       <section class="view">
-        <label for="shade">Shading
-          <select id="shade">
-            <option value="relief">Relief light</option>
-            <option value="sun">Sunlight at the chosen time</option>
-            <option value="slope">Slope classes (&lt;5°, 5–10°, 10–15°, &gt;15°)</option>
-          </select>
-        </label>
-        <label for="slice">Slice around the site
-          <select id="slice">
-            <option value="2000">2 km (10 × 10 sites)</option>
-            <option value="4000" selected>4 km (20 × 20 sites)</option>
-            <option value="8000">8 km (40 × 40 sites)</option>
-            <option value="16000">16 km (80 × 80 sites)</option>
-          </select>
-        </label>
         <label for="exag">
           <span class="range-head">Vertical exaggeration <output id="exagOut">1×</output></span>
           <input id="exag" type="range" min="1" max="6" step="0.5" value="1">
@@ -118,6 +103,28 @@
 
     <main class="stage" aria-label="3D view">
       <div id="globe"></div>
+      <!-- Hover menus for the 3D view (src/ui/viewmenu.js); each drives the hidden select inside it. -->
+      <div class="view-bar" role="toolbar" aria-label="3D view options">
+        <div class="view-menu" data-for="shade">
+          <button type="button" class="view-menu-btn" aria-haspopup="true" aria-expanded="false"><span class="view-menu-name">Shading</span> <span class="view-menu-value"></span><span class="view-menu-caret" aria-hidden="true">▾</span></button>
+          <ul class="view-menu-list" role="menu" aria-label="Shading"></ul>
+          <select id="shade" class="view-menu-select" tabindex="-1" aria-hidden="true">
+            <option value="relief" data-short="Relief">Relief light</option>
+            <option value="sun" data-short="Sunlight">Sunlight at the chosen time</option>
+            <option value="slope" data-short="Slope classes">Slope classes (&lt;5°, 5–10°, 10–15°, &gt;15°)</option>
+          </select>
+        </div>
+        <div class="view-menu" data-for="slice">
+          <button type="button" class="view-menu-btn" aria-haspopup="true" aria-expanded="false"><span class="view-menu-name">Slice around the site</span> <span class="view-menu-value"></span><span class="view-menu-caret" aria-hidden="true">▾</span></button>
+          <ul class="view-menu-list" role="menu" aria-label="Slice around the site"></ul>
+          <select id="slice" class="view-menu-select" tabindex="-1" aria-hidden="true">
+            <option value="2000" data-short="2 km">2 km (10 × 10 sites)</option>
+            <option value="4000" data-short="4 km" selected>4 km (20 × 20 sites)</option>
+            <option value="8000" data-short="8 km">8 km (40 × 40 sites)</option>
+            <option value="16000" data-short="16 km">16 km (80 × 80 sites)</option>
+          </select>
+        </div>
+      </div>
       <svg class="compass" viewBox="-50 -50 100 100" role="img" aria-label="Sun and Earth direction at the site">
         <circle r="44" class="c-ring"/>
         <circle r="22" class="c-mid"/>
@@ -146,13 +153,15 @@
     <aside class="panel sites" aria-label="Site comparison">
       <section class="top10" id="top10" hidden aria-label="Top 10 Landing Sites">
         <header>
-          <h2>Top 10 Landing Sites</h2>
+          <h2><button type="button" class="collapse-btn" id="topToggle" aria-expanded="true" aria-controls="topBody"><span class="chev" aria-hidden="true">▾</span>Top 10 Landing Sites</button></h2>
           <small id="topWhen">—</small>
         </header>
-        <div id="topSlope"></div>
-        <p class="hint" id="topStatus"></p>
-        <ol class="top-list" id="topList"></ol>
-        <p class="hint">Best first. Sites are at least 2 km apart.</p>
+        <div id="topBody">
+          <div id="topSlope"></div>
+          <p class="hint" id="topStatus"></p>
+          <ol class="top-list" id="topList"></ol>
+          <p class="hint">Best first. Sites are at least 2 km apart.</p>
+        </div>
       </section>
       <section class="stay" id="stay" hidden aria-label="Surface Stay">
         <header>

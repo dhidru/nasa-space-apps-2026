@@ -56,6 +56,11 @@ export class PatchView {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.12;
     this.controls.maxPolarAngle = (86 * Math.PI) / 180;
+    // The view angle is locked to the one the slice opens with: drag pans, scroll zooms, nothing rotates.
+    this.controls.enableRotate = false;
+    this.controls.screenSpacePanning = true;
+    this.controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+    this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
     this.controls.addEventListener("change", () => (this.dirty = true));
 
     this.ambient = new THREE.HemisphereLight(0xcfd6ff, 0x1a1712, 0.1);
@@ -168,7 +173,7 @@ export class PatchView {
    * Hand-off from the 2D map: start straight overhead on a flattened slice (the map's last frame, which the map
    * lines up with this canvas), then at once tilt and swing into the default oblique view while the relief rises
    * to the set exaggeration. Any pointer or wheel input on the canvas jumps to the final
-   * frame; the controls stay on, so that first drag already orbits.
+   * frame; the controls stay on, so that first drag already pans.
    */
   playIntro() {
     if (prefersReducedMotion()) return;
