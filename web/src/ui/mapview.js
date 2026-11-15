@@ -31,7 +31,7 @@ const LABELS = {
 };
 const LAT_RINGS = [-80, -82, -84, -86, -88, -89]; // dashed parallels for orientation
 const LON_STEP = 30; // meridians every 30°
-const lonText = (lon) => (lon === 0 ? "0° · toward Earth" : lon === 180 ? "180°" : lon < 180 ? `${lon}° E` : `${360 - lon}° W`);
+const lonText = (lon) => (lon === 0 ? "0° (Earth)" : lon === 180 ? "180°" : lon < 180 ? `${lon}° E` : `${360 - lon}° W`);
 /** "84.12° S, 35.40° E" for a map point. */
 export function llText(x, y) {
   const [lat, lon] = xyToLL(x, y);
@@ -58,10 +58,11 @@ export class MapView {
     this.zoomHint = root.querySelector(".map-zoomhint");
     this.cursorLL = root.querySelector(".map-cursor-ll");
     this.reset = root.querySelector(".map-reset");
-    this.homeTitle = root.querySelector(".map-title");
-    this.filter = root.querySelector(".map-filter");
-    this.filterBody = this.filter.querySelector(".filter-body");
-    this.filter.querySelector(".map-back").addEventListener("click", () => this.onHome());
+    // Left pane: selection only (home: the region list; region: back button and Landing Time). Right pane: site data.
+    this.side = root.querySelector(".map-side");
+    this.filterBody = this.side.querySelector(".side-body");
+    this.back = this.side.querySelector(".map-back");
+    this.back.addEventListener("click", () => this.onHome());
     /** Whether the user has chosen a Landing Time on the region map; until then the sites aren't coloured. */
     this.picked = false;
     this.vb = { x: 0, y: 0, w: 1, h: 1 };
@@ -74,13 +75,11 @@ export class MapView {
   size() { const r = this.stage.getBoundingClientRect(); return [Math.max(1, r.width), Math.max(1, r.height)]; }
   fit(b, pad = 0.06) {
     const [W, H] = this.size();
-    // Keep the box clear of the filter pane on the left (wide screens only; on phones it overlaps anyway).
-    const inset = this.mode === "region" && !this.filter.hidden && W > 760 ? this.filter.offsetWidth + 12 : 0, Wu = W - inset;
     let w = (b.xmax - b.xmin) * (1 + 2 * pad), h = (b.ymax - b.ymin) * (1 + 2 * pad);
-    if (w / h > Wu / H) h = (w * H) / Wu; else w = (h * Wu) / H;
-    const cx = (b.xmin + b.xmax) / 2, cy = (b.ymin + b.ymax) / 2, mpp = w / Wu;
+    if (w / h > W / H) h = (w * H) / W; else w = (h * W) / H;
+    const cx = (b.xmin + b.xmax) / 2, cy = (b.ymin + b.ymax) / 2;
     this.fitBox = b;
-    this.setVB({ x: cx - (inset + Wu / 2) * mpp, y: -cy - h / 2, w: W * mpp, h });
+    this.setVB({ x: cx - w / 2, y: -cy - h / 2, w, h });
   }
   refit() {
     if (this.flight) { if (this.flight.done) this.setVB(this.flightVB()); return; } // hold the hand-off frame; the zoom re-measures each step
@@ -91,6 +90,7 @@ export class MapView {
     vb.h = (vb.w * H) / W; // keep aspect
     this.vb = vb;
     this.svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+    if (this.mode === "home") this.labelGraticule();
     this.placeLabels();
     this.updateGridVisibility();
   }
@@ -157,7 +157,9 @@ export class MapView {
     this.endFlight();
     this.mode = "home";
     this.userMoved = false;
-    this.filter.hidden = true;
+    this.root.classList.add("home");
+    this.card.hidden = true; // the home page has no site to show data for
+    this.back.hidden = true;
     this.svg.replaceChildren();
     this.labels.replaceChildren();
     this.svg.setAttribute("aria-label", "Map of the lunar south pole with the nine Artemis III candidate regions");
@@ -166,24 +168,14 @@ export class MapView {
     const all = this.regions.map((r) => bbox(r.xy));
     const box = { xmin: Math.min(...all.map((b) => b.xmin)) - 60000, // room for the "Peak near Cabeus B" label
        xmax: Math.max(...all.map((b) => b.xmax)) + 25000, ymin: Math.min(...all.map((b) => b.ymin)) - 15000, ymax: Math.max(...all.map((b) => b.ymax)) + 15000 };
-    const inBox = (x, y) => x > box.xmin && x < box.xmax && y > box.ymin && y < box.ymax;
-    // Graticule: dashed parallels and meridians, labelled where they cross into the framed area.
+    // Graticule: parallels and meridians, each a light dashed line over a dark halo so it reads on any terrain.
+    // Their labels are placed by labelGraticule() at the edges of what is on screen.
     const g = svgEl("g", { class: "graticule" }, this.svg);
-    for (const lat of LAT_RINGS) {
-      const rho = 2 * 1737400 * Math.tan(Math.PI / 4 + (lat * Math.PI) / 360);
-      svgEl("circle", { cx: 0, cy: 0, r: rho }, g);
-      // label on the first of these bearings (between meridians) that falls inside the framed area
-      const at = [15, 345, 45, 315, 75, 285, 105, 255, 135, 225, 165, 195].map((d) => [rho * Math.sin((d * Math.PI) / 180), rho * Math.cos((d * Math.PI) / 180)]).find(([x, y]) => inBox(x, y));
-      if (at) this.addLabel({ x: at[0], y: at[1], text: `${-lat}° S`, cls: "lat-label", a: "middle" });
-    }
+    const line = (tag, attrs, cls) => { svgEl(tag, { ...attrs, class: `halo ${cls}` }, g); svgEl(tag, { ...attrs, class: `ln ${cls}` }, g); };
+    for (const lat of LAT_RINGS) line("circle", { cx: 0, cy: 0, r: 2 * 1737400 * Math.tan(Math.PI / 4 + (lat * Math.PI) / 360) }, "");
     for (let lon = 0; lon < 360; lon += LON_STEP) {
-      const a = (lon * Math.PI) / 180, dx = Math.sin(a), dy = Math.cos(a), r = 400000;
-      svgEl("line", { x1: 0, y1: 0, x2: r * dx, y2: -r * dy, class: lon % 90 ? "minor" : "" }, g);
-      // label just inside the framed box, where the meridian leaves it
-      const tx = dx > 1e-9 ? box.xmax / dx : dx < -1e-9 ? box.xmin / dx : Infinity;
-      const ty = dy > 1e-9 ? box.ymax / dy : dy < -1e-9 ? box.ymin / dy : Infinity;
-      const t = Math.min(tx, ty) * 0.93;
-      this.addLabel({ x: t * dx, y: t * dy, text: lonText(lon), cls: `lon-label${lon % 90 ? " minor" : ""}`, a: "middle" });
+      const a = (lon * Math.PI) / 180, r = 400000;
+      line("line", { x1: 0, y1: 0, x2: r * Math.sin(a), y2: -r * Math.cos(a) }, lon % 90 ? "minor" : "");
     }
     svgEl("circle", { cx: 0, cy: 0, r: 2500, class: "pole" }, this.svg);
     this.addLabel({ x: 0, y: -9000, text: "South Pole · 90° S", cls: "pole-label", a: "middle" });
@@ -209,9 +201,29 @@ export class MapView {
     this.fit(box, 0.04);
     this.zoomHint.hidden = true;
     this.reset.hidden = true; // nothing to reset: the home map doesn't zoom or pan
-    this.homeTitle.hidden = false;
     this.setCrumbs([{ text: "Lunar south pole" }]);
     this.renderHomeCard();
+  }
+  /** Latitude labels on each ring and longitude labels where each meridian leaves the visible map (home only). */
+  labelGraticule() {
+    for (const l of this.labels.querySelectorAll(".lat-label, .lon-label")) l.remove();
+    const [W] = this.size(), mpp = this.vb.w / W, inset = 22 * mpp;
+    const box = { xmin: this.vb.x + inset * 2.4, xmax: this.vb.x + this.vb.w - inset * 2.4, ymin: -(this.vb.y + this.vb.h) + inset, ymax: -this.vb.y - inset };
+    const inBox = (x, y) => x > box.xmin && x < box.xmax && y > box.ymin && y < box.ymax;
+    const rad = (d) => (d * Math.PI) / 180;
+    for (const lat of LAT_RINGS) {
+      const rho = 2 * 1737400 * Math.tan(Math.PI / 4 + rad(lat) / 2);
+      // on the first bearing between meridians (15° off one) that is on screen
+      const at = [225, 135, 315, 45, 255, 105, 195, 165].map((d) => [rho * Math.sin(rad(d)), rho * Math.cos(rad(d))]).find(([x, y]) => inBox(x, y));
+      if (at) this.addLabel({ x: at[0], y: at[1], text: `${-lat}° S`, cls: "lat-label", a: "middle" });
+    }
+    for (let lon = 0; lon < 360; lon += LON_STEP) {
+      const dx = Math.sin(rad(lon)), dy = Math.cos(rad(lon));
+      const tx = dx > 1e-9 ? box.xmax / dx : dx < -1e-9 ? box.xmin / dx : Infinity;
+      const ty = dy > 1e-9 ? box.ymax / dy : dy < -1e-9 ? box.ymin / dy : Infinity;
+      const t = Math.min(tx, ty);
+      if (t > 0 && Number.isFinite(t)) this.addLabel({ x: t * dx, y: t * dy, text: lonText(lon), cls: `lon-label${lon % 90 ? " minor" : ""}`, a: "middle" });
+    }
   }
   addLabel({ x, y, text, cls, a, id }) {
     const el = document.createElement(id ? "button" : "span");
@@ -227,17 +239,17 @@ export class MapView {
     this.hovered = id;
     for (const [rid, p] of Object.entries(this.polys || {})) p.classList.toggle("hover", rid === id);
     for (const l of this.labels.querySelectorAll(".region-label")) l.classList.toggle("hover", l.dataset.id === id);
-    for (const li of this.card.querySelectorAll("[data-id]")) li.classList.toggle("hover", li.dataset.id === id);
+    for (const li of this.filterBody.querySelectorAll("[data-id]")) li.classList.toggle("hover", li.dataset.id === id);
   }
   renderHomeCard() {
-    this.card.innerHTML = `
+    this.filterBody.innerHTML = `
       <h2>Pick a Landing Region</h2>
       <p class="hint">Pick one of the nine Artemis III regions to see its best Landing Sites.</p>
       <ol class="region-list">${this.regions.map((r) => {
         const [w, h] = sizeKm(r);
         return `<li><button type="button" data-id="${r.id}"><span>${r.name}${r.hasSiteData ? "" : ' <em class="soon">coming soon</em>'}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites</small></button></li>`;
       }).join("")}</ol>`;
-    for (const b of this.card.querySelectorAll("button[data-id]")) {
+    for (const b of this.filterBody.querySelectorAll("button[data-id]")) {
       b.addEventListener("pointerenter", () => this.hover(b.dataset.id));
       b.addEventListener("pointerleave", () => this.hover(null));
       b.addEventListener("click", () => this.onRegion(b.dataset.id));
@@ -252,7 +264,9 @@ export class MapView {
     this.mode = "region";
     this.region = r;
     this.reset.hidden = false;
-    this.homeTitle.hidden = true;
+    this.root.classList.remove("home");
+    this.card.hidden = false;
+    this.back.hidden = false;
     this.userMoved = false;
     this.polys = null;
     this.svg.replaceChildren();
@@ -339,15 +353,13 @@ export class MapView {
           <span><i class="outlined"></i> Top 10</span>
           <span><i class="steep"></i> Too steep</span>
         </div>
-        <div class="top-title"><h3>Top 10 sites</h3>${slopeLimitHtml(this.getSlopeLimit())}</div>
+        <div class="top-title"><h3>Top 10 sites</h3></div>
         <p class="hint top-status"></p>
         <ol class="top-list"></ol>
       </section>` : ""}`;
-    const limit = this.card.querySelector(".slope-limit select");
-    if (limit) limit.addEventListener("change", () => { this.setSlopeLimit(slopeLimitOf(limit)); if (this.picked) this.loadTopTen(r, grid); });
   }
 
-  /* ---------- filter pane (top left of the region map): Landing date and time ---------- */
+  /* ---------- left pane on the region map: selection criteria (Landing date and time, slope limit) ---------- */
   /** Show the coverage colours and the top 10 for the chosen Landing Time, or clear them (on = false). */
   setPicked(on, r, grid) {
     this.picked = on;
@@ -364,7 +376,6 @@ export class MapView {
     this.renderCell(this.lastCell);
   }
   renderFilter(r, grid) {
-    this.filter.hidden = false;
     this.dark = null;
     if (!r.hasSiteData) { this.filterBody.innerHTML = `<p class="filter-note">Landing Times for ${r.name} are coming soon.</p>`; return; }
     const t = new Date(this.getLanding()), pad = (n) => String(n).padStart(2, "0");
@@ -392,7 +403,12 @@ export class MapView {
       </div>
       <p class="filter-picked" aria-live="polite"></p>
       <p class="dark-warn" role="note" hidden></p>
-      <button type="button" class="filter-clear">Clear selection</button>`;
+      <button type="button" class="filter-clear">Clear selection</button>
+      <h2 class="side-h">Landing Slope</h2>
+      ${slopeLimitHtml(this.getSlopeLimit())}
+      <p class="filter-note">Sites at or over this slope are shaded and left out of the top 10.</p>`;
+    const limit = this.filterBody.querySelector(".slope-limit select");
+    limit.addEventListener("change", () => { this.setSlopeLimit(slopeLimitOf(limit)); if (this.picked) this.loadTopTen(r, grid); });
     const hour = this.filterBody.querySelector(".t-hour"), min = this.filterBody.querySelector(".t-min");
     hour.value = String(t.getUTCHours());
     min.value = String(Math.floor(t.getUTCMinutes() / 10) * 10);

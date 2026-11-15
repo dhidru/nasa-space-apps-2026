@@ -14,22 +14,19 @@
 
   <section class="mapview" id="mapview" hidden>
     <header class="map-head">
-      <h1>Lunar <span class="sp">South Pole</span> Landing Site Navigator</h1>
-      <span class="tagline">Where the Sun and Earth stay in view for a 7-day Artemis landing</span>
+      <div class="map-titles">
+        <h1>Lunar <span class="sp">South Pole</span> Landing Site Navigator</h1>
+        <span class="tagline"><b>Moon · 80°–90° S</b> · nine Artemis III candidate landing regions · where the Sun and Earth stay in view for a 7-day landing</span>
+      </div>
       <nav class="map-crumbs crumbs" aria-label="Breadcrumb"></nav>
     </header>
     <div class="map-body">
+      <aside class="map-side panel" aria-label="Selection">
+        <button type="button" class="map-back" title="Back to all regions (Esc)" hidden>← All regions</button>
+        <div class="side-body"></div>
+      </aside>
       <div class="map-stage">
-        <div class="map-title" hidden>
-          <span class="map-title-kicker">Moon · 80°–90° S</span>
-          <h2>Lunar South Pole</h2>
-          <span class="map-title-sub">Nine Artemis III candidate landing regions</span>
-        </div>
         <p class="map-cursor-ll" hidden aria-hidden="true"></p>
-        <aside class="map-filter clears-on-flight" hidden aria-label="Choose a Landing Time">
-          <button type="button" class="map-back" title="Back to all regions (Esc)">← All regions</button>
-          <div class="filter-body"></div>
-        </aside>
         <button type="button" class="map-reset">Reset view</button>
         <p class="map-zoomhint" hidden>Zoom in to see the 200 m grid</p>
       </div>
