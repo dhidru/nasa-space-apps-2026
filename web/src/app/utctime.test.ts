@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hms, parseDateTime, parseHms } from "./utctime";
+import { hm, hms, parseDateTime, parseHms } from "./utctime";
 
 describe("typed 24-hour UTC times", () => {
   it("reads hh:mm:ss, hh:mm, hhmmss and hhmm", () => {
@@ -15,6 +15,8 @@ describe("typed 24-hour UTC times", () => {
   });
 
   it("formats seconds as hh:mm:ss", () => {
+    expect(hm(0)).toBe("00:00");
+    expect(hm(23 * 3600 + 50 * 60)).toBe("23:50");
     expect(hms(0)).toBe("00:00:00");
     expect(hms(12 * 3600 + 34 * 60 + 56)).toBe("12:34:56");
   });

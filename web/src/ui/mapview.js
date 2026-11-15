@@ -8,7 +8,7 @@ import { sizeKm } from "./regions.js";
 import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
 import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
 import { Calendar, calendarHtml } from "./calendar.js";
-import { parseHms, hms } from "../app/utctime.ts";
+import { parseHms, hm } from "../app/utctime.ts";
 import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, noFullStayDays, DAY_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 import { featuredLanding } from "../app/featured.ts";
 
@@ -511,7 +511,7 @@ export class MapView {
         <span class="cal-status">Checking which days have a full 7-day window…</span>
       </div>
       <div class="time-pick">
-        <label>Time (24 h) <input class="t-hms" type="text" inputmode="numeric" maxlength="8" autocomplete="off" spellcheck="false" aria-label="Landing time, 24-hour UTC, hh:mm:ss" placeholder="hh:mm:ss"></label>
+        <label>Time (24 h) <input class="t-hms" type="text" inputmode="numeric" maxlength="5" autocomplete="off" spellcheck="false" aria-label="Landing time, 24-hour UTC, hh:mm" placeholder="hh:mm"></label>
         <span class="utc">UTC</span>
       </div>
       <p class="filter-note time-note">Rounds to the nearest 10 minutes (the Sun and Earth data are every 10 minutes). ↑ / ↓ step 10 minutes.</p>
@@ -524,13 +524,13 @@ export class MapView {
     this.cal = new Calendar(this.filterBody, { onPick: (day) => this.pickDay(day) });
     this.cal.showMonthOf(t.getTime());
 
-    // Typed 24-hour time (hh:mm:ss). On Enter, blur or ↑/↓ it is read, rounded to the 10-minute Landing Time grid
-    // and shown back as hh:mm:ss; a time that can't be read puts back the last good one.
+    // Typed 24-hour time (hh:mm). On Enter, blur or ↑/↓ it is read, rounded to the 10-minute Landing Time grid
+    // and shown back as hh:mm; a time that can't be read puts back the last good one.
     const box = this.filterBody.querySelector(".t-hms");
     const STEP_S = 600, DAY_S = 86400;
-    // Until a Landing Time is chosen the box is blank (null); picking a day with no time typed lands at 00:00:00.
+    // Until a Landing Time is chosen the box is blank (null); picking a day with no time typed lands at 00:00.
     let sec = this.picked ? Math.round((((t.getTime() % DAY_MS) + DAY_MS) % DAY_MS) / 1000) : null;
-    const show = () => { box.value = sec === null ? "" : hms(sec); box.classList.remove("bad"); };
+    const show = () => { box.value = sec === null ? "" : hm(sec); box.classList.remove("bad"); };
     show();
     const dayOf = (ms) => ms - (((ms % DAY_MS) + DAY_MS) % DAY_MS);
     this.pickDay = (day) => {
@@ -554,14 +554,14 @@ export class MapView {
       if (s === null) { box.classList.add("bad"); return sec; }
       return s;
     };
-    box.addEventListener("input", () => { box.value = box.value.replace(/[^\d:]/g, "").slice(0, 8); });
+    box.addEventListener("input", () => { box.value = box.value.replace(/[^\d:]/g, "").slice(0, 5); });
     box.addEventListener("focus", () => box.select());
     box.addEventListener("change", () => commit(read()));
     box.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); commit(read()); box.select(); return; }
       if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
       e.preventDefault();
-      // ±10 minutes, wrapping within the day; a blank box steps to 00:00:00
+      // ±10 minutes, wrapping within the day; a blank box steps to 00:00
       const d = e.key === "ArrowUp" ? STEP_S : -STEP_S, cur = read();
       commit(cur === null ? 0 : (cur + d + DAY_S) % DAY_S);
       box.select();
@@ -592,7 +592,7 @@ export class MapView {
     this.cal.noStay = this.noStay;
     this.cal.draw();
     this.filterBody.querySelector(".filter-picked").innerHTML = chosen
-      ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 19)} UTC</b>`
+      ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 16)} UTC</b>`
         + (this.region && featuredLanding(this.region.id) === this.getLanding() ? `<br><span class="featured-note">Region-wide best time: when the most sites here keep the Sun and Earth in view all week. Each site has its own best times under Landing Windows.</span>` : "")
       : "No date chosen yet";
     this.filterBody.querySelector(".filter-clear").disabled = !this.picked;

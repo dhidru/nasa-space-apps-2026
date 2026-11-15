@@ -258,12 +258,14 @@ function readInputs() {
   const errs = [];
   if (!(lat >= -90 && lat <= 90)) errs.push("Latitude must be between −90 and 90.");
   if (!(lonRaw >= -180 && lonRaw <= 360)) errs.push("Longitude must be between −180 and 360.");
-  if (Number.isNaN(date.getTime())) errs.push("Enter a date as yyyy-mm-dd and a 24-hour UTC time as hh:mm:ss.");
+  if (Number.isNaN(date.getTime())) errs.push("Enter a date as yyyy-mm-dd and a 24-hour UTC time as hh:mm.");
   return { lat, lon: wrapLon(lonRaw), date, errs };
 }
 function setInputs(lat, lon, date) {
   if (lat !== null) { el.lat.value = lat.toFixed(4); el.lon.value = lon.toFixed(4); }
-  if (date) { const iso = date.toISOString(); el.date.value = iso.slice(0, 10); el.time.value = iso.slice(11, 19); }
+  // The Sun and Earth data are every 10 minutes, so the form shows hh:mm on that grid ("Now" rounds to it).
+  if (date && !Number.isNaN(date.getTime())) date = new Date(Math.round(date.getTime() / 600000) * 600000);
+  if (date) { const iso = date.toISOString(); el.date.value = iso.slice(0, 10); el.time.value = iso.slice(11, 16); }
   paintDateMask();
   if (date && !Number.isNaN(date.getTime())) siteCal.setChosen(date.getTime());
 }

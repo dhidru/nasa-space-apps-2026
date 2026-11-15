@@ -11,6 +11,9 @@ export function parseHms(text: string | null | undefined): number | null {
   return h > 23 || m > 59 || s > 59 ? null : h * 3600 + m * 60 + s;
 }
 
+/** "hh:mm" for seconds after midnight (the Sun and Earth data are every 10 minutes, so the time fields show no seconds). */
+export const hm = (sec: number): string => [Math.floor(sec / 3600), Math.floor(sec / 60) % 60].map((n) => String(n).padStart(2, "0")).join(":");
+
 /** "hh:mm:ss" for seconds after midnight. */
 export const hms = (sec: number): string => [Math.floor(sec / 3600), Math.floor(sec / 60) % 60, sec % 60].map((n) => String(n).padStart(2, "0")).join(":");
 
