@@ -148,7 +148,7 @@ over 15 km is far below the 200 m grid spacing.
   - `pixel_size_m`
   - `width_px`, `height_px`
   - `source`: the dataset name, for attribution
-- The front end places the image with OpenLayers `ImageStatic` using
+- The front end places the image on its map (an SVG `<image>` in map metres) using
   `extent_m`.
 
 ## 6. Binary arrays (`.bin` + `.json` sidecar)

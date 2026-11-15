@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Built-in sites: NASA's nine Artemis III candidate regions (from the team's regions.json). Plus spots the viewer
+// Built-in sites: NASA's nine Artemis III candidate regions (from the team's regions.json). Plus spots the app
 // saves in this browser.
 
 import { sizeKm } from "./regions.js";

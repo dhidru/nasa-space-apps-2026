@@ -31,7 +31,7 @@ export function sizeKm(region) {
   return [(Math.max(...xs) - Math.min(...xs)) / 1000, (Math.max(...ys) - Math.min(...ys)) / 1000];
 }
 
-/** Heights (m) at a list of [lonRad, latRad] points, from the viewer's terrain tiles at `level`. */
+/** Heights (m) at a list of [lonRad, latRad] points, from the 3D terrain tiles at `level`. */
 export async function samplePoints(data, points, level) {
   const T = Math.min(level, data.terrainMax), nx = 2 ** (T + 1), ny = 2 ** T, S = data.S, seg = S - 1;
   const where = points.map(([lon, lat]) => {

@@ -279,8 +279,8 @@ export class PatchView {
     line.renderOrder = 2;
     return line;
   }
-  cellLoop(cell, n = 12) {
-    const h = 100, pts = [], cs = [[-h, h], [h, h], [h, -h], [-h, -h]];
+  cellLoop(cell, n = 12, h = 100) {
+    const pts = [], cs = [[-h, h], [h, h], [h, -h], [-h, -h]];
     for (let i = 0; i < 4; i++) {
       const [a, b] = cs[i], [c, d] = cs[(i + 1) % 4];
       for (let k = 0; k < n; k++) pts.push([cell.x + a + ((c - a) * k) / n, cell.y + b + ((d - b) * k) / n]);
@@ -306,7 +306,26 @@ export class PatchView {
         if (pts.length > 1) this.overlay.add(this.drape(pts, AMBER, 6));
       }
     }
+    // top-10 sites: an inset outline in the coverage colour, and a pin so they stand out in large slices
+    for (const m of this.marks || []) {
+      const { cell } = m;
+      if (cell.id === center.id || Math.abs(cell.x - center.x) > half || Math.abs(cell.y - center.y) > half) continue;
+      const color = new THREE.Color(m.color);
+      this.overlay.add(this.drape(this.cellLoop(cell, 12, 80), color, 4));
+      const base = (this.p.sample(cell.x, cell.y) - this.h0) * this.exag;
+      const pin = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(cell.x - center.x, base, -(cell.y - center.y)),
+        new THREE.Vector3(cell.x - center.x, base + Math.max(60, sizeM * 0.03) * this.exag, -(cell.y - center.y)),
+      ]), new THREE.LineBasicMaterial({ color }));
+      pin.renderOrder = 2;
+      this.overlay.add(pin);
+    }
     this.dirty = true;
+  }
+  /** Highlight sites (e.g. the top 10): [{ cell, color }]. Redrawn with the slice. */
+  setMarks(marks) {
+    this.marks = marks;
+    if (this.p) this.drawOverlay();
   }
   drawHover(cell) {
     if (this.hoverLine) { this.scene.remove(this.hoverLine); this.hoverLine.geometry.dispose(); this.hoverLine = null; }

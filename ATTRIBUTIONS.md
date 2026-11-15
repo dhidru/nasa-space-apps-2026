@@ -105,7 +105,7 @@ Each dataset below also has a conventions card in
 ### NASA SVS CGI Moon Kit (global LOLA elevation map only)
 - **Type:** Data
 - **Used for:** The coarse global elevation tiles and shadow grid the viewer uses for its 3D terrain beyond the
-  80 m region DEMs and for the far-horizon ray march (`viewer/scripts/prepare-data.mjs` → `viewer/public/tiles`, built at
+  80 m region DEMs and for the far-horizon ray march (`web/scripts/prepare-data.mjs` → `web/public/tiles`, built at
   deploy time, not committed). File: `ldem_16.tif` (66 MB). We do **not** use the kit's colour map by default
   (see Requirements).
 - **Source:** https://svs.gsfc.nasa.gov/4720
@@ -208,7 +208,8 @@ Each dataset below also has a conventions card in
 
 ### React and React DOM (with scheduler)
 - **Type:** Code/Library
-- **Used for:** The web front end's UI (`web/`). Bundled into the published site.
+- **Used for:** The first web front end's UI. **No longer used:** removed on 2026-11-14 when the two front ends were
+  combined (the UI is now `web/src/ui`, without React). Kept here for the record.
 - **Source:** https://github.com/facebook/react (npm `react`, `react-dom` 19.3.1; `scheduler` 0.28.0 comes with `react-dom`)
 - **Accessed:** 2026-11-14
 - **License / permission:** MIT ([LICENSE](https://github.com/facebook/react/blob/main/LICENSE)); checked in the installed packages' `package.json` and `LICENSE` files.
@@ -218,7 +219,8 @@ Each dataset below also has a conventions card in
 
 ### OpenLayers (`ol`), with its runtime dependencies
 - **Type:** Code/Library
-- **Used for:** The home and region maps in our polar stereographic x/y (`web/src/app/components/LunarMap.tsx`). Bundled into the published site.
+- **Used for:** The first front end's home and region maps. **No longer used:** removed on 2026-11-14 when the two
+  front ends were combined (the maps are now SVG in `web/src/ui/mapview.js`). Kept here for the record.
 - **Source:** https://github.com/openlayers/openlayers (npm `ol` 10.11.0)
 - **Accessed:** 2026-11-14
 - **License / permission:** BSD 2-Clause, from the installed `node_modules/ol/LICENSE.md` ("Copyright 2005-present, OpenLayers Contributors"). Its runtime dependencies, from their installed `package.json` files, are all permissive: earcut, quickselect (ISC); fflate, geotiff, numcodecs, parse-headers, protocol-buffers-schema, quick-lru, rbush, reference-spec-reader, resolve-protobuf-schema, unzipit, zarrita (MIT); pako (MIT AND Zlib); pbf (BSD-3-Clause); zstddec (MIT AND BSD-3-Clause); lerc, web-worker (Apache-2.0); xml-utils (CC0-1.0). No GPL/AGPL.
@@ -226,9 +228,10 @@ Each dataset below also has a conventions card in
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** OpenLayers Contributors. *OpenLayers* [Software, BSD 2-Clause License]. https://openlayers.org
 
-### Vite, @vitejs/plugin-react, Vitest, TypeScript and @types packages (build and test only)
+### Vite, Vitest, TypeScript and @types packages (build and test only)
 - **Type:** Tool
 - **Used for:** Building, serving and testing `web/`. Dev dependencies; not shipped in the site.
+  (`@vitejs/plugin-react`, `@types/react` and `@types/react-dom` were removed with React on 2026-11-14.)
 - **Source:** https://vite.dev (npm `vite` 8.3.8, `@vitejs/plugin-react` 6.3.0), https://vitest.dev (`vitest` 5.1.0), https://www.typescriptlang.org (`typescript` 7.0.2), https://github.com/DefinitelyTyped/DefinitelyTyped (`@types/react`, `@types/react-dom`, `@types/node`)
 - **Accessed:** 2026-11-14
 - **License / permission:** Vite, plugin-react, Vitest and the @types packages: MIT. TypeScript: Apache-2.0. A scan of every installed package's `package.json` found MIT, Apache-2.0, ISC, BSD-2/3-Clause, CC0-1.0 and Zlib, plus `lightningcss` (MPL-2.0, Vite's CSS tool). MPL-2.0 is file-level copyleft; we run it unmodified and don't ship it, so it puts no terms on our code.
@@ -236,19 +239,21 @@ Each dataset below also has a conventions card in
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** Vite, Vitest and TypeScript contributors [Software]. https://vite.dev, https://vitest.dev, https://www.typescriptlang.org
 
-### Lunar Site Viewer (`viewer/`), with three.js and Astronomy Engine
+### Web app UI (`web/src/ui`), with three.js and Astronomy Engine
 - **Type:** Code/Library
-- **Used for:** A second, separate front end in `viewer/` (Vite + three.js + Astronomy Engine), built on the team's
-  `data/processed/site-data` and deployed to GitHub Pages by `.github/workflows/pages.yml`. The viewer code was
-  written by a team member with Claude, started from a Claude design chat; it is MIT-licensed (`viewer/LICENSE`),
-  which is compatible with our Apache 2.0.
+- **Used for:** The site's UI in `web/src/ui` (maps, 3D terrain view, readouts, timeline, Surface Stay panel), running
+  on the science code in `web/src/science`. The UI started as the Lunar Site Viewer, written by a team member with
+  Claude from a Claude design chat; its files are MIT-licensed (`web/src/ui/LICENSE`), which is compatible with our
+  Apache 2.0. three.js draws the 3D terrain; Astronomy Engine gives Sun/Earth directions outside 2026–2027.
 - **Source:** three.js https://github.com/mrdoob/three.js (npm `three@0.160.0`); Astronomy Engine
-  https://github.com/cosinekitty/astronomy (npm `astronomy-engine@2.1.19`). Build-time only: Vite `5.4.11`,
+  https://github.com/cosinekitty/astronomy (npm `astronomy-engine@2.1.19`). Build-time only (`web/scripts/prepare-data.mjs`):
   geotiff `2.1.3`, pngjs `7.0.0`.
 - **Accessed:** 2026-11-14
-- **License / permission:** All MIT, from each installed package's `package.json`. `npm run licenses` in `viewer/`
-  lists the shipped tree (3 packages, all MIT).
-- **Requirements:** Keep the MIT notices; the build keeps legal comments. Credits are in `viewer/THIRD_PARTY_NOTICES.md`.
+- **License / permission:** All MIT, from each installed package's `package.json`. `npm run licenses` in `web/`
+  lists the production tree (three, astronomy-engine; plus tslib 0BSD, an optional dependency of a build tool that
+  is not bundled).
+- **Requirements:** Keep the MIT notices; `THIRD-PARTY-NOTICES.txt` in the build carries the license texts.
+  Credits are in `web/THIRD_PARTY_NOTICES.md`.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** three.js authors. *three.js* [Software, MIT]. https://threejs.org/ · Cross, D. *Astronomy Engine* [Software, MIT]. https://github.com/cosinekitty/astronomy
 
@@ -310,7 +315,7 @@ Each dataset below also has a conventions card in
 ### GitHub Actions and GitHub Pages, with the official `actions/*` workflow actions
 - **Type:** Tool
 - **Used for:** Building, testing and publishing the web app to GitHub Pages
-  (`.github/workflows/pages.yml`), with the Lunar Site Viewer (`viewer/`) built into the same site under `/viewer/`. The workflow references these actions by
+  (`.github/workflows/pages.yml`), a single app at the site root. The workflow references these actions by
   version; none of their code is copied into the repo or the site:
   `actions/checkout@v7` (v7.0.1), `actions/setup-node@v7` (v7.1.0),
   `actions/upload-pages-artifact@v5` (v5.0.0), `actions/deploy-pages@v5` (v5.0.1) and `actions/cache@v4`
@@ -328,7 +333,7 @@ Each dataset below also has a conventions card in
   The Actions and Pages services fall under the
   [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service)
   and the [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
-  (1 GB site, 100 GB/month soft bandwidth limit; the web app is about 11 MB and the viewer adds about 47 MB).
+  (1 GB site, 100 GB/month soft bandwidth limit; about 42 MB with the 3D terrain tiles).
 - **Requirements:** None for our use. We only run the actions on GitHub's
   runners and don't redistribute them. MIT is compatible with Apache 2.0.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
@@ -388,7 +393,10 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Moved the Lunar Site Viewer (started from a Claude design chat, first hosted on Vercel) into the repo; switched it to the team's site-data (regions, outlines, hillshades, `sites.json` heights, Horizons for Clearance, SPICE positions); fixed the overlapping-region lookup; made the unlicensed CGI Moon Kit colour map opt-in; added the GitHub Pages workflow; checked the viewer's Clearance against the pipeline's golden site detail | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Moved the Lunar Site Viewer from `web/` to `viewer/` so it sits beside the team's React front end, merged `main` and resolved the attribution conflicts | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Merged `main` again: dropped the viewer's separate Pages workflow and added the viewer build to the team's workflow, so it publishes under `/viewer/` on the same site | `.github/workflows/pages.yml`, `viewer/`, `ATTRIBUTIONS.md`, `README.md` |
+| 2026-11-14 | Claude Code | Added the top 10 Landing Sites to the Lunar Site Viewer by reusing the web app's science worker and coverage helpers (no second copy of the science): Landing Time picker, top 10 on the region grid and in a list, rank readout, top-10 outlines in the 3D view; checked the top 10 against `results/ranking/20270301T0000Z.json` | `viewer/`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | At the team's request (no unlicensed data), validated our Sun/Earth azimuth and elevation against SPICE's own `azlcpo` routine and against Moon Fact Sheet values (tilt, synodic month, Earth distance, full/new moon); checked the fact sheet's terms | `tests/test_validation_spice.py`, `tests/test_validation_orbit.py`, `docs/design.md`, `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Combined the two front ends at the team's request: the Lunar Site Viewer is now the site's front end at the root, running on the web app's data and science code (siteData and notices plugins, fetchSiteData/readJson/loadRegion/loadPositions, track, the science worker, coverage and route helpers); ported the web app's coverage heatmap, stats table, sky plot, time charts and Landing Windows to the viewer; moved the web app to `/app/`; checked ranking, site detail and Landing Windows against the committed results | `viewer/`, `.github/workflows/pages.yml`, `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | At the team's request, merged the two front ends into one app in `web/` at the site root: the viewer's UI moved to `web/src/ui` on top of `web/src/science` (science client, loaders, track, worker); the React pages, React and OpenLayers were removed; added the web app's link format with the Landing Time, Landing Time step buttons, "coming soon" badges, name and footer links to the UI; one Pages build with nothing at `/viewer/` or `/app/`; checked ranking, site detail and Landing Windows against the committed results | `web/`, `viewer/` (removed), `.github/workflows/pages.yml`, `README.md`, `docs/`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 

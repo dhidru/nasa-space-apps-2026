@@ -5,6 +5,7 @@
 
 import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
+import { formatUtc, coverageLabel, coverageColor, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}, parent) => {
@@ -185,13 +186,13 @@ export class MapView {
   }
   renderHomeCard() {
     this.card.innerHTML = `
-      <h2>Artemis III candidate regions</h2>
-      <p class="hint">NASA's nine candidate landing regions near the south pole. Hover to highlight one, click to open its 200 m site grid. Scroll to zoom, drag to pan.</p>
+      <h2>Pick a Landing Region</h2>
+      <p class="hint">The nine candidate regions near the lunar south pole. Pick one, then a Landing Time, and every Landing Site is scored on whether the Sun and Earth stay in Line of Sight for the whole 7-day Surface Stay. Open any site to see it in 3D. Scroll to zoom, drag to pan.</p>
       <ol class="region-list">${this.regions.map((r) => {
         const [w, h] = sizeKm(r);
-        return `<li><button type="button" data-id="${r.id}"><span>${r.name}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites${r.hasSiteData ? " · team data" : ""}</small></button></li>`;
+        return `<li><button type="button" data-id="${r.id}"><span>${r.name}${r.hasSiteData ? "" : ' <em class="soon">coming soon</em>'}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites</small></button></li>`;
       }).join("")}</ol>
-      <p class="credits">Hillshade: ${this.homeBasemap.source} (NASA, public domain). Region outlines: USGS (CC0, doi:10.5066/P1MEQ6UK). Processed by the team pipeline.</p>`;
+      <p class="credits">Hillshade: ${this.homeBasemap.source} (NASA, public domain). Regions: NASA news release 24-136 (2024-10-28). Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
     for (const b of this.card.querySelectorAll("button[data-id]")) {
       b.addEventListener("pointerenter", () => this.hover(b.dataset.id));
       b.addEventListener("pointerleave", () => this.hover(null));
@@ -229,6 +230,9 @@ export class MapView {
     svgEl("polygon", { points: r.xy.map(([x, y]) => `${x},${-y}`).join(" "), class: "region-outline" }, this.svg);
     this.hoverRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-hover", visibility: "hidden" }, this.svg);
     this.selRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-selected", visibility: "hidden" }, this.svg);
+    this.heatLayer = svgEl("g", { class: "heat-cells" }, this.svg);
+    this.topLayer = svgEl("g", { class: "top-cells" }, this.svg);
+    this.rankData = null;
 
     this.fit({ xmin: e.xmin, xmax: e.xmax, ymin: e.ymin, ymax: e.ymax }, 0.05);
     this.setCrumbs([{ text: "Lunar south pole", go: () => this.onHome() }, { text: r.name }]);
@@ -238,6 +242,7 @@ export class MapView {
     this.dem = null;
     this.demFor(id).then((dem) => { if (this.region === r) { this.dem = dem; this.renderCell(this.lastCell); } }).catch((err) => console.error(err));
     if (r.hasSiteData) this.teamSites(id).then((t) => { if (this.region === r) { this.teamSiteData = t; this.renderCell(this.lastCell); } }).catch((err) => console.error(err));
+    if (r.hasSiteData) this.loadTopTen(r, grid);
 
     this.onMove = (ev) => {
       const [x, y] = this.toMap(ev), cell = grid.cellAt(x, y);
@@ -275,13 +280,95 @@ export class MapView {
         <dt>Longitude</dt><dd data-k="lon">—</dd>
         <dt>Elevation</dt><dd data-k="h">—</dd>
         <dt>Slope (200 m)</dt><dd data-k="s">—</dd>
+        ${r.hasSiteData ? '<dt>Rank</dt><dd data-k="rank">—</dd>' : ""}
       </dl>
+      ${r.hasSiteData ? `
+      <section class="map-top">
+        <label class="landing">Landing Time <span class="unit">UTC · 7-day Surface Stay</span>
+          <input type="datetime-local" step="600" min="${formatUtc(SPAN_START).slice(0, 16)}" max="${formatUtc(SPAN_END - STEP_MS).slice(0, 16)}" value="${formatUtc(this.getLanding()).slice(0, 16)}">
+        </label>
+        <div class="steps" role="group" aria-label="Step the Landing Time">
+          <button type="button" data-step="-86400000" title="One day earlier">−1 d</button>
+          <button type="button" data-step="-3600000" title="One hour earlier">−1 h</button>
+          <button type="button" data-step="3600000" title="One hour later">+1 h</button>
+          <button type="button" data-step="86400000" title="One day later">+1 d</button>
+        </div>
+        <p class="fine">Supported Span: ${formatUtc(SPAN_START).slice(0, 10)} to ${formatUtc(SPAN_END).slice(0, 10)}. Surface Stay: 7 days from the Landing Time.</p>
+        <div class="legend">
+          <span><i style="background:${rgb(FULL_HIGH)}"></i> Full coverage (darker = more Clearance)</span>
+          <span><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Partial (by the weaker of Sun and Earth)</span>
+          <span><i class="outlined"></i> Top 10 (at least 2 km apart)</span>
+        </div>
+        <h3>Top 10 Landing Sites</h3>
+        <p class="hint top-status"></p>
+        <ol class="top-list"></ol>
+      </section>` : ""}
       <p class="team-note">${r.hasSiteData
         ? "Team data: site heights from the pipeline's sites.json; Sun and Earth Clearance in the 3D view use the team's Horizons."
         : "Team site data (heights, Horizons) for this region is coming soon. Heights here are from the 80 m LOLA DEM."}</p>
       <button type="button" class="back">← All regions</button>
-      <p class="credits">Hillshade: ${bm.source} (NASA, public domain), via the team pipeline. Slope: LOLA 80 m DEM. Outline: USGS (CC0).</p>`;
+      <p class="credits">Hillshade: ${bm.source} (NASA, public domain). Slope: LOLA 80 m DEM. Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
     this.card.querySelector(".back").addEventListener("click", () => this.onHome());
+    const input = this.card.querySelector(".landing input");
+    const setT = (t) => {
+      this.setLanding(t);
+      input.value = formatUtc(this.getLanding()).slice(0, 16); // snapped to the 10-minute grid and the span
+      this.loadTopTen(r, grid);
+    };
+    if (input) {
+      input.addEventListener("change", () => { const t = Date.parse(`${input.value}:00Z`); if (!Number.isNaN(t)) setT(t); });
+      for (const b of this.card.querySelectorAll(".map-top .steps button")) b.addEventListener("click", () => setT(this.getLanding() + Number(b.dataset.step)));
+    }
+  }
+
+  /** Rank every site for the shared Landing Time and draw the top 10 (team science port, in a worker). */
+  async loadTopTen(r, grid) {
+    const token = (this.topToken = (this.topToken || 0) + 1), landing = this.getLanding();
+    const status = this.card.querySelector(".top-status"), list = this.card.querySelector(".map-top .top-list");
+    this.rankData = null;
+    this.topLayer.replaceChildren();
+    this.heatLayer.replaceChildren();
+    for (const l of this.labels.querySelectorAll(".top-label")) l.remove();
+    if (status) status.textContent = "Scoring every Landing Site over the Surface Stay…";
+    if (list) list.replaceChildren();
+    try {
+      const res = await this.ranking(r.id, landing, (f) => {
+        if (token === this.topToken && status) status.textContent = `Scoring every Landing Site over the Surface Stay… ${Math.round(f * 100)} %`;
+      });
+      if (token !== this.topToken || this.region !== r) return;
+      this.rankData = res;
+      // Coverage heatmap: every site coloured by coverage, one path per colour.
+      const byColor = new Map(), h = GRID_M / 2;
+      for (const e of res.doc.sites) {
+        const cell = grid.byId(e.site_id);
+        if (!cell) continue;
+        const c = coverageColor(e);
+        byColor.set(c, (byColor.get(c) || "") + `M${cell.x - h},${-(cell.y + h)}h${GRID_M}v${GRID_M}h${-GRID_M}z`);
+      }
+      for (const [c, d] of byColor) svgEl("path", { d, fill: c, class: "heat" }, this.heatLayer);
+      const nFull = res.doc.sites.filter((x) => x.coverage === "full").length;
+      if (status) status.textContent = `${nFull.toLocaleString()} of ${res.doc.sites.length.toLocaleString()} sites have Full Coverage. Sites in the list are at least 2 km apart.`;
+      res.top.forEach((e, i) => {
+        const cell = grid.byId(e.site_id);
+        if (!cell) return;
+        svgEl("rect", { x: cell.x - GRID_M / 2, y: -(cell.y + GRID_M / 2), width: GRID_M, height: GRID_M, class: "top-cell", style: `fill:${coverageColor(e)};stroke:${coverageColor(e)}` }, this.topLayer);
+        const lab = this.addLabel({ x: cell.x + GRID_M, y: cell.y + GRID_M, text: String(i + 1), cls: "top-label", a: "start", id: e.site_id });
+        lab.addEventListener("click", () => this.onSite(r.id, e.site_id));
+        if (list) {
+          const li = document.createElement("li");
+          li.innerHTML = `<button type="button"><span class="rk">${i + 1}</span><span class="sw" style="background:${coverageColor(e)}"></span><span class="id">${e.site_id}</span><span class="lb">${coverageLabel(e)}</span><span class="cl" title="Worst-case minimum Clearance over the stay (Sun or Earth)">${e.worst_case_min_clearance_deg.toFixed(2)}°</span></button>`;
+          const b = li.querySelector("button");
+          b.addEventListener("click", () => this.onSite(r.id, e.site_id));
+          b.addEventListener("pointerenter", () => { this.markCell(cell, this.hoverRect); this.renderCell(cell); });
+          list.appendChild(li);
+        }
+      });
+      this.renderCell(this.lastCell);
+    } catch (err) {
+      if (token !== this.topToken) return;
+      console.error(err);
+      if (status) status.textContent = `Couldn't rank the sites: ${err.message}`;
+    }
   }
   renderCell(cell) {
     this.lastCell = cell;
@@ -290,12 +377,15 @@ export class MapView {
     set("id", cell.id);
     set("lat", fmtLat(cell.lat));
     set("lon", fmtLon(cell.lon));
-    const team = this.teamSiteData && this.teamSiteData.byId.get(cell.id);
-    if (team) set("h", `${Math.round(team.terrain_height_m).toLocaleString()} m`);
+    const teamH = this.teamSiteData ? this.teamSiteData.heightOf(cell.id) : undefined;
+    const team = teamH !== undefined;
+    if (team) set("h", `${Math.round(teamH).toLocaleString()} m`);
     if (this.dem) {
       if (!team) set("h", `${Math.round(this.dem.at(cell.x, cell.y)).toLocaleString()} m`);
       set("s", `${this.dem.slope(cell.x, cell.y).toFixed(1)}°`);
     } else { if (!team) set("h", "loading…"); set("s", "loading…"); }
+    const e = this.rankData && this.rankData.byId.get(cell.id);
+    set("rank", e ? `${e.rank.toLocaleString()} of ${this.rankData.doc.sites.length.toLocaleString()}${e.top ? " · top 10" : ""} · ${coverageLabel(e)}` : this.region && this.region.hasSiteData ? "scoring…" : "—");
   }
 
   setCrumbs(items) {
