@@ -1,37 +1,42 @@
 # Lunar Site Viewer (viewer/)
 
-A dashboard for choosing a landing site in NASA's nine Artemis III candidate regions near the lunar south pole.
-It reads the team pipeline's output in `../data/processed/site-data` (see `docs/data-contract.md`).
+The site's front end: a dashboard for choosing a landing site in NASA's nine Artemis III candidate regions near
+the lunar south pole. It is published at the site root, https://dhidru.github.io/nasa-space-apps-2026/.
 
-This is a separate app from the team's main front end in `../web/` (React + the TypeScript science port). It
-adds a 3D terrain slice and a lunar-day timeline; it is here to test hosting on GitHub Pages and to compare.
+**Front end here, data and science from the team web app.** Everything the viewer knows about sites comes from the
+web app's code in `../web/src` (see `docs/data-contract.md`, ADR 0001):
 
-1. **South pole map**: the team's hillshade of the pole with the nine regions from `regions.json`. Hover a region
-   to highlight it, click to open it.
-2. **Region grid**: the region's 200 m Landing Site grid (ids `r###c###` from the top-left, as in `sites.json`) over
-   the team's region hillshade. Hover a cell to read its elevation and slope, click it to open the site. In regions
-   with team site data (today: Mons Mouton) the elevation comes from `sites.json`, and a **Landing Time** picker
-   ranks every site for a 7-day Surface Stay: the **top 10** (at least 2 km apart) are drawn on the grid and listed,
-   and hovering a cell shows its rank.
-3. **Site view**: a 3D slice of terrain (2 to 16 km) around the site, drawn with three.js from the 80 m LOLA DEM.
-   Shade it with a relief light, real sunlight with cast shadows for any date and time, or slope classes. Around it:
-   Sun and Earth readouts, a timeline of Sun and Earth elevation over one lunar day, and a table comparing the nine
-   regions. In regions with team site data, Sun and Earth visibility and the **Clearance** readout use the team's
-   Horizons (`horizons.bin.gz`), so they match the pipeline's results. The readout shows the site's rank, the
-   side panel lists the top 10 for the chosen time, and the top-10 sites are outlined and pinned in the 3D slice.
-
-## What comes from where
-
-| Data | Source |
+| What | Team code used |
 |---|---|
-| Regions, outlines, home and region hillshades | team `site-data` (`regions.json`, `outline.geojson`, `basemap.*`) |
-| Site heights, Horizons (Mons Mouton) | team `site-data` (`sites.json`, `horizons.bin.gz`) |
-| Sun/Earth vectors, 2026–2027 | team `site-data/ephemeris` (SPICE, MOON_ME); Astronomy Engine outside those years |
-| Ranking and top 10 | computed in the browser by the team's TypeScript science port (`../web/src/science`), the same code and worker the web app uses |
-| 3D terrain, slopes, far-horizon ray march where there are no team Horizons | NASA tiles built by `scripts/prepare-data.mjs` (LOLA 80 m polar DEM and the SVS CGI Moon Kit global DEM) |
+| Serving the pipeline output (`data/processed/site-data`) under `<base>/data/`, without `results/` | `web/scripts/vite-plugins.ts` `siteData` (Vite plugin) |
+| Reading files; sites and Horizons; Sun/Earth positions | `web/src/science` `fetchSiteData`, `readJson`, `loadRegion`, `loadPositions` |
+| Sun/Earth azimuth, elevation and Clearance from a site | `web/src/science/geometry.ts` `track` |
+| Ranking, top 10, site detail over the Surface Stay, Landing Windows | the web app's science worker (`web/src/science/worker.ts`) |
+| Coverage labels and colours, Landing Time rules, link format | `web/src/app/coverage.ts`, `web/src/science/time.ts`, `web/src/app/route.ts` |
+| Third-party notices in the build | `web/scripts/vite-plugins.ts` `thirdPartyNotices` |
 
-`scripts/copy-site-data.mjs` copies `../data/processed/site-data` to `public/site-data` before every dev run and
-build, so the repo copy stays the single source.
+The only data the viewer adds is NASA elevation for the 3D terrain (`scripts/prepare-data.mjs`).
+
+## What it shows
+
+1. **South pole map**: the team's hillshade with the nine regions. Hover a region to highlight it, click to open it.
+2. **Region grid** (regions with site data; today Mons Mouton): a **Landing Time** picker for the 7-day Surface Stay,
+   a **coverage heatmap** of every Landing Site, the **top 10** (at least 2 km apart) drawn and listed, and each
+   cell's height, slope and rank on hover. Other regions show the grid with LOLA heights and a "coming soon" note.
+3. **Site view**: a 3D slice of terrain (2 to 16 km) around the site (three.js, 80 m LOLA DEM), lit for any date and
+   time, with the top-10 sites outlined. Around it:
+   - Sun and Earth readouts with **Clearance** (from `track`), the site's rank, and a lunar-day timeline;
+   - **Top 10 Landing Sites** for the chosen Landing Time;
+   - **Surface Stay**: stats over the stay, sky plot, Sun and Earth elevation over the Horizon, and
+     **Landing Windows** (click one to move to that Landing Time);
+   - a table comparing the nine regions.
+
+The Landing Time is the date and time in the site view, snapped to the 10-minute grid inside the Supported Span.
+Links in the web app's format (`#/region/<id>?t=20270301T0000Z&site=r041c026`) open the same view here, and the
+old `/viewer/` address redirects to the root.
+
+The team's original web app (`../web/`) is still published at `/app/`, and its tests check the shared science
+against the Python results on every deploy.
 
 ## Run it locally
 
@@ -55,36 +60,37 @@ state a license for that ASU-derived map. `npm run data -- --with-color` builds 
 
 ## Deploy: GitHub Pages
 
-The team's `.github/workflows/pages.yml` publishes `web/` at the site root and builds this folder into
-`web/dist/viewer/`, so the viewer is served at https://dhidru.github.io/nasa-space-apps-2026/viewer/ after every
-push to `main`. `BASE_PATH` sets the viewer's URL prefix (`/<repo>/viewer/`). Pages sites are public.
+`.github/workflows/pages.yml` runs the web app's tests, builds the web app, builds this folder with
+`BASE_PATH=/<repo>/`, copies the web app into `dist/app/`, and publishes `dist/` on every push to `main`.
+Pages sites are public.
 
 To check a Pages build locally:
 
 ```bash
-BASE_PATH=/nasa-space-apps-2026/viewer/ npm run build
-npx vite preview --base /nasa-space-apps-2026/viewer/
+BASE_PATH=/nasa-space-apps-2026/ npm run build
+npx vite preview --base /nasa-space-apps-2026/
 ```
 
 (In Git Bash on Windows, prefix the build with `MSYS_NO_PATHCONV=1` so the path isn't rewritten.)
 
-## How it works
+## Files
 
-- `src/teamdata.js`: loads the team's site-data (regions, basemaps, sites, Horizons, positions).
-- `src/ranking.js`: starts the web app's science worker (`../web/src/science/worker.ts`) on the viewer's
-  `site-data/` and returns the ranking and top 10. Coverage labels and colours come from `../web/src/app/coverage.ts`,
-  so both apps describe sites the same way. If the science changes, the viewer picks it up on the next build.
-- `scripts/prepare-data.mjs`: global elevation tiles and a shadow grid from the CGI Moon Kit, plus a cropped 80 m
-  DEM per region from LOLA LDEM_80S_80M (`public/tiles/polar`), cut around the team's region outlines.
-- `src/mapview.js`: the 2D maps (SVG in polar stereographic metres). `src/polar.js`: projection, the 200 m site grid
-  and region DEM loading.
-- `src/patchview.js`: the 3D slice (three.js).
-- `src/metrics.js`, `src/chart.js`: Sun and Earth visibility over a lunar day and the timeline.
-- `src/ephemeris.js`: Sun and Earth directions in the Moon's frame (team positions, else Astronomy Engine).
-- `preview/`: builds a standalone single-file preview of the 3D slice from the team's Mons Mouton data.
+- `src/teamdata.js`: the data layer on the web app's code (regions, basemaps, sites, Horizons, positions, `track`).
+- `src/ranking.js`: starts the web app's science worker on the same `data/` folder; ranking, detail, windows.
+- `src/stayview.js`: the Surface Stay panel, plain-DOM ports of the web app's StatsTable, SkyPlot, TimeCharts and
+  LandingWindowsPanel.
+- `src/mapview.js`: the 2D maps (SVG in polar stereographic metres): home, region grid, heatmap, top 10.
+- `src/patchview.js`: the 3D slice (three.js). `src/polar.js`: projection, the 200 m grid and region DEM loading.
+- `src/metrics.js`, `src/chart.js`: the lunar-day timeline. `src/ephemeris.js`: Sun/Earth directions (team
+  positions in 2026–2027, Astronomy Engine elsewhere).
+- `scripts/prepare-data.mjs`: NASA elevation tiles for the 3D terrain, cut around the team's region outlines.
+- `public/viewer/index.html`: redirect from the old `/viewer/` address.
+
+If the science changes, change the Python first, then the web app's port (its parity tests must pass); the viewer
+picks it up on its next build.
 
 ## Licence
 
-The viewer's code is MIT (see `LICENSE`), which is compatible with the repository's Apache-2.0. Third-party
-licences and data credits are in `THIRD_PARTY_NOTICES.md` and the repository's `ATTRIBUTIONS.md`;
-`npm run licenses` audits the shipped dependency tree.
+The viewer's own code is MIT (see `LICENSE`), compatible with the repository's Apache-2.0; the team code it imports
+is Apache-2.0. Third-party licences and data credits are in `THIRD_PARTY_NOTICES.md`, the build's
+`THIRD-PARTY-NOTICES.txt` and the repository's `ATTRIBUTIONS.md`. `npm run licenses` audits the shipped npm packages.

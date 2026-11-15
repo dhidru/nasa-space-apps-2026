@@ -5,7 +5,7 @@
 
 import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
-import { formatUtc, coverageLabel, coverageColor, SPAN_START, SPAN_END, STEP_MS } from "./ranking.js";
+import { formatUtc, coverageLabel, coverageColor, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}, parent) => {
@@ -192,6 +192,7 @@ export class MapView {
         const [w, h] = sizeKm(r);
         return `<li><button type="button" data-id="${r.id}"><span>${r.name}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites${r.hasSiteData ? " · team data" : ""}</small></button></li>`;
       }).join("")}</ol>
+      <p class="fine">The team's original 2D web app is still available: <a href="app/">open it</a>.</p>
       <p class="credits">Hillshade: ${this.homeBasemap.source} (NASA, public domain). Region outlines: USGS (CC0, doi:10.5066/P1MEQ6UK). Processed by the team pipeline.</p>`;
     for (const b of this.card.querySelectorAll("button[data-id]")) {
       b.addEventListener("pointerenter", () => this.hover(b.dataset.id));
@@ -230,6 +231,7 @@ export class MapView {
     svgEl("polygon", { points: r.xy.map(([x, y]) => `${x},${-y}`).join(" "), class: "region-outline" }, this.svg);
     this.hoverRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-hover", visibility: "hidden" }, this.svg);
     this.selRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-selected", visibility: "hidden" }, this.svg);
+    this.heatLayer = svgEl("g", { class: "heat-cells" }, this.svg);
     this.topLayer = svgEl("g", { class: "top-cells" }, this.svg);
     this.rankData = null;
 
@@ -286,6 +288,11 @@ export class MapView {
         <label class="landing">Landing Time <span class="unit">UTC · 7-day Surface Stay</span>
           <input type="datetime-local" step="600" min="${formatUtc(SPAN_START).slice(0, 16)}" max="${formatUtc(SPAN_END - STEP_MS).slice(0, 16)}" value="${formatUtc(this.getLanding()).slice(0, 16)}">
         </label>
+        <div class="legend">
+          <span><i style="background:${rgb(FULL_HIGH)}"></i> Full coverage (darker = more Clearance)</span>
+          <span><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Partial (by the weaker of Sun and Earth)</span>
+          <span><i class="outlined"></i> Top 10 (at least 2 km apart)</span>
+        </div>
         <h3>Top 10 Landing Sites</h3>
         <p class="hint top-status"></p>
         <ol class="top-list"></ol>
@@ -312,6 +319,7 @@ export class MapView {
     const status = this.card.querySelector(".top-status"), list = this.card.querySelector(".map-top .top-list");
     this.rankData = null;
     this.topLayer.replaceChildren();
+    this.heatLayer.replaceChildren();
     for (const l of this.labels.querySelectorAll(".top-label")) l.remove();
     if (status) status.textContent = "Scoring every Landing Site over the Surface Stay…";
     if (list) list.replaceChildren();
@@ -321,6 +329,15 @@ export class MapView {
       });
       if (token !== this.topToken || this.region !== r) return;
       this.rankData = res;
+      // Coverage heatmap (as in the web app's region page): every site coloured by coverage, one path per colour.
+      const byColor = new Map(), h = GRID_M / 2;
+      for (const e of res.doc.sites) {
+        const cell = grid.byId(e.site_id);
+        if (!cell) continue;
+        const c = coverageColor(e);
+        byColor.set(c, (byColor.get(c) || "") + `M${cell.x - h},${-(cell.y + h)}h${GRID_M}v${GRID_M}h${-GRID_M}z`);
+      }
+      for (const [c, d] of byColor) svgEl("path", { d, fill: c, class: "heat" }, this.heatLayer);
       const nFull = res.doc.sites.filter((x) => x.coverage === "full").length;
       if (status) status.textContent = `${nFull.toLocaleString()} of ${res.doc.sites.length.toLocaleString()} sites have Full Coverage. Sites in the list are at least 2 km apart.`;
       res.top.forEach((e, i) => {
@@ -352,8 +369,9 @@ export class MapView {
     set("id", cell.id);
     set("lat", fmtLat(cell.lat));
     set("lon", fmtLon(cell.lon));
-    const team = this.teamSiteData && this.teamSiteData.byId.get(cell.id);
-    if (team) set("h", `${Math.round(team.terrain_height_m).toLocaleString()} m`);
+    const teamH = this.teamSiteData ? this.teamSiteData.heightOf(cell.id) : undefined;
+    const team = teamH !== undefined;
+    if (team) set("h", `${Math.round(teamH).toLocaleString()} m`);
     if (this.dem) {
       if (!team) set("h", `${Math.round(this.dem.at(cell.x, cell.y)).toLocaleString()} m`);
       set("s", `${this.dem.slope(cell.x, cell.y).toFixed(1)}°`);

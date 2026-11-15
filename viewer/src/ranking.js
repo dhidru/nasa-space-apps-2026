@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Rankings and the 2 km-separated top 10, computed in the browser by the team's TypeScript science port
 // (web/src/science, Apache-2.0; ADR 0001). The viewer starts the same Web Worker as the team's web app and
-// points it at its own copy of site-data, so both apps share one implementation and give the same answers.
+// points it at the same data/ folder, so both apps share one implementation and give the same answers.
 // Coverage labels and colours also come from the web app (web/src/app/coverage.ts).
 
-export { snapLandingTime, formatUtc, SPAN_START, SPAN_END, STAY_STEPS, STEP_MS } from "../../web/src/science/time.ts";
-export { coverageLabel, coverageColor } from "../../web/src/app/coverage.ts";
+export { snapLandingTime, formatUtc, parseUtc, SPAN_START, SPAN_END, STAY_STEPS, STEP_MS, HOUR_MS, DAY_MS } from "../../web/src/science/time.ts";
+export { coverageLabel, coverageColor, pct, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb, SUN_COLOR, EARTH_COLOR, LOS_COLOR, BLOCKED_COLOR } from "../../web/src/app/coverage.ts";
+export { DEFAULT_LANDING } from "../../web/src/app/route.ts";
 
-// The worker reads files relative to the URL in its name (web/src/science/worker.ts).
-const ROOT = new URL(`${import.meta.env.BASE_URL}site-data/`, document.baseURI).href;
+import { DATA_ROOT as ROOT } from "./teamdata.js";
+// The worker reads files relative to the URL in its name (web/src/science/worker.ts): the same data/ folder.
 
 let worker = null, next = 1;
 const pending = new Map();
@@ -27,6 +28,14 @@ function getWorker() {
   return worker;
 }
 
+function call(req, progress) {
+  const id = next++;
+  return new Promise((resolve, reject) => {
+    pending.set(id, { resolve, reject, progress });
+    getWorker().postMessage({ ...req, id });
+  });
+}
+
 const cache = new Map(); // `${regionId}|${landing}` -> Promise<{doc, top, byId}>
 
 /**
@@ -36,11 +45,7 @@ const cache = new Map(); // `${regionId}|${landing}` -> Promise<{doc, top, byId}
 export function ranking(regionId, landing, progress) {
   const key = `${regionId}|${landing}`;
   if (!cache.has(key)) {
-    const id = next++;
-    const p = new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject, progress });
-      getWorker().postMessage({ type: "ranking", regionId, landing, id });
-    }).then((doc) => ({
+    const p = call({ type: "ranking", regionId, landing }, progress).then((doc) => ({
       doc,
       top: doc.sites.filter((s) => s.top).sort((a, b) => a.rank - b.rank),
       byId: new Map(doc.sites.map((s) => [s.site_id, s])),
@@ -52,4 +57,29 @@ export function ranking(regionId, landing, progress) {
     progress(1);
   }
   return cache.get(key);
+}
+
+/** Site detail over the Surface Stay (series, stats, Horizon) from the web app's worker (data-contract §7.2). */
+const details = new Map();
+export function detail(regionId, landing, siteId) {
+  const key = `${regionId}|${landing}|${siteId}`;
+  if (!details.has(key)) {
+    const p = call({ type: "detail", regionId, landing, siteId });
+    p.catch(() => details.delete(key));
+    if (details.size >= 8) details.delete(details.keys().next().value);
+    details.set(key, p);
+  }
+  return details.get(key);
+}
+
+/** Landing Windows for a site over the whole Supported Span (data-contract §7.3). */
+const windowsCache = new Map();
+export function windows(regionId, siteId) {
+  const key = `${regionId}|${siteId}`;
+  if (!windowsCache.has(key)) {
+    const p = call({ type: "windows", regionId, siteId });
+    p.catch(() => windowsCache.delete(key));
+    windowsCache.set(key, p);
+  }
+  return windowsCache.get(key);
 }

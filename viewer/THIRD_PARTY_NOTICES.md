@@ -15,7 +15,7 @@ Run `npm run licenses` to print the current list.
 
 | Component | License | Notes |
 |---|---|---|
-| Ranking, Clearance and coverage code (`../web/src/science`, `../web/src/app/coverage.ts`) | Apache-2.0 (the repository's license) | Bundled into the viewer's worker and main script; imported, not copied. |
+| Data loading, Clearance, ranking, coverage and route code (`../web/src/science`, `../web/src/app/coverage.ts`, `../web/src/app/route.ts`) and build plugins (`../web/scripts/vite-plugins.ts`) | Apache-2.0 (the repository's license) | Imported, not copied; bundled into the viewer's worker and main script. The Surface Stay panel (`src/stayview.js`) is a port of the web app's site-view components. |
 
 ## Build-time tools (not shipped)
 

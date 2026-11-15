@@ -59,7 +59,9 @@
 }
 
 /* top 10 on the region map */
-.top-cell { fill-opacity: .35; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.heat-cells { opacity: .55; pointer-events: none; }
+.heat { stroke: none; shape-rendering: crispEdges; }
+.top-cell { fill-opacity: .9; stroke: #fff !important; stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
 .map-label.top-label { font: 600 11px var(--f-mono); color: #fff; background: rgba(14,16,21,.85); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; cursor: pointer; }
 .map-top { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
 .map-top h3 { margin: 4px 0 0; font-size: 13px; font-weight: 650; }

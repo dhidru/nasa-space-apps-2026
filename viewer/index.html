@@ -140,6 +140,18 @@
         <ol class="top-list" id="topList"></ol>
         <p class="hint">Ranked by the team's Clearance scoring for a 7-day Surface Stay starting at the chosen time (snapped to 10 minutes): Full Coverage first, then the worst-case minimum Clearance of Sun and Earth. Sites in the list are at least 2 km apart. Click one to open it; they are outlined in the 3D view.</p>
       </section>
+      <section class="stay" id="stay" hidden aria-label="Surface Stay">
+        <header>
+          <h2 id="stayTitle">Surface Stay</h2>
+          <small id="stayRange">—</small>
+        </header>
+        <div class="stay-body">
+          <p class="status" id="stayStatus"></p>
+          <div id="stayDetail"></div>
+          <h3>Landing Windows</h3>
+          <div id="stayWindows"><button type="button" class="go" id="findWindows">Find Landing Windows</button></div>
+        </div>
+      </section>
       <header>
         <h2>Artemis III regions</h2>
         <small id="sitesWindow">29.5-day window</small>

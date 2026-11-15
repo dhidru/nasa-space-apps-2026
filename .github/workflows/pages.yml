@@ -1,5 +1,6 @@
-# Builds the static site in web/ and publishes it to GitHub Pages (ADR 0001).
-# The Lunar Site Viewer (viewer/) is built into the same site under /viewer/.
+# Builds the static site and publishes it to GitHub Pages (ADR 0001):
+#   /       the Lunar Site Viewer (viewer/): the front end, on the web app's data and science code
+#   /app/   the team's original web app (web/), whose tests check the science against the Python results
 # Needs Settings → Pages → Build and deployment → Source: "GitHub Actions".
 name: Deploy to GitHub Pages
 
@@ -37,7 +38,7 @@ jobs:
       # Typechecks, then builds web/dist/ with data/ and THIRD-PARTY-NOTICES.txt.
       - run: npm run build
 
-      # Lunar Site Viewer, served at /<repo>/viewer/. Its 3D terrain needs NASA elevation files (~180 MB);
+      # Lunar Site Viewer, served at the site root. Its 3D terrain needs NASA elevation files (~180 MB);
       # they and the tiles cut from them are cached until the data script or the region list changes.
       - uses: actions/cache@v4
         with:
@@ -50,13 +51,14 @@ jobs:
       - run: npm run build
         working-directory: viewer
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/viewer/
-      - run: cp -r viewer/dist web/dist/viewer
+          BASE_PATH: /${{ github.event.repository.name }}/
+      # The web app uses relative paths, so it runs unchanged under /app/.
+      - run: cp -r web/dist viewer/dist/app
         working-directory: .
 
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: web/dist
+          path: viewer/dist
 
   deploy:
     needs: build

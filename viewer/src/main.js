@@ -3,20 +3,23 @@
 //   (empty)                 2D map of the south pole with the nine Artemis III regions
 //   #<region>               2D map of one region with its 200 m landing-site grid
 //   #<region>/<site>        3D topography of one grid site, with the Sun/Earth dashboard
-// Regions, hillshades, site heights, Horizons and Sun/Earth positions come from the team pipeline's site-data
-// (src/teamdata.js); the 3D terrain still comes from NASA tiles built by scripts/prepare-data.mjs.
+// Data and science come from the team web app's code (web/src/science): regions, hillshades, site heights, Horizons,
+// Sun/Earth positions, Clearance (track), rankings, site details and Landing Windows (src/teamdata.js, src/ranking.js).
+// The 3D terrain still comes from NASA tiles built by scripts/prepare-data.mjs.
 import "./style.css";
 import "./map.css";
 import { D, ephemeris, latlon, enu, horizontal, phaseName, fromSite, useTeamPositions } from "./ephemeris.js";
 import { MoonData } from "./data.js";
 import { SYNODIC_DAYS, sampleEphemeris, siteSeries, summarize, slopeDeg, visibility, discAbove } from "./metrics.js";
 import { regionSites, loadSaved, saveSaved } from "./sites.js";
-import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadSites, loadHorizons, loadPositions } from "./teamdata.js";
+import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadTeamRegion, loadAllPositions, siteTracks } from "./teamdata.js";
 import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView } from "./mapview.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
-import { ranking, snapLandingTime, formatUtc, coverageLabel, coverageColor } from "./ranking.js";
+import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, DEFAULT_LANDING } from "./ranking.js";
+import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
+import { parseRoute } from "../../web/src/app/route.ts";
 
 
 const BASE = `${import.meta.env.BASE_URL}tiles`;
@@ -36,6 +39,8 @@ const el = {
   chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
   sitesBody: $("sitesBody"), sitesWindow: $("sitesWindow"), saveSite: $("saveSite"), sitesTable: $("sitesTable"),
   oRank: $("oRank"), top10: $("top10"), topWhen: $("topWhen"), topStatus: $("topStatus"), topList: $("topList"),
+  stay: $("stay"), stayTitle: $("stayTitle"), stayRange: $("stayRange"), stayStatus: $("stayStatus"),
+  stayDetail: $("stayDetail"), stayWindows: $("stayWindows"),
 };
 
 const compass16 = (az) => ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][Math.round(az / 22.5) % 16];
@@ -57,7 +62,7 @@ let chartSeries = [];
 let REGIONS = [];                  // the nine regions from the team's regions.json
 // Landing Time (UTC ms, 10-minute grid, inside the Supported Span) shared by the region map and the site view:
 // the start of the 7-day Surface Stay that the team's ranking scores.
-let landingMs = snapLandingTime(Date.parse(START_DATE));
+let landingMs = DEFAULT_LANDING;
 const allSites = () => [...REGIONS, ...saved];
 const regionById = (id) => REGIONS.find((r) => r.id === id);
 
@@ -67,15 +72,23 @@ function cached(key, make) {
   if (!teamCache.has(key)) { const p = make(); p.catch(() => teamCache.delete(key)); teamCache.set(key, p); }
   return teamCache.get(key);
 }
-const teamSitesFor = (id) => cached(`sites:${id}`, () => loadSites(id));
-const horizonsFor = (id) => cached(`hz:${id}`, () => loadHorizons(id));
-/** { h, at(az) } for one site from the team data, or null when the region has none. */
+const teamSitesFor = (id) => cached(`region:${id}`, () => loadTeamRegion(id));
+/**
+ * For one site with team data: { h: terrain height (m), tracks(vectors) } where tracks() runs the web app's
+ * track() for the Sun and Earth at the given position vectors. Null when the region has no site data.
+ */
 async function teamFor(region, cell) {
   if (!region.hasSiteData) return null;
-  const [sites, hz] = await Promise.all([teamSitesFor(region.id), horizonsFor(region.id)]);
-  const s = sites.byId.get(cell.id);
-  if (!s) return null;
-  return { h: s.terrain_height_m, at: (az) => hz.horizonAt(s.index, az) };
+  const tr = await teamSitesFor(region.id), h = tr.heightOf(cell.id);
+  if (h === undefined) return null;
+  return { h, tracks: (vectors) => siteTracks(tr, cell.id, vectors) };
+}
+/** Sun/Earth azimuth, elevation and Clearance at one instant from the team's track(), or null without km vectors. */
+function teamNow(team, eph) {
+  if (!team || !eph.sunKm) return null;
+  const t = team.tracks([eph]);
+  const pick = (b) => ({ az: b.azimuthDeg[0], el: b.elevationDeg[0], clear: b.elevationDeg[0] - b.horizonElevationDeg[0] });
+  return { sun: pick(t.sun), earth: pick(t.earth) };
 }
 const siteAt = (lat, lon) => allSites().find((s) => Math.abs(s.lat - lat) < 0.006 && Math.abs(wrapLon(s.lon - lon)) < 0.006);
 
@@ -103,6 +116,13 @@ function cellFor(lat, lon) {
 /* ---------- routing ---------- */
 function go(hash) { const t = hash === "#" ? "" : hash; if (location.hash === t) route(); else location.hash = t; }
 async function route() {
+  // Links in the web app's format (#/region/<id>?t=20270301T0000Z&site=r041c026) open the same view here.
+  if (location.hash.startsWith("#/")) {
+    const r = parseRoute(location.hash);
+    if (r.page === "region") { landingMs = r.landing; location.replace(`#${r.regionId}${r.siteId ? `/${r.siteId}` : ""}`); }
+    else location.replace("#");
+    return;
+  }
   const [regionId, cellId] = decodeURIComponent(location.hash.slice(1)).split("/");
   const region = regionId && regionById(regionId);
   if (!region) return showMap(() => mapView.showHome());
@@ -169,9 +189,9 @@ function setInputs(lat, lon, date) {
 /* ---------- readout ---------- */
 function renderReadout(s) {
   const f = enu(s.lat, s.lon), dir = fromSite(s.eph, s.lat, s.lon, s.h);
-  const sunH = horizontal(dir.sun, f), earthH = horizontal(dir.earth, f);
-  const team = site && site.team;
-  const clr = (h) => { if (!team) return ""; const c = h.el - team.at(h.az); return ` · clearance ${c >= 0 ? "+" : ""}${c.toFixed(2)}°`; };
+  const tn = teamNow(site && site.team, s.eph);
+  const sunH = tn ? tn.sun : horizontal(dir.sun, f), earthH = tn ? tn.earth : horizontal(dir.earth, f);
+  const clr = (h) => (h.clear === undefined ? "" : ` · clearance ${h.clear >= 0 ? "+" : ""}${h.clear.toFixed(2)}°`);
   const sub = latlon(s.eph.sun);
   const lst = (((12 + wrapLon(s.lon - sub[1]) / 15) % 24) + 24) % 24;
   const hh = Math.floor(lst), mm = Math.floor((lst - hh) * 60);
@@ -245,7 +265,7 @@ async function apply() {
   if (state !== now) return;
   // Terrain beyond the slice can still hide the Sun: check the far horizon over the global terrain.
   // With team Horizons, the Sun's disc is tested against the site's Horizon (the pipeline's Clearance).
-  view.setSun(sun, team ? discAbove(sunH.el, team.at(sunH.az), 0.267)
+  view.setSun(sun, sunH.clear !== undefined ? discAbove(sunH.clear, 0, 0.267)
     : visibility(data, cell.lat * D, cell.lon * D, fromSite(eph, cell.lat, cell.lon, h).sun, 0.267 * D));
   landingMs = snapLandingTime(date.getTime());
   updateTopTen();
@@ -258,6 +278,7 @@ async function updateTopTen() {
   const token = ++topToken, cur = site;
   if (!cur || !cur.region.hasSiteData) {
     el.top10.hidden = true;
+    el.stay.hidden = true;
     el.oRank.textContent = "— (no team site data)";
     if (view) view.setMarks([]);
     return;
@@ -277,11 +298,58 @@ async function updateTopTen() {
     const me = r.byId.get(cur.cell.id);
     el.oRank.textContent = me ? `${me.rank.toLocaleString()} of ${r.doc.sites.length.toLocaleString()}${me.top ? " · top 10" : ""} · ${coverageLabel(me)}` : "—";
     view.setMarks(r.top.map((e) => ({ cell: grid.byId(e.site_id), color: coverageColor(e) })).filter((m) => m.cell));
+    updateStay(cur, me, token);
   } catch (e) {
     if (token !== topToken) return;
     console.error(e);
     el.topStatus.textContent = `Couldn't rank the sites: ${e.message}`;
     el.oRank.textContent = "—";
+  }
+}
+/* ---------- Surface Stay: the web app's site view (stats, sky plot, time charts, Landing Windows) ---------- */
+let windowsKey = null;
+async function updateStay(cur, entry, token) {
+  el.stay.hidden = false;
+  el.stayTitle.innerHTML = stayTitle(cur.cell.id, entry);
+  el.stayStatus.textContent = "Computing the Sun and Earth over the Surface Stay…";
+  const key = `${cur.region.id}|${cur.cell.id}`;
+  if (key !== windowsKey) { windowsKey = key; resetWindows(); } else refreshWindows();
+  try {
+    const doc = await detail(cur.region.id, landingMs, cur.cell.id);
+    if (token !== topToken) return;
+    el.stayStatus.textContent = "";
+    el.stayRange.textContent = stayRange(doc);
+    el.stayDetail.innerHTML = `<h3>Stats over the Surface Stay</h3>${statsTable(doc)}<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth Elevation over the Horizon</h3>${timeCharts(doc)}`;
+  } catch (e) {
+    if (token !== topToken) return;
+    console.error(e);
+    el.stayStatus.textContent = `Couldn't compute the Surface Stay: ${e.message}`;
+  }
+}
+let windowsShown = false;
+function resetWindows() {
+  windowsShown = false;
+  el.stayWindows.innerHTML = `<button type="button" class="go" id="findWindows">Find Landing Windows</button>`;
+  el.stayWindows.querySelector("#findWindows").addEventListener("click", () => showWindows());
+}
+function refreshWindows() { if (windowsShown) showWindows(); }
+async function showWindows() {
+  const cur = site, key = windowsKey;
+  if (!cur) return;
+  windowsShown = true;
+  if (!el.stayWindows.querySelector("table, svg")) el.stayWindows.innerHTML = `<p class="status">Checking every Landing Time in the Supported Span…</p>`;
+  try {
+    const doc = await windows(cur.region.id, cur.cell.id);
+    if (key !== windowsKey) return;
+    el.stayWindows.innerHTML = windowsView(doc, landingMs);
+    el.stayWindows.querySelectorAll("tr[data-t]").forEach((tr) => tr.addEventListener("click", () => {
+      setInputs(null, null, new Date(parseUtc(tr.dataset.t)));
+      apply();
+    }));
+  } catch (e) {
+    if (key !== windowsKey) return;
+    console.error(e);
+    el.stayWindows.innerHTML = `<p class="status">Couldn't find Landing Windows: ${escapeHtml(e.message)}</p>`;
   }
 }
 function renderTopList(r, cur) {
@@ -408,7 +476,7 @@ async function boot() {
   polarMeta = meta;
   REGIONS = regionSites(regions);
   // Team SPICE positions (2026-2027) replace Astronomy Engine's Sun/Earth vectors once they arrive.
-  loadPositions().then((p) => { useTeamPositions(p); if (site && !el.app.hidden) apply(); }).catch((e) => console.error(e));
+  loadAllPositions().then((p) => { useTeamPositions(p); if (site && !el.app.hidden) apply(); }).catch((e) => console.error(e));
   mapView = new MapView(el.mapview, {
     homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
     ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); },

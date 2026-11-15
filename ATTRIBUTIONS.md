@@ -238,8 +238,8 @@ Each dataset below also has a conventions card in
 
 ### Lunar Site Viewer (`viewer/`), with three.js and Astronomy Engine
 - **Type:** Code/Library
-- **Used for:** A second, separate front end in `viewer/` (Vite + three.js + Astronomy Engine), built on the team's
-  `data/processed/site-data` and deployed to GitHub Pages by `.github/workflows/pages.yml`. The viewer code was
+- **Used for:** The site's front end in `viewer/` (Vite + three.js + Astronomy Engine), running on the web app's data and
+  science code (`web/src`) and deployed to GitHub Pages by `.github/workflows/pages.yml`. The viewer code was
   written by a team member with Claude, started from a Claude design chat; it is MIT-licensed (`viewer/LICENSE`),
   which is compatible with our Apache 2.0.
 - **Source:** three.js https://github.com/mrdoob/three.js (npm `three@0.160.0`); Astronomy Engine
@@ -310,7 +310,7 @@ Each dataset below also has a conventions card in
 ### GitHub Actions and GitHub Pages, with the official `actions/*` workflow actions
 - **Type:** Tool
 - **Used for:** Building, testing and publishing the web app to GitHub Pages
-  (`.github/workflows/pages.yml`), with the Lunar Site Viewer (`viewer/`) built into the same site under `/viewer/`. The workflow references these actions by
+  (`.github/workflows/pages.yml`), with the Lunar Site Viewer (`viewer/`) at the site root and the web app under `/app/`. The workflow references these actions by
   version; none of their code is copied into the repo or the site:
   `actions/checkout@v7` (v7.0.1), `actions/setup-node@v7` (v7.1.0),
   `actions/upload-pages-artifact@v5` (v5.0.0), `actions/deploy-pages@v5` (v5.0.1) and `actions/cache@v4`
@@ -328,7 +328,7 @@ Each dataset below also has a conventions card in
   The Actions and Pages services fall under the
   [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service)
   and the [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
-  (1 GB site, 100 GB/month soft bandwidth limit; the web app is about 11 MB and the viewer adds about 47 MB).
+  (1 GB site, 100 GB/month soft bandwidth limit; about 53 MB with the viewer's terrain tiles, plus the web app's ~11 MB under `/app/`).
 - **Requirements:** None for our use. We only run the actions on GitHub's
   runners and don't redistribute them. MIT is compatible with Apache 2.0.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
@@ -389,6 +389,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Moved the Lunar Site Viewer from `web/` to `viewer/` so it sits beside the team's React front end, merged `main` and resolved the attribution conflicts | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Merged `main` again: dropped the viewer's separate Pages workflow and added the viewer build to the team's workflow, so it publishes under `/viewer/` on the same site | `.github/workflows/pages.yml`, `viewer/`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Added the top 10 Landing Sites to the Lunar Site Viewer by reusing the web app's science worker and coverage helpers (no second copy of the science): Landing Time picker, top 10 on the region grid and in a list, rank readout, top-10 outlines in the 3D view; checked the top 10 against `results/ranking/20270301T0000Z.json` | `viewer/`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Combined the two front ends at the team's request: the Lunar Site Viewer is now the site's front end at the root, running on the web app's data and science code (siteData and notices plugins, fetchSiteData/readJson/loadRegion/loadPositions, track, the science worker, coverage and route helpers); ported the web app's coverage heatmap, stats table, sky plot, time charts and Landing Windows to the viewer; moved the web app to `/app/`; checked ranking, site detail and Landing Windows against the committed results | `viewer/`, `.github/workflows/pages.yml`, `README.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
