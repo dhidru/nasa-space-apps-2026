@@ -31,9 +31,10 @@ export function bindViewMenus(root) {
       }));
     };
     render();
-    menu.addEventListener("pointerenter", () => open(true));
+    let hoverAt = 0; // a click right after the hover opened the menu keeps it open instead of closing it
+    menu.addEventListener("pointerenter", () => { hoverAt = performance.now(); open(true); });
     menu.addEventListener("pointerleave", () => open(false));
-    btn.addEventListener("click", () => open(!menu.classList.contains("open")));
+    btn.addEventListener("click", () => open(performance.now() - hoverAt < 500 || !menu.classList.contains("open")));
     menu.addEventListener("focusout", (e) => { if (!menu.contains(e.relatedTarget)) open(false); });
     menu.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { open(false); btn.focus(); }
