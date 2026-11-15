@@ -5,6 +5,7 @@
 
 import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
+import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
 import { formatUtc, coverageLabel, coverageColor, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -43,7 +44,7 @@ export class MapView {
     this.root = root;
     this.stage = root.querySelector(".map-stage");
     this.svg = svgEl("svg", { class: "map-svg", role: "img" }, this.stage);
-    this.labels = Object.assign(document.createElement("div"), { className: "map-labels" });
+    this.labels = Object.assign(document.createElement("div"), { className: "map-labels clears-on-flight" });
     this.stage.appendChild(this.labels);
     this.card = root.querySelector(".map-card");
     this.crumbs = root.querySelector(".map-crumbs");
@@ -64,7 +65,10 @@ export class MapView {
     this.fitBox = b;
     this.setVB({ x: cx - w / 2, y: -cy - h / 2, w, h });
   }
-  refit() { if (this.fitBox && !this.userMoved) this.fit(this.fitBox); else this.setVB(this.vb); }
+  refit() {
+    if (this.flight) { if (this.flight.done) this.setVB(this.flightVB()); return; } // hold the hand-off frame; the zoom re-measures each step
+    if (this.fitBox && !this.userMoved) this.fit(this.fitBox); else this.setVB(this.vb);
+  }
   setVB(vb) {
     const [W, H] = this.size();
     vb.h = (vb.w * H) / W; // keep aspect
@@ -83,13 +87,14 @@ export class MapView {
     let drag = null;
     this.svg.addEventListener("wheel", (e) => {
       e.preventDefault();
+      if (this.flight) return;
       const [mx, my] = this.toMap(e), f = Math.exp(e.deltaY * 0.0015);
       const vb = this.vb, w = Math.min(Math.max(vb.w * f, 2000), 700000);
       const k = w / vb.w;
       this.userMoved = true;
       this.setVB({ x: mx - (mx - vb.x) * k, y: -my - (-my - vb.y) * k, w, h: vb.h * k });
     }, { passive: false });
-    this.svg.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, vb: { ...this.vb }, moved: false, id: e.pointerId, region: this.hovered }; });
+    this.svg.addEventListener("pointerdown", (e) => { if (this.flight) { drag = null; return; } drag = { x: e.clientX, y: e.clientY, vb: { ...this.vb }, moved: false, id: e.pointerId, region: this.hovered }; });
     this.svg.addEventListener("pointermove", (e) => {
       if (drag) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
@@ -108,7 +113,7 @@ export class MapView {
       if (was && !was.moved) this.onClick && this.onClick(e, was);
     });
     this.svg.addEventListener("pointerleave", () => this.onLeave && this.onLeave());
-    this.root.querySelector(".map-reset").addEventListener("click", () => { this.userMoved = false; this.fit(this.fitBox); });
+    this.root.querySelector(".map-reset").addEventListener("click", () => { if (this.flight) return; this.userMoved = false; this.fit(this.fitBox); });
   }
 
   /* ---------- labels ---------- */
@@ -223,17 +228,17 @@ export class MapView {
     // dim everything outside the region
     const outer = `M${left},${-top}h${bw}v${bh}h${-bw}z`;
     const inner = `M${e.xmin},${-e.ymax}H${e.xmax}V${-e.ymin}H${e.xmin}z`;
-    svgEl("path", { d: outer + inner, class: "mask", "fill-rule": "evenodd" }, this.svg);
+    svgEl("path", { d: outer + inner, class: "mask clears-on-flight", "fill-rule": "evenodd" }, this.svg);
     // grid lines on the 200 m cell edges
     let d = "";
     for (let x = e.xmin; x <= e.xmax + 1; x += GRID_M) d += `M${x},${-e.ymax}V${-e.ymin}`;
     for (let y = e.ymin; y <= e.ymax + 1; y += GRID_M) d += `M${e.xmin},${-y}H${e.xmax}`;
-    this.gridPath = svgEl("path", { d, class: "grid" }, this.svg);
-    svgEl("polygon", { points: r.xy.map(([x, y]) => `${x},${-y}`).join(" "), class: "region-outline" }, this.svg);
+    this.gridPath = svgEl("path", { d, class: "grid clears-on-flight" }, this.svg);
+    svgEl("polygon", { points: r.xy.map(([x, y]) => `${x},${-y}`).join(" "), class: "region-outline clears-on-flight" }, this.svg);
     this.hoverRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-hover", visibility: "hidden" }, this.svg);
     this.selRect = svgEl("rect", { width: GRID_M, height: GRID_M, class: "cell-selected", visibility: "hidden" }, this.svg);
-    this.heatLayer = svgEl("g", { class: "heat-cells" }, this.svg);
-    this.topLayer = svgEl("g", { class: "top-cells" }, this.svg);
+    this.heatLayer = svgEl("g", { class: "heat-cells clears-on-flight" }, this.svg);
+    this.topLayer = svgEl("g", { class: "top-cells clears-on-flight" }, this.svg);
     this.rankData = null;
 
     this.fit({ xmin: e.xmin, xmax: e.xmax, ymin: e.ymin, ymax: e.ymax }, 0.05);
@@ -392,60 +397,86 @@ export class MapView {
     set("rank", e ? `${e.rank.toLocaleString()} of ${this.rankData.doc.sites.length.toLocaleString()}${e.top ? " · top 10" : ""} · ${coverageLabel(e)}` : this.region && this.region.hasSiteData ? "scoring…" : "—");
   }
 
-  /* ---------- fly-in to a site (hand-off to the 3D view) ---------- */
+  /* ---------- fly-in to a Landing Site (hand-off to the 3D view) ---------- */
+  get flying() { return !!this.flight; }
   /**
-   * Zoom the region map onto one cell, fading every other cell, the heatmap and the labels, and
-   * blacking out the map outside the sizeM square the 3D view will show. Resolves when the zoom ends;
-   * the map stays frozen on that frame until endFlight() (called by the next showHome/showRegion).
+   * Zoom the region map onto one Landing Site, fading the other sites, the heatmap and the labels, and blacking out
+   * the map outside the sizeM square the 3D view will show. The last frame puts that square where the 3D view's
+   * first (overhead) frame will draw it: frame() gives that canvas's viewport rect. Resolves when the zoom ends;
+   * the map then holds that frame (pan and zoom off) until fadeOut(), abortFlight() or the next showHome/showRegion.
    */
-  flyTo(cell, sizeM) {
+  flyTo(cell, sizeM, frame) {
     if (this.mode !== "region" || !cell) return Promise.resolve();
     this.endFlight();
-    this.flying = true;
+    const flight = (this.flight = { cell, sizeM, frame, done: false });
     this.markCell(null, this.hoverRect);
     this.markCell(cell, this.selRect);
     this.svg.style.cursor = "";
     this.root.classList.add("flying");
     const half = sizeM / 2, big = 1e7;
-    // Everything outside the slice square fades to the 3D scene's background colour.
-    this.flightMask = svgEl("path", {
+    flight.mask = svgEl("path", {
       d: `M${-big},${-big}h${2 * big}v${2 * big}h${-2 * big}z M${cell.x - half},${-(cell.y + half)}h${sizeM}v${sizeM}h${-sizeM}z`,
       "fill-rule": "evenodd", class: "flight-mask",
     }, this.svg);
-    this.svg.appendChild(this.selRect); // keep the chosen cell on top
-    // Final view box: the slice square, fitted to the stage like fit() does.
-    const [W, H] = this.size();
-    let w = sizeM * 1.04, h = sizeM * 1.04;
-    if (w / h > W / H) h = (w * H) / W; else w = (h * W) / H;
-    const to = { x: cell.x - w / 2, y: -cell.y - h / 2, w }, from = { ...this.vb };
-    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const ms = reduce ? 0 : 900;
-    // Zoom in log space so the scale change feels even; pan follows the same curve.
-    const lw0 = Math.log(from.w), lw1 = Math.log(to.w);
-    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    this.svg.appendChild(this.selRect); // keep the chosen site on top
+    const from = { ...this.vb }, ms = prefersReducedMotion() ? 0 : 900;
+    const fx = (cell.x - from.x) / from.w, fy = (-cell.y - from.y) / from.h; // the site's place on screen, as a share of the stage
     return new Promise((resolve) => {
       const t0 = performance.now();
       const step = (now) => {
-        if (!this.flying) return resolve();
-        const t = ms ? Math.min(1, (now - t0) / ms) : 1, k = ease(t);
-        const w1 = Math.exp(lw0 + (lw1 - lw0) * k);
-        // keep the cell's screen position moving smoothly from where it was to the centre
-        const fx = (cell.x - from.x) / from.w, fy = (-cell.y - from.y) / from.h;
-        const ax = fx + (0.5 - fx) * k, ay = fy + (0.5 - fy) * k;
-        const h1 = (w1 * H) / W;
-        this.setVB({ x: cell.x - ax * w1, y: -cell.y - ay * h1, w: w1 });
-        this.flightMask.style.opacity = String(Math.min(1, Math.max(0, (k - 0.35) / 0.55)));
-        if (t < 1) this.flightRaf = requestAnimationFrame(step);
-        else resolve();
+        if (this.flight !== flight) return resolve();
+        const t = ms ? Math.min(1, (now - t0) / ms) : 1, k = easeInOutCubic(t);
+        const to = this.flightVB(), [W, H] = this.size();
+        // Zoom in log space so the scale change feels even; the site glides from where it was to its final spot.
+        const w = Math.exp(Math.log(from.w) + (Math.log(to.w) - Math.log(from.w)) * k), h = (w * H) / W;
+        const tx = (cell.x - to.x) / to.w, ty = (-cell.y - to.y) / ((to.w * H) / W);
+        this.setVB({ x: cell.x - (fx + (tx - fx) * k) * w, y: -cell.y - (fy + (ty - fy) * k) * h, w });
+        flight.mask.style.opacity = String(phase(k, 0.35, 0.55));
+        if (t < 1) { flight.raf = requestAnimationFrame(step); return; }
+        flight.done = true;
+        resolve();
       };
-      this.flightRaf = requestAnimationFrame(step);
+      flight.raf = requestAnimationFrame(step);
     });
   }
+  /** View box that draws the flight's slice square where the 3D view will draw it (falls back to the stage centre). */
+  flightVB() {
+    const { cell, sizeM, frame } = this.flight, st = this.stage.getBoundingClientRect(), [W] = this.size();
+    let f = frame && frame();
+    if (!f || f.width < 1 || f.height < 1) f = st;
+    const mpp = (sizeM * SLICE_FIT_MARGIN) / Math.min(f.width, f.height); // map metres per screen pixel
+    const cx = f.left + f.width / 2 - st.left, cy = f.top + f.height / 2 - st.top;
+    return { x: cell.x - cx * mpp, y: -cell.y - cy * mpp, w: W * mpp };
+  }
+  /** Small notice over the held map frame (loading, or an error that clears itself). */
+  showNotice(text, { error = false } = {}) {
+    let n = this.stage.querySelector(".flight-notice");
+    if (!n) n = Object.assign(document.createElement("p"), { className: "flight-notice" });
+    n.textContent = text;
+    n.classList.toggle("error", error);
+    this.stage.appendChild(n);
+    clearTimeout(this.noticeTimer);
+    if (error) this.noticeTimer = setTimeout(() => n.remove(), 6000);
+  }
+  /** Cross-fade the held map frame out over the 3D view, then hide the map. */
+  fadeOut() {
+    if (!this.flight) return;
+    this.stage.querySelector(".flight-notice")?.remove();
+    this.root.classList.add("leaving");
+    this.flight.fadeTimer = setTimeout(() => { this.root.hidden = true; this.endFlight(); }, prefersReducedMotion() ? 0 : 600);
+  }
+  /** The site view couldn't open: give the map back, zoomed where it is, with the reason. */
+  abortFlight(message) {
+    this.endFlight();
+    this.userMoved = true; // stay on the zoomed frame rather than snapping back to the whole region
+    this.showNotice(message, { error: true });
+  }
   endFlight() {
-    this.flying = false;
-    cancelAnimationFrame(this.flightRaf);
-    this.root.classList.remove("flying");
-    if (this.flightMask) { this.flightMask.remove(); this.flightMask = null; }
+    const f = this.flight;
+    this.flight = null;
+    if (f) { cancelAnimationFrame(f.raf); clearTimeout(f.fadeTimer); f.mask.remove(); }
+    this.root.classList.remove("flying", "leaving");
+    this.stage.querySelector(".flight-notice:not(.error)")?.remove();
   }
 
   setCrumbs(items) {

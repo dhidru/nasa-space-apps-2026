@@ -145,40 +145,36 @@ async function route() {
 }
 
 /**
- * Region map -> site view: start loading the terrain, zoom the map onto the cell (clearing the rest of the grid),
- * then route. showSite() keeps the zoomed map on top until the 3D slice is ready and cross-fades into its intro.
+ * Region map -> site view: start loading the terrain, zoom the map onto the Landing Site (clearing the rest of the
+ * grid), then route. showSite() holds the zoomed map frame until the 3D slice is ready and cross-fades into its intro.
  */
-let flight = 0;
+let siteToken = 0; // bumped by every map or site view change, so a slower earlier load or zoom can't take over the screen
 async function flyToSite(rid, cid) {
   const region = regionById(rid), cell = region && siteGrid(region).byId(cid);
   if (!cell || el.mapview.hidden) return go(`#${rid}/${cid}`);
-  const token = ++flight;
+  const token = ++siteToken;
   demFor(rid).catch(() => {});
   teamFor(region, cell).catch(() => {});
-  await mapView.flyTo(cell, +el.slice.value);
-  if (token === flight) go(`#${rid}/${cid}`);
+  await mapView.flyTo(cell, +el.slice.value, globeRect);
+  if (token === siteToken) go(`#${rid}/${cid}`);
+}
+/** Where the 3D canvas sits in the site view, measured without painting it if that view is hidden. */
+function globeRect() {
+  if (!el.app.hidden) return $("globe").getBoundingClientRect();
+  el.app.hidden = false;
+  const r = $("globe").getBoundingClientRect();
+  el.app.hidden = true;
+  return r;
 }
 function showMap(render) {
-  flight++;
-  el.mapview.classList.remove("leaving");
-  el.mapview.querySelector(".flight-loading")?.remove();
+  siteToken++;
   el.mapview.hidden = false;
   el.app.hidden = true;
   render();
 }
-/** Fade the (zoomed-in) map out over the site view, then hide it. */
-function leaveMap() {
-  el.mapview.querySelector(".flight-loading")?.remove();
-  el.mapview.classList.add("leaving");
-  const done = () => {
-    if (!el.mapview.classList.contains("leaving")) return; // the map was reopened meanwhile
-    el.mapview.hidden = true;
-    el.mapview.classList.remove("leaving");
-  };
-  setTimeout(done, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 600);
-}
 
 async function showSite(region, cell) {
+  const token = ++siteToken;
   const fromMap = !el.mapview.hidden && mapView.flying;
   const sameRegion = !!(site && site.region.id === region.id && view);
   site = { region, cell };
@@ -186,23 +182,32 @@ async function showSite(region, cell) {
   el.app.hidden = false;
   renderCrumbs();
   const msg = region.hasSiteData ? "Loading terrain and team Horizons…" : "Loading terrain…";
-  if (fromMap) {
-    // Keep the zoomed map frame up with a small notice instead of the full-screen loader.
-    if (!el.mapview.querySelector(".flight-loading")) {
-      const n = Object.assign(document.createElement("p"), { className: "flight-loading", textContent: msg });
-      el.mapview.querySelector(".map-stage").appendChild(n);
-    }
-  } else if (!sameRegion) { el.loading.hidden = false; el.loading.textContent = msg; }
-  const [dem, team] = await Promise.all([demFor(region.id), teamFor(region, cell).catch((e) => { console.error(e); return null; })]);
-  if (site.cell !== cell) return; // another site was opened meanwhile
+  // From the map, keep its zoomed frame up with a small notice instead of the full-screen loader.
+  if (fromMap) mapView.showNotice(msg);
+  else if (!sameRegion) { el.loading.hidden = false; el.loading.textContent = msg; }
+  let dem, team;
+  try {
+    [dem, team] = await Promise.all([demFor(region.id), teamFor(region, cell).catch((e) => { console.error(e); return null; })]);
+  } catch (e) {
+    if (token !== siteToken) return;
+    console.error(e);
+    const why = `Couldn't load the terrain: ${e?.message ?? e}`;
+    if (fromMap) {
+      el.app.hidden = true;
+      mapView.abortFlight(why);
+      history.replaceState(null, "", toHash(`#${region.id}`));
+    } else { el.loading.hidden = false; el.loading.textContent = why; }
+    return;
+  }
+  if (token !== siteToken) return; // the map or another site was opened meanwhile
   site.team = team;
   ensureView();
   el.loading.hidden = true;
   // Follow a Landing Time picked on the region map; otherwise keep the time already shown here.
   const shown = readInputs().date;
   setInputs(cell.lat, cell.lon, !state || Number.isNaN(shown.getTime()) || snapLandingTime(shown.getTime()) !== landingMs ? new Date(landingMs) : null);
-  loadPatch(dem, sameRegion && !fromMap, fromMap);
-  if (fromMap) leaveMap();
+  loadPatch(dem, fromMap ? "intro" : sameRegion ? "keep" : "reset");
+  if (fromMap) mapView.fadeOut();
   await apply();
 }
 
@@ -285,11 +290,12 @@ function ensureView() {
   view.setExag(parseFloat(el.exag.value));
   view.setMode(el.shade.value);
 }
-function loadPatch(dem, keepCamera = false, intro = false) {
+/** camera: "reset" to the default view, "keep" the current one, or "intro" (the fly-in from the map). */
+function loadPatch(dem, camera = "reset") {
   curDem = dem;
   view.setPatch({
     sample: gridSampler(dem), center: site.cell, sizeM: +el.slice.value,
-    grid: siteGrid(site.region), outline: site.region.xy, keepCamera, intro,
+    grid: siteGrid(site.region), outline: site.region.xy, keepCamera: camera === "keep", intro: camera === "intro",
   });
 }
 

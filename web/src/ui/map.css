@@ -16,7 +16,7 @@
 .map-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
 .map-head h1 { margin: 0; font-size: 17px; font-weight: 650; }
 .map-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
-.map-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #050608; }
+.map-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--scene-bg); }
 .map-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; }
 .map-img { image-rendering: auto; }
 .map-card { border-left: 1px solid var(--line); padding: 16px; gap: 12px; }
@@ -69,16 +69,16 @@
 .map-top .top-list { padding: 0; }
 .map-top .hint { margin: 0; }
 
-/* fly-in to a site: everything but the chosen cell fades while the map zooms onto it */
-.map-svg .grid, .map-svg .heat-cells, .map-svg .top-cells, .map-svg .region-outline, .map-svg .mask, .map-labels { transition: opacity .45s ease; }
-.mapview.flying .map-svg .grid, .mapview.flying .map-svg .heat-cells, .mapview.flying .map-svg .top-cells,
-.mapview.flying .map-svg .region-outline, .mapview.flying .map-svg .mask, .mapview.flying .map-labels { opacity: 0 !important; }
+/* fly-in to a Landing Site: the layers marked .clears-on-flight fade while the map zooms onto the chosen site */
+.clears-on-flight { transition: opacity .45s ease; }
+.mapview.flying .clears-on-flight { opacity: 0 !important; } /* !important: the grid's opacity is set inline by zoom level */
 .mapview.flying .map-svg { cursor: default; }
-.flight-mask { fill: #050608; opacity: 0; pointer-events: none; }
 .mapview.flying .cell-selected { stroke-width: 2.5; }
+.flight-mask { fill: var(--scene-bg); opacity: 0; pointer-events: none; }
 /* cross-fade from the map to the 3D view */
 .mapview { transition: opacity .55s ease; }
 .mapview.leaving { opacity: 0; pointer-events: none; }
-.flight-loading { position: absolute; z-index: 4; left: 50%; bottom: 18px; transform: translateX(-50%); margin: 0; padding: 6px 12px; border-radius: 4px;
+.flight-notice { position: absolute; z-index: 4; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: calc(100% - 32px); margin: 0; padding: 6px 12px; border-radius: 4px;
   background: rgba(14,16,21,.85); border: 1px solid var(--line); font: 12px var(--f-mono); color: var(--muted); pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { .mapview, .map-svg .grid, .map-svg .heat-cells, .map-svg .top-cells, .map-svg .region-outline, .map-svg .mask, .map-labels { transition: none; } }
+.flight-notice.error { border-color: var(--dusk); color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { .mapview, .clears-on-flight { transition: none; } }

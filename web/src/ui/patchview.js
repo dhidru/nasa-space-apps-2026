@@ -7,6 +7,7 @@
 
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { prefersReducedMotion, easeInOutCubic, easeOutCubic, phase, SLICE_FIT_MARGIN, SCENE_BG } from "./transition.js";
 
 const AMBER = 0xf2b84b;
 
@@ -49,7 +50,7 @@ export class PatchView {
     r.domElement.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none";
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x050608);
+    this.scene.background = new THREE.Color(SCENE_BG);
     this.camera = new THREE.PerspectiveCamera(40, 1, 10, 200000);
     this.controls = new OrbitControls(this.camera, r.domElement);
     this.controls.enableDamping = true;
@@ -164,38 +165,31 @@ export class PatchView {
   }
 
   /**
-   * Hand-off from the 2D map: start straight overhead on a flattened slice (matching the map's last frame),
-   * then tilt and swing into the default oblique view while the relief rises to the set exaggeration.
-   * Any pointer or wheel input on the canvas ends it at the final frame.
+   * Hand-off from the 2D map: start straight overhead on a flattened slice (the map's last frame, which the map
+   * lines up with this canvas), hold it while the map fades out, then tilt and swing into the default oblique view
+   * while the relief rises to the set exaggeration. Any pointer or wheel input on the canvas jumps to the final
+   * frame; the controls stay on, so that first drag already orbits.
    */
   playIntro() {
-    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (prefersReducedMotion()) return;
+    this.resize(); // the canvas may have just been shown
     const target = this.controls.target.clone();
     const end = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(target));
-    // Overhead distance that shows the whole slice, like the map's final view box.
-    const half = this.p.sizeM / 2, vfov = (this.camera.fov * Math.PI) / 360;
-    const fitH = half / Math.tan(vfov), fitW = half / (Math.tan(vfov) * this.camera.aspect);
-    const top = new THREE.Spherical(Math.max(fitH, fitW) * 1.04, 0.0001, 0); // theta 0: camera on +Z, so map north is up
-    const ms = 2200, t0 = performance.now();
-    const easeOut = (t) => 1 - Math.pow(1 - t, 3), easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-    // shortest turn from theta 0 to the end azimuth
-    let dTheta = end.theta - top.theta;
-    dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));
-    this.controls.enabled = false;
-    const sph = new THREE.Spherical();
+    // Overhead distance that fits the whole slice, as the map's last view box does.
+    const half = this.p.sizeM / 2, tanV = Math.tan((this.camera.fov * Math.PI) / 360);
+    const fitDist = Math.max(half / tanV, half / (tanV * this.camera.aspect)) * SLICE_FIT_MARGIN;
+    const top = new THREE.Spherical(fitDist, 0.0001, 0); // theta 0: camera on +Z, so map north is up as on the map
+    const dTheta = Math.atan2(Math.sin(end.theta - top.theta), Math.cos(end.theta - top.theta)); // shortest turn
+    const ms = 2600, t0 = performance.now(), sph = new THREE.Spherical();
     const frame = (now) => {
       const t = Math.min(1, (now - t0) / ms);
-      // camera: hold overhead briefly, then tilt/turn; relief starts rising a little before the tilt
-      const kc = easeInOut(Math.min(1, Math.max(0, (t - 0.08) / 0.92)));
-      const kh = easeOut(Math.min(1, Math.max(0, (t - 0.04) / 0.8)));
-      const rise = 0.03 + 0.97 * kh;
-      this.mesh.scale.y = rise;
-      this.overlay.scale.y = rise;
-      this.overlay.visible = true;
-      sph.radius = top.radius + (end.radius - top.radius) * kc;
-      sph.phi = top.phi + (end.phi - top.phi) * kc;
-      sph.theta = top.theta + dTheta * kc;
-      const tgt = target.clone(); tgt.y *= rise;
+      // The map's cross-fade takes ~0.55 s: the relief starts rising under it, the camera tilts once it has gone.
+      const reliefK = easeOutCubic(phase(t, 0.12, 0.7)), tiltK = easeInOutCubic(phase(t, 0.22, 0.78));
+      const heightScale = 0.03 + 0.97 * reliefK;
+      this.mesh.scale.y = this.overlay.scale.y = heightScale;
+      sph.set(top.radius + (end.radius - top.radius) * tiltK, top.phi + (end.phi - top.phi) * tiltK, top.theta + dTheta * tiltK);
+      const tgt = target.clone();
+      tgt.y *= heightScale;
       this.controls.target.copy(tgt);
       this.camera.position.setFromSpherical(sph).add(tgt);
       this.camera.lookAt(tgt);
@@ -203,13 +197,11 @@ export class PatchView {
       if (t < 1) this.introRaf = requestAnimationFrame(frame);
       else this.stopIntro();
     };
-    this.introRaf = requestAnimationFrame(frame);
     this.introEnd = { target, end };
-    const skip = () => this.stopIntro();
-    this.introSkip = skip;
+    this.introSkip = () => this.stopIntro();
     const el = this.renderer.domElement;
-    el.addEventListener("pointerdown", skip, { once: true });
-    el.addEventListener("wheel", skip, { once: true, passive: true });
+    el.addEventListener("pointerdown", this.introSkip, { once: true });
+    el.addEventListener("wheel", this.introSkip, { once: true, passive: true });
     frame(t0);
   }
   stopIntro() {
@@ -220,11 +212,9 @@ export class PatchView {
     el.removeEventListener("wheel", this.introSkip);
     const { target, end } = this.introEnd;
     this.introEnd = null;
-    this.mesh.scale.y = 1;
-    this.overlay.scale.y = 1;
+    this.mesh.scale.y = this.overlay.scale.y = 1;
     this.controls.target.copy(target);
     this.camera.position.setFromSpherical(end).add(target);
-    this.controls.enabled = true;
     this.controls.update();
     this.dirty = true;
   }
