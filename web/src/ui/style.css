@@ -4,6 +4,7 @@
 :root {
   color-scheme: dark;
   --bg: #07080b;
+  --scene-bg: #050608; /* 3D scene background (SCENE_BG in src/ui/transition.js) */
   --panel: #0e1015;
   --field: #0a0b0f;
   --line: #262a33;

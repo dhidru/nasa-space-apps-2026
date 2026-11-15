@@ -144,28 +144,70 @@ async function route() {
   await showSite(region, cell);
 }
 
+/**
+ * Region map -> site view: start loading the terrain, zoom the map onto the Landing Site (clearing the rest of the
+ * grid), then route. showSite() holds the zoomed map frame until the 3D slice is ready and cross-fades into its intro.
+ */
+let siteToken = 0; // bumped by every map or site view change, so a slower earlier load or zoom can't take over the screen
+async function flyToSite(rid, cid) {
+  const region = regionById(rid), cell = region && siteGrid(region).byId(cid);
+  if (!cell || el.mapview.hidden) return go(`#${rid}/${cid}`);
+  const token = ++siteToken;
+  demFor(rid).catch(() => {});
+  teamFor(region, cell).catch(() => {});
+  await mapView.flyTo(cell, +el.slice.value, globeRect);
+  if (token === siteToken) go(`#${rid}/${cid}`);
+}
+/** Where the 3D canvas sits in the site view, measured without painting it if that view is hidden. */
+function globeRect() {
+  if (!el.app.hidden) return $("globe").getBoundingClientRect();
+  el.app.hidden = false;
+  const r = $("globe").getBoundingClientRect();
+  el.app.hidden = true;
+  return r;
+}
 function showMap(render) {
+  siteToken++;
   el.mapview.hidden = false;
   el.app.hidden = true;
   render();
 }
 
 async function showSite(region, cell) {
+  const token = ++siteToken;
+  const fromMap = !el.mapview.hidden && mapView.flying;
   const sameRegion = !!(site && site.region.id === region.id && view);
   site = { region, cell };
-  el.mapview.hidden = true;
+  if (!fromMap) el.mapview.hidden = true;
   el.app.hidden = false;
   renderCrumbs();
-  if (!sameRegion) { el.loading.hidden = false; el.loading.textContent = region.hasSiteData ? "Loading terrain and team Horizons…" : "Loading terrain…"; }
-  const [dem, team] = await Promise.all([demFor(region.id), teamFor(region, cell).catch((e) => { console.error(e); return null; })]);
-  if (site.cell !== cell) return; // another site was opened meanwhile
+  const msg = region.hasSiteData ? "Loading terrain and team Horizons…" : "Loading terrain…";
+  // From the map, keep its zoomed frame up with a small notice instead of the full-screen loader.
+  if (fromMap) mapView.showNotice(msg);
+  else if (!sameRegion) { el.loading.hidden = false; el.loading.textContent = msg; }
+  let dem, team;
+  try {
+    [dem, team] = await Promise.all([demFor(region.id), teamFor(region, cell).catch((e) => { console.error(e); return null; })]);
+  } catch (e) {
+    if (token !== siteToken) return;
+    console.error(e);
+    const why = `Couldn't load the terrain: ${e?.message ?? e}`;
+    if (fromMap) {
+      el.app.hidden = true;
+      mapView.abortFlight(why);
+      history.replaceState(null, "", toHash(`#${region.id}`));
+    } else { el.loading.hidden = false; el.loading.textContent = why; }
+    return;
+  }
+  if (token !== siteToken) return; // the map or another site was opened meanwhile
   site.team = team;
   ensureView();
   el.loading.hidden = true;
   // Follow a Landing Time picked on the region map; otherwise keep the time already shown here.
   const shown = readInputs().date;
   setInputs(cell.lat, cell.lon, !state || Number.isNaN(shown.getTime()) || snapLandingTime(shown.getTime()) !== landingMs ? new Date(landingMs) : null);
-  loadPatch(dem, sameRegion);
+  loadPatch(dem, fromMap ? "intro" : sameRegion ? "keep" : "reset");
+  if (fromMap) mapView.fadeOut();
   await apply();
 }
 
@@ -248,11 +290,12 @@ function ensureView() {
   view.setExag(parseFloat(el.exag.value));
   view.setMode(el.shade.value);
 }
-function loadPatch(dem, keepCamera = false) {
+/** camera: "reset" to the default view, "keep" the current one, or "intro" (the fly-in from the map). */
+function loadPatch(dem, camera = "reset") {
   curDem = dem;
   view.setPatch({
     sample: gridSampler(dem), center: site.cell, sizeM: +el.slice.value,
-    grid: siteGrid(site.region), outline: site.region.xy, keepCamera,
+    grid: siteGrid(site.region), outline: site.region.xy, keepCamera: camera === "keep", intro: camera === "intro",
   });
 }
 
@@ -494,7 +537,7 @@ async function boot() {
     homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
     ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); syncUrl(); },
     onRegion: (id) => go(`#${id}`),
-    onSite: (rid, cid) => go(`#${rid}/${cid}`),
+    onSite: (rid, cid) => flyToSite(rid, cid),
     onHome: () => go("#"),
     demFor,
   });

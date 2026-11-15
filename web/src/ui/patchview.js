@@ -7,6 +7,7 @@
 
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { prefersReducedMotion, easeInOutCubic, easeOutCubic, phase, SLICE_FIT_MARGIN, SCENE_BG } from "./transition.js";
 
 const AMBER = 0xf2b84b;
 
@@ -49,7 +50,7 @@ export class PatchView {
     r.domElement.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none";
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x050608);
+    this.scene.background = new THREE.Color(SCENE_BG);
     this.camera = new THREE.PerspectiveCamera(40, 1, 10, 200000);
     this.controls = new OrbitControls(this.camera, r.domElement);
     this.controls.enableDamping = true;
@@ -149,6 +150,7 @@ export class PatchView {
     this.light.shadow.camera.updateProjectionMatrix();
     this.applyLight();
 
+    this.stopIntro();
     if (!p.keepCamera || !this.framed) {
       const cy = (sample(center.x, center.y) - this.h0) * this.exag;
       this.controls.target.set(0, cy, 0);
@@ -157,7 +159,63 @@ export class PatchView {
       this.controls.minDistance = 200;
       this.controls.maxDistance = sizeM * 4;
       this.framed = true;
+      if (p.intro) this.playIntro();
     }
+    this.dirty = true;
+  }
+
+  /**
+   * Hand-off from the 2D map: start straight overhead on a flattened slice (the map's last frame, which the map
+   * lines up with this canvas), hold it while the map fades out, then tilt and swing into the default oblique view
+   * while the relief rises to the set exaggeration. Any pointer or wheel input on the canvas jumps to the final
+   * frame; the controls stay on, so that first drag already orbits.
+   */
+  playIntro() {
+    if (prefersReducedMotion()) return;
+    this.resize(); // the canvas may have just been shown
+    const target = this.controls.target.clone();
+    const end = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(target));
+    // Overhead distance that fits the whole slice, as the map's last view box does.
+    const half = this.p.sizeM / 2, tanV = Math.tan((this.camera.fov * Math.PI) / 360);
+    const fitDist = Math.max(half / tanV, half / (tanV * this.camera.aspect)) * SLICE_FIT_MARGIN;
+    const top = new THREE.Spherical(fitDist, 0.0001, 0); // theta 0: camera on +Z, so map north is up as on the map
+    const dTheta = Math.atan2(Math.sin(end.theta - top.theta), Math.cos(end.theta - top.theta)); // shortest turn
+    const ms = 2600, t0 = performance.now(), sph = new THREE.Spherical();
+    const frame = (now) => {
+      const t = Math.min(1, (now - t0) / ms);
+      // The map's cross-fade takes ~0.55 s: the relief starts rising under it, the camera tilts once it has gone.
+      const reliefK = easeOutCubic(phase(t, 0.12, 0.7)), tiltK = easeInOutCubic(phase(t, 0.22, 0.78));
+      const heightScale = 0.03 + 0.97 * reliefK;
+      this.mesh.scale.y = this.overlay.scale.y = heightScale;
+      sph.set(top.radius + (end.radius - top.radius) * tiltK, top.phi + (end.phi - top.phi) * tiltK, top.theta + dTheta * tiltK);
+      const tgt = target.clone();
+      tgt.y *= heightScale;
+      this.controls.target.copy(tgt);
+      this.camera.position.setFromSpherical(sph).add(tgt);
+      this.camera.lookAt(tgt);
+      this.dirty = true;
+      if (t < 1) this.introRaf = requestAnimationFrame(frame);
+      else this.stopIntro();
+    };
+    this.introEnd = { target, end };
+    this.introSkip = () => this.stopIntro();
+    const el = this.renderer.domElement;
+    el.addEventListener("pointerdown", this.introSkip, { once: true });
+    el.addEventListener("wheel", this.introSkip, { once: true, passive: true });
+    frame(t0);
+  }
+  stopIntro() {
+    if (!this.introEnd) return;
+    cancelAnimationFrame(this.introRaf);
+    const el = this.renderer.domElement;
+    el.removeEventListener("pointerdown", this.introSkip);
+    el.removeEventListener("wheel", this.introSkip);
+    const { target, end } = this.introEnd;
+    this.introEnd = null;
+    this.mesh.scale.y = this.overlay.scale.y = 1;
+    this.controls.target.copy(target);
+    this.camera.position.setFromSpherical(end).add(target);
+    this.controls.update();
     this.dirty = true;
   }
 
@@ -171,6 +229,7 @@ export class PatchView {
 
   setExag(v) {
     if (!this.p) { this.exag = v; return; }
+    this.stopIntro();
     const k = v / this.exag;
     this.exag = v;
     this.applyHeights();
