@@ -207,8 +207,9 @@ outlined.
 - The front end is built against a **results format** (section 9.3), not against
   the raw data files. That way the hosting decision below doesn't change the
   pages.
-- The front end is a React app with OpenLayers (it supports polar stereographic
-  maps). Check each library's license before adding it.
+- The front end draws the polar stereographic maps as SVG in map metres and the site's
+  terrain in 3D with three.js. (It started as a React + OpenLayers app; the two front ends
+  were combined on 2026-11-14.) Check each library's license before adding it.
 
 ### Decided: static site, clearance in the browser
 

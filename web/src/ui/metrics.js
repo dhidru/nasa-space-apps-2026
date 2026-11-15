@@ -57,26 +57,31 @@ export const discAbove = (elDeg, hzDeg, halfDeg) => clamp01(0.5 + (elDeg - hzDeg
 
 /**
  * Per-sample elevations (degrees above a flat horizon) and terrain-aware visibility for one site.
- * With `hz` = { at(azDeg) -> Horizon Elevation (deg), h: site height (m) } from the team's Horizons, visibility
- * is tested against that Horizon (as the pipeline's Clearance does); otherwise it is ray-marched over the
- * global terrain. Clearance (deg) is returned when `hz` is given.
+ * With `team` = { h, tracks(vectors) } (src/main.js teamFor) and team positions for every sample, elevation and
+ * Clearance come from track() (src/science) against the site's Horizon, as in the pipeline; otherwise
+ * visibility is ray-marched over the global terrain.
  */
-export function siteSeries(data, latDeg, lonDeg, samples, hz = null) {
+export function siteSeries(data, latDeg, lonDeg, samples, team = null) {
   const lat = latDeg * D, lon = lonDeg * D, f = enu(latDeg, lonDeg);
+  if (team && samples.length && samples.every((s) => s.sunKm)) {
+    const t = team.tracks(samples);
+    return samples.map((s, k) => {
+      const sunClear = t.sun.elevationDeg[k] - t.sun.horizonElevationDeg[k];
+      const earthClear = t.earth.elevationDeg[k] - t.earth.horizonElevationDeg[k];
+      return {
+        t: s.t, sunEl: t.sun.elevationDeg[k], earthEl: t.earth.elevationDeg[k], sunClear, earthClear,
+        sunVis: discAbove(sunClear, 0, SUN_HALF / D), earthVis: discAbove(earthClear, 0, EARTH_HALF / D),
+      };
+    });
+  }
   return samples.map((s) => {
-    const dir = fromSite(s, latDeg, lonDeg, hz ? hz.h : 0);
+    const dir = fromSite(s, latDeg, lonDeg, team ? team.h : 0);
     const sun = horizontal(dir.sun, f), earth = horizontal(dir.earth, f);
-    const p = { t: s.t, sunEl: sun.el, earthEl: earth.el };
-    if (hz) {
-      p.sunClear = sun.el - hz.at(sun.az);
-      p.earthClear = earth.el - hz.at(earth.az);
-      p.sunVis = discAbove(p.sunClear, 0, SUN_HALF / D);
-      p.earthVis = discAbove(p.earthClear, 0, EARTH_HALF / D);
-    } else {
-      p.sunVis = visibility(data, lat, lon, dir.sun, SUN_HALF);
-      p.earthVis = visibility(data, lat, lon, dir.earth, EARTH_HALF);
-    }
-    return p;
+    return {
+      t: s.t, sunEl: sun.el, earthEl: earth.el,
+      sunVis: visibility(data, lat, lon, dir.sun, SUN_HALF),
+      earthVis: visibility(data, lat, lon, dir.earth, EARTH_HALF),
+    };
   });
 }
 

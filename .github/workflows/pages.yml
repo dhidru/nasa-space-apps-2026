@@ -1,5 +1,4 @@
-# Builds the static site in web/ and publishes it to GitHub Pages (ADR 0001).
-# The Lunar Site Viewer (viewer/) is built into the same site under /viewer/.
+# Builds the static site in web/ and publishes it to GitHub Pages at the site root (ADR 0001).
 # Needs Settings → Pages → Build and deployment → Source: "GitHub Actions".
 name: Deploy to GitHub Pages
 
@@ -28,32 +27,20 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: |
-            web/package-lock.json
-            viewer/package-lock.json
+          cache-dependency-path: web/package-lock.json
       - run: npm ci
       # Parity tests: the TypeScript science must match the committed Python results.
       - run: npm test
-      # Typechecks, then builds web/dist/ with data/ and THIRD-PARTY-NOTICES.txt.
-      - run: npm run build
-
-      # Lunar Site Viewer, served at /<repo>/viewer/. Its 3D terrain needs NASA elevation files (~180 MB);
-      # they and the tiles cut from them are cached until the data script or the region list changes.
+      # The 3D terrain needs NASA elevation files (~180 MB); they and the tiles cut from them are cached
+      # until the data script or the region list changes.
       - uses: actions/cache@v4
         with:
           path: |
-            viewer/data-raw
-            viewer/public/tiles
-          key: viewer-nasa-tiles-${{ hashFiles('viewer/scripts/prepare-data.mjs', 'data/processed/site-data/regions.json') }}
-      - run: npm ci --no-audit --no-fund
-        working-directory: viewer
+            web/data-raw
+            web/public/tiles
+          key: nasa-tiles-${{ hashFiles('web/scripts/prepare-data.mjs', 'data/processed/site-data/regions.json') }}
+      # Typechecks, builds the 3D terrain tiles if missing, then builds web/dist/ with data/ and THIRD-PARTY-NOTICES.txt.
       - run: npm run build
-        working-directory: viewer
-        env:
-          BASE_PATH: /${{ github.event.repository.name }}/viewer/
-      - run: cp -r viewer/dist web/dist/viewer
-        working-directory: .
-
       - uses: actions/upload-pages-artifact@v5
         with:
           path: web/dist
