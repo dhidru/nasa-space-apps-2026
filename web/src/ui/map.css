@@ -213,3 +213,50 @@
 .filter-clear:disabled { opacity: .4; cursor: default; }
 .pick-prompt { margin: 0; padding: 10px 12px; border: 1px dashed var(--line-strong); border-radius: 6px; font-size: 14px; color: var(--muted); }
 .pick-prompt b { color: var(--sun); }
+
+/* ---------- Region page reading sizes: nothing under 13px, notes 14px, body and legends 15px, headings 20px ---------- */
+.mapview:not(.home) .map-side h2 { font-size: 20px; }
+.mapview:not(.home) .filter-note, .mapview:not(.home) .time-note { font-size: 15px; margin-top: 0; }
+.mapview:not(.home) .time-note { font-size: 14px; }
+.mapview:not(.home) .cal-key { font-size: 15px; gap: 5px; color: var(--fg); }
+.mapview:not(.home) .cal-key i { width: 15px; height: 15px; vertical-align: -2px; margin-right: 8px; }
+.mapview:not(.home) .cal-key .cal-status { font-size: 14px; color: var(--muted); }
+.mapview:not(.home) .time-pick label { font-size: 14px; letter-spacing: normal; text-transform: none; }
+.mapview:not(.home) .filter-picked { font-size: 15px; }
+.mapview:not(.home) .filter-picked .featured-note { font-size: 14px; }
+.mapview:not(.home) .slope-ctl, .mapview:not(.home) .side-body .slope-ctl { font-size: 14px; }
+.mapview:not(.home) .slope-row label { font-size: 14px; letter-spacing: normal; text-transform: none; }
+.mapview:not(.home) .slope-row output { font-size: 20px; }
+.mapview:not(.home) .slope-ticks { font-size: 13px; height: 34px; }
+.mapview:not(.home) .slope-ticks .nasa { text-align: right; }
+.mapview:not(.home) .slope-ticks .nasa small { display: block; font-size: 12px; } /* under "10°", so it doesn't run into "8°" */
+.mapview:not(.home) .slope-off { font-size: 15px; }
+.mapview:not(.home) .slope-note { font-size: 14px; }
+.mapview:not(.home) .nostay-warn { font-size: 15px; }
+
+.map-card h2 { font-size: 20px; }
+.map-card .sub { margin: -4px 0 0; font: 400 14px var(--f-ui); }
+.map-card .cell-read, .map-card .cell-read dt, .map-card .cell-read dd { font-size: 14px; }
+.cell-read dd.placeholder { font-size: 14px; white-space: nowrap; }
+.map-card .pick-prompt { font-size: 15px; }
+/* The Top 10 fills the rest of the pane, so its legend sits at the bottom, one entry per line. */
+.map-top { display: flex; flex-direction: column; flex: 1 0 auto; }
+.map-top h3 { font-size: 17px; }
+.map-top .hint.top-status { font-size: 14px; color: var(--muted); }
+.map-top .top-head { font-size: 12.5px; }
+.map-top .top-list button { font-size: 15px; padding: 3px 8px; }
+.map-top .top-list .id { font-size: 15px; }
+.map-top .top-list .rk { font-size: 13px; }
+.map-top .top-list .sw { width: 12px; height: 12px; }
+.map-top .top-list .cl, .map-top .top-list .robust, .map-top .top-list .slope, .map-top .top-list .walk { font-size: 14px; }
+.map-top .top-list button { padding: 3px 4px; }
+.map-top .top-head { padding: 0 5px; }
+.map-top .top-list, .map-top .top-head { --top-cols: 18px 11px 78px 50px 38px 44px 38px; }
+.map-top .top-list button, .map-top .top-head { gap: 5px; }
+.map-top .legend { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr; row-gap: 7px; font-size: 15px; }
+.map-top .legend i { width: 16px; height: 16px; }
+.map-top .legend i + i { margin-left: -8px; }
+.map-top .legend .leg-steep[hidden] { display: none; }
+/* Fixed-height days on the region calendar: with aspect-ratio the grid under-counted its height, so a six-row month's
+   last row spilled over the key below it. */
+.map-side .cal-day { aspect-ratio: auto; height: 42px; }

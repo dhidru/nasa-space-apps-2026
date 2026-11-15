@@ -458,25 +458,27 @@ export class MapView {
   renderRegionCard(r, grid, bm) {
     const [w, h] = sizeKm(r);
     this.card.innerHTML = `
-      <h2>${r.name} <span class="sub">${w.toFixed(0)} × ${h.toFixed(0)} km · ${grid.count.toLocaleString()} sites</span></h2>
+      <h2>${r.name}</h2>
+      <p class="sub">${w.toFixed(0)} × ${h.toFixed(0)} km · ${grid.count.toLocaleString()} sites</p>
       <dl class="cell-read" id="cellRead">
-        <dt>Site</dt><dd data-k="id" class="placeholder">hover a square</dd>
+        <dt>Site</dt><dd data-k="id" class="placeholder">hover a site</dd>
         <dt>Elevation</dt><dd data-k="h">—</dd>
         <dt data-k="sl">Slope</dt><dd data-k="s">—</dd>
         ${r.hasSiteData ? `<dt title="${ROBUSTNESS_TITLE}">Timing</dt><dd data-k="robust">—</dd><dt title="${WALKABLE_TITLE}">EVA walk</dt><dd data-k="walk">—</dd><dt class="wide">Rank</dt><dd class="wide" data-k="rank">—</dd>` : ""}
       </dl>
       ${r.hasSiteData ? `
-      <p class="pick-prompt"${this.picked ? " hidden" : ""}>Choose a landing <b>date</b> and <b>time</b> in the panel on the left to colour the sites by Sun and Earth coverage and list the top 10.</p>
+      <p class="pick-prompt"${this.picked ? " hidden" : ""}>Pick a landing <b>day</b> and <b>time</b> on the left to colour the sites and list the top 10.</p>
       <section class="map-top"${this.picked ? "" : " hidden"}>
+        <div class="top-title"><h3>Top 10 sites</h3></div>
+        <p class="hint top-status"></p>
+        <ol class="top-list"></ol>
+        <!-- One entry per line, pinned to the bottom of the pane. -->
         <div class="legend">
           <span title="The Sun and Earth stay in view for the whole 7-day stay"><i style="background:${rgb(FULL_HIGH)}"></i> In view all week</span>
           <span title="The Sun or Earth is blocked by terrain for part of the stay"><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Blocked at times</span>
           <span><i class="outlined"></i> Top 10</span>
-          <span><i class="steep"></i> Too steep</span>
+          <span class="leg-steep"${this.getSlopeLimit() === null ? " hidden" : ""}><i class="steep"></i> <span>Steeper than ${this.getSlopeLimit() ?? 10}°</span></span>
         </div>
-        <div class="top-title"><h3>Top 10 sites</h3></div>
-        <p class="hint top-status"></p>
-        <ol class="top-list"></ol>
       </section>` : ""}`;
   }
 
@@ -501,24 +503,23 @@ export class MapView {
     if (!r.hasSiteData) { this.filterBody.innerHTML = `<p class="filter-note">Landing Times for ${r.name} are coming soon.</p>`; return; }
     const t = new Date(this.getLanding());
     this.filterBody.innerHTML = `
-      <h2>Landing Time</h2>
-      <p class="filter-note">Pick a day, then type a time (UTC). The crew stays 7 days.</p>
+      <h2>Landing time</h2>
+      <p class="filter-note">Pick a landing day and UTC time. The crew stays 7 days.</p>
       ${calendarHtml()}
       <div class="cal-key">
-        <span><i class="k-land"></i> Landing day (day 1)</span>
-        <span><i class="k-stay"></i> Days 2–7 of the surface stay</span>
-        <span><i class="k-nostay"></i> No full 7-day window anywhere in the region</span>
-        <span class="cal-status">Checking which days have a full 7-day window…</span>
+        <span><i class="k-land"></i> Landing day</span>
+        <span><i class="k-stay"></i> Rest of the stay</span>
+        <span><i class="k-nostay"></i> No full week from this day</span>
+        <span class="cal-status">Checking which days work…</span>
       </div>
       <div class="time-pick">
-        <label>Time (24 h) <input class="t-hms" type="text" inputmode="numeric" maxlength="5" autocomplete="off" spellcheck="false" aria-label="Landing time, 24-hour UTC, hh:mm" placeholder="hh:mm"></label>
-        <span class="utc">UTC</span>
+        <label>UTC time <input class="t-hms" type="text" inputmode="numeric" maxlength="5" autocomplete="off" spellcheck="false" aria-label="Landing time, 24-hour UTC, hh:mm" placeholder="hh:mm"></label>
       </div>
-      <p class="filter-note time-note">Rounds to the nearest 10 minutes (the Sun and Earth data are every 10 minutes). ↑ / ↓ step 10 minutes.</p>
+      <p class="filter-note time-note">Snaps to 10 minutes. Use ↑ ↓ to step.</p>
       <p class="filter-picked" aria-live="polite"></p>
       <p class="nostay-warn" role="note" hidden></p>
       <button type="button" class="filter-clear">Clear selection</button>
-      <h2 class="side-h">Landing Slope</h2>
+      <h2 class="side-h">Landing slope</h2>
       ${slopeLimitHtml(this.getSlopeLimit())}`;
     bindSlopeLimit(this.filterBody, (limit) => { this.setSlopeLimit(limit); if (this.picked) this.loadTopTen(r, grid); });
     this.cal = new Calendar(this.filterBody, { onPick: (day) => this.pickDay(day) });
@@ -585,12 +586,12 @@ export class MapView {
     });
     this.drawCalendar();
     const status = (text) => { const st = this.filterBody.querySelector(".cal-status"); if (st) st.textContent = text; };
-    noFullStayDays(r.id, (f) => { if (this.region === r) status(`Checking which days have a full 7-day window… ${Math.round(f * 100)} %`); }).then((days) => {
+    noFullStayDays(r.id, (f) => { if (this.region === r) status(`Checking which days work… ${Math.round(f * 100)} %`); }).then((days) => {
       if (this.region !== r) return;
       this.noStay = new Set(days);
-      status(days.length ? `${days.length} ${days.length === 1 ? "day has" : "days have"} no full 7-day window, crossed out` : "Every day has a full 7-day window somewhere");
+      status(days.length ? `${days.length} ${days.length === 1 ? "day" : "days"} crossed out` : "Every day works");
       this.drawCalendar();
-    }).catch((err) => { console.error(err); status("Couldn't check the 7-day windows"); });
+    }).catch((err) => { console.error(err); status("Couldn't check which days work"); });
   }
   /** Redraw the calendar (src/ui/calendar.js) and the picked-day line, Clear button and No-Full-Stay warning under it. */
   drawCalendar() {
@@ -603,15 +604,15 @@ export class MapView {
     this.cal.draw();
     this.filterBody.querySelector(".filter-picked").innerHTML = chosen
       ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 16)} UTC</b>`
-        + (this.region && featuredLanding(this.region.id) === this.getLanding() ? `<br><span class="featured-note">Region-wide best time: when the most sites here keep the Sun and Earth in view all week. Each site has its own best times under Landing Windows.</span>` : "")
+        + (this.region && featuredLanding(this.region.id) === this.getLanding() ? `<br><span class="featured-note">Best time for this region. Each site's own best times are under Landing Windows.</span>` : "")
       : "No date chosen yet";
     this.filterBody.querySelector(".filter-clear").disabled = !this.picked;
     const warn = this.filterBody.querySelector(".nostay-warn");
     warn.hidden = !(chosen && this.noStay?.has(chosenDay));
     if (warn.hidden) return;
     const next = this.nearestGoodDay(chosenDay);
-    warn.innerHTML = `<b>No full 7-day window.</b> No site in this region keeps the Sun and Earth in view for a whole `
-      + `7-day stay starting on this day, at any landing time. The coverage colours and the top 10 show the best partial options.`
+    warn.innerHTML = `<b>No full week from this day.</b> No site here keeps the Sun and Earth in view for 7 days from this day. `
+      + `The colours show the best partial options.`
       + (next ? `<button type="button" class="go nostay-jump">Jump to ${fmt(next.day, { weekday: "short", day: "numeric", month: "short" })}, the ${next.after ? "next" : "nearest"} day that works</button>` : "");
     warn.querySelector(".nostay-jump")?.addEventListener("click", async (e) => {
       const btn = e.currentTarget, r = this.region;
@@ -662,6 +663,8 @@ export class MapView {
       // Shade the sites at or over the slope limit.
       const steep = (e) => !underSlopeLimit(team?.slopeOf(e.site_id), limitDeg);
       const hasSlope = !!team?.region.landingSlopeDeg;
+      const legSteep = this.card.querySelector(".leg-steep");
+      if (legSteep) { legSteep.hidden = limitDeg === null || !hasSlope; legSteep.lastElementChild.textContent = `Steeper than ${limitDeg ?? 10}°`; }
       if (hasSlope && limitDeg !== null) {
         let d = "";
         for (const e of res.doc.sites) {
@@ -674,10 +677,10 @@ export class MapView {
       const nFullFlat = hasSlope && limitDeg !== null ? res.doc.sites.filter((x) => x.coverage === "full" && !steep(x)).length : null;
       const total = res.doc.sites.length.toLocaleString();
       if (status) status.textContent = (!nFull
-        ? "No site keeps the Sun and Earth in view all week at this time. Try another Landing Time."
-        : nFullFlat === null ? `${nFull.toLocaleString()} of ${total} sites keep the Sun and Earth in view all week.`
-        : nFullFlat ? `${nFullFlat.toLocaleString()} of ${total} sites keep the Sun and Earth in view all week and are flat enough.`
-        : `${nFull.toLocaleString()} sites keep the Sun and Earth in view all week, but none are flat enough.`)
+        ? "No site stays in view all week at this time. Try another time."
+        : nFullFlat === null ? `${nFull.toLocaleString()} of ${total} sites stay in view all week.`
+        : nFullFlat ? `${nFullFlat.toLocaleString()} of ${total} sites stay in view all week and are flat enough.`
+        : `${nFull.toLocaleString()} sites stay in view all week, but none are flat enough.`)
         + (limitDeg !== null && !hasSlope ? " No slope data here yet." : "");
       top.forEach((e, i) => {
         const cell = grid.byId(e.site_id);

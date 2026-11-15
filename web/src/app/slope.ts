@@ -9,12 +9,12 @@ export const DEFAULT_SLOPE_LIMIT_DEG = 10;
 
 /** Tooltip wherever Landing Slope is shown (GLOSSARY.md). */
 export const SLOPE_TITLE =
-  "Landing Slope: the steepest 100 m-scale slope anywhere in the site's 100 m circle (NASA's landing limit is under 10°)";
+  "Landing Slope: the steepest 100 m-scale slope anywhere in the site's 100 m circle. NASA's landing limit is 10°.";
 
-/** Landing Slope rounded down to 0.1°, so a site under a limit never reads as the limit; "—" if not computed. */
+/** Landing Slope rounded up to 0.1°, so a site just over a limit never reads as the limit; "—" if not computed. */
 export function slopeLabel(deg: number | undefined): string {
   if (deg === undefined) return "—";
-  return `${(Math.floor(deg * 10 + 1e-9) / 10).toFixed(1)}°`;
+  return `${(Math.ceil(deg * 10 - 1e-9) / 10).toFixed(1)}°`;
 }
 
 /** Tooltip wherever EVA Walkable Share is shown (GLOSSARY.md). */
@@ -24,13 +24,16 @@ export const WALKABLE_TITLE =
 /** EVA Walkable Share as a percentage (shareLabel). */
 export const walkableLabel = shareLabel;
 
-/** True when a site's Landing Slope is under the limit; a missing slope never is. A null limit lets every site through. */
+/**
+ * True when a site's Landing Slope is at or under the limit: only sites steeper than it are left out. A missing slope
+ * never passes. A null limit lets every site through.
+ */
 export function underSlopeLimit(slopeDeg: number | undefined, maxSlopeDeg: number | null): boolean {
-  return maxSlopeDeg === null || (slopeDeg !== undefined && slopeDeg < maxSlopeDeg);
+  return maxSlopeDeg === null || (slopeDeg !== undefined && slopeDeg <= maxSlopeDeg);
 }
 
 /**
- * The top 10 (2 km apart, like the ranking's own) among the sites whose Landing Slope is under `maxSlopeDeg`.
+ * The top 10 (2 km apart, like the ranking's own) among the sites whose Landing Slope is at or under `maxSlopeDeg`.
  * `entries` are the ranking's entries in rank order. A null limit, or a region without Landing Slopes, filters
  * nothing. The ranking itself is unchanged; only the choice of top 10 differs.
  */
