@@ -11,6 +11,12 @@ This project's own code is MIT-licensed (see `LICENSE`). It uses the following.
 
 Run `npm run licenses` to print the current list.
 
+## Code from this repository
+
+| Component | License | Notes |
+|---|---|---|
+| Ranking, Clearance and coverage code (`../web/src/science`, `../web/src/app/coverage.ts`) | Apache-2.0 (the repository's license) | Bundled into the viewer's worker and main script; imported, not copied. |
+
 ## Build-time tools (not shipped)
 
 | Tool | License |

@@ -388,6 +388,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Moved the Lunar Site Viewer (started from a Claude design chat, first hosted on Vercel) into the repo; switched it to the team's site-data (regions, outlines, hillshades, `sites.json` heights, Horizons for Clearance, SPICE positions); fixed the overlapping-region lookup; made the unlicensed CGI Moon Kit colour map opt-in; added the GitHub Pages workflow; checked the viewer's Clearance against the pipeline's golden site detail | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Moved the Lunar Site Viewer from `web/` to `viewer/` so it sits beside the team's React front end, merged `main` and resolved the attribution conflicts | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Merged `main` again: dropped the viewer's separate Pages workflow and added the viewer build to the team's workflow, so it publishes under `/viewer/` on the same site | `.github/workflows/pages.yml`, `viewer/`, `ATTRIBUTIONS.md`, `README.md` |
+| 2026-11-14 | Claude Code | Added the top 10 Landing Sites to the Lunar Site Viewer by reusing the web app's science worker and coverage helpers (no second copy of the science): Landing Time picker, top 10 on the region grid and in a list, rank readout, top-10 outlines in the 3D view; checked the top 10 against `results/ranking/20270301T0000Z.json` | `viewer/`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 

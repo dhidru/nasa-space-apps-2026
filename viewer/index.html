@@ -71,6 +71,7 @@
           <dt>Phase (from Earth)</dt><dd id="oPhase">—</dd>
           <dt>Site elevation</dt><dd id="oElev">—</dd>
           <dt>Slope (site)</dt><dd id="oSlope">—</dd>
+          <dt>Rank (stay from this time)</dt><dd id="oRank">—</dd>
         </dl>
       </section>
 
@@ -98,7 +99,7 @@
 
       <footer class="credits">
         Artemis III region outlines: USGS (CC0, doi:10.5066/P1MEQ6UK). Elevation: NASA LRO LOLA (80 m polar DEM and CGI Moon Kit), public domain. Site grid: team design (dhidru/nasa-space-apps-2026, Apache 2.0).
-        Sun and Earth positions: Astronomy Engine (MIT). 3D: three.js (MIT). This app: MIT.
+        Team site data, Horizons, SPICE Sun/Earth positions and the ranking code (web/src/science): dhidru/nasa-space-apps-2026 (Apache 2.0). Astronomy Engine (MIT) outside 2026–2027. 3D: three.js (MIT). This app: MIT.
       </footer>
     </aside>
 
@@ -130,6 +131,15 @@
     </section>
 
     <aside class="panel sites" aria-label="Site comparison">
+      <section class="top10" id="top10" hidden aria-label="Top 10 Landing Sites">
+        <header>
+          <h2>Top 10 Landing Sites</h2>
+          <small id="topWhen">—</small>
+        </header>
+        <p class="hint" id="topStatus"></p>
+        <ol class="top-list" id="topList"></ol>
+        <p class="hint">Ranked by the team's Clearance scoring for a 7-day Surface Stay starting at the chosen time (snapped to 10 minutes): Full Coverage first, then the worst-case minimum Clearance of Sun and Earth. Sites in the list are at least 2 km apart. Click one to open it; they are outlined in the 3D view.</p>
+      </section>
       <header>
         <h2>Artemis III regions</h2>
         <small id="sitesWindow">29.5-day window</small>

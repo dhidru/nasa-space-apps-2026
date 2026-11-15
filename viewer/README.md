@@ -10,12 +10,15 @@ adds a 3D terrain slice and a lunar-day timeline; it is here to test hosting on 
    to highlight it, click to open it.
 2. **Region grid**: the region's 200 m Landing Site grid (ids `r###c###` from the top-left, as in `sites.json`) over
    the team's region hillshade. Hover a cell to read its elevation and slope, click it to open the site. In regions
-   with team site data (today: Mons Mouton) the elevation comes from `sites.json`.
+   with team site data (today: Mons Mouton) the elevation comes from `sites.json`, and a **Landing Time** picker
+   ranks every site for a 7-day Surface Stay: the **top 10** (at least 2 km apart) are drawn on the grid and listed,
+   and hovering a cell shows its rank.
 3. **Site view**: a 3D slice of terrain (2 to 16 km) around the site, drawn with three.js from the 80 m LOLA DEM.
    Shade it with a relief light, real sunlight with cast shadows for any date and time, or slope classes. Around it:
    Sun and Earth readouts, a timeline of Sun and Earth elevation over one lunar day, and a table comparing the nine
    regions. In regions with team site data, Sun and Earth visibility and the **Clearance** readout use the team's
-   Horizons (`horizons.bin.gz`), so they match the pipeline's results.
+   Horizons (`horizons.bin.gz`), so they match the pipeline's results. The readout shows the site's rank, the
+   side panel lists the top 10 for the chosen time, and the top-10 sites are outlined and pinned in the 3D slice.
 
 ## What comes from where
 
@@ -24,6 +27,7 @@ adds a 3D terrain slice and a lunar-day timeline; it is here to test hosting on 
 | Regions, outlines, home and region hillshades | team `site-data` (`regions.json`, `outline.geojson`, `basemap.*`) |
 | Site heights, Horizons (Mons Mouton) | team `site-data` (`sites.json`, `horizons.bin.gz`) |
 | Sun/Earth vectors, 2026–2027 | team `site-data/ephemeris` (SPICE, MOON_ME); Astronomy Engine outside those years |
+| Ranking and top 10 | computed in the browser by the team's TypeScript science port (`../web/src/science`), the same code and worker the web app uses |
 | 3D terrain, slopes, far-horizon ray march where there are no team Horizons | NASA tiles built by `scripts/prepare-data.mjs` (LOLA 80 m polar DEM and the SVS CGI Moon Kit global DEM) |
 
 `scripts/copy-site-data.mjs` copies `../data/processed/site-data` to `public/site-data` before every dev run and
@@ -67,6 +71,9 @@ npx vite preview --base /nasa-space-apps-2026/viewer/
 ## How it works
 
 - `src/teamdata.js`: loads the team's site-data (regions, basemaps, sites, Horizons, positions).
+- `src/ranking.js`: starts the web app's science worker (`../web/src/science/worker.ts`) on the viewer's
+  `site-data/` and returns the ranking and top 10. Coverage labels and colours come from `../web/src/app/coverage.ts`,
+  so both apps describe sites the same way. If the science changes, the viewer picks it up on the next build.
 - `scripts/prepare-data.mjs`: global elevation tiles and a shadow grid from the CGI Moon Kit, plus a cropped 80 m
   DEM per region from LOLA LDEM_80S_80M (`public/tiles/polar`), cut around the team's region outlines.
 - `src/mapview.js`: the 2D maps (SVG in polar stereographic metres). `src/polar.js`: projection, the 200 m site grid

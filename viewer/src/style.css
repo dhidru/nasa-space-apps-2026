@@ -157,3 +157,18 @@ tbody tr.active td:first-child { box-shadow: inset 2px 0 0 var(--sun); }
   .compass { width: 72px; height: 72px; }
 }
 
+
+/* top 10 Landing Sites (site view and region card) */
+.top10 { border-bottom: 1px solid var(--line); }
+.top10 .hint { padding: 0 16px; }
+.top10 #topStatus:empty { display: none; }
+.top10 #topStatus { padding-top: 10px; }
+.top-list { list-style: none; margin: 0; padding: 6px 8px 8px; display: grid; gap: 2px; }
+.top-list button { width: 100%; display: grid; grid-template-columns: 22px 10px auto 1fr auto; align-items: center; gap: 8px; padding: 6px 8px; text-align: left; background: transparent; border: 1px solid transparent; font-size: 12px; }
+.top-list button:hover { border-color: var(--line); }
+.top-list li.active button { border-color: var(--sun); background: var(--sun-dim); }
+.top-list .rk { font: 11px var(--f-mono); color: var(--muted); }
+.top-list .sw { width: 10px; height: 10px; border-radius: 2px; }
+.top-list .id { font: 12px var(--f-mono); }
+.top-list .lb { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-list .cl { font: 12px var(--f-mono); }

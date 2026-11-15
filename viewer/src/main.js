@@ -16,6 +16,7 @@ import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView } from "./mapview.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
+import { ranking, snapLandingTime, formatUtc, coverageLabel, coverageColor } from "./ranking.js";
 
 
 const BASE = `${import.meta.env.BASE_URL}tiles`;
@@ -34,6 +35,7 @@ const el = {
   cSun: $("cSun"), cEarth: $("cEarth"),
   chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
   sitesBody: $("sitesBody"), sitesWindow: $("sitesWindow"), saveSite: $("saveSite"), sitesTable: $("sitesTable"),
+  oRank: $("oRank"), top10: $("top10"), topWhen: $("topWhen"), topStatus: $("topStatus"), topList: $("topList"),
 };
 
 const compass16 = (az) => ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][Math.round(az / 22.5) % 16];
@@ -53,6 +55,9 @@ let sort = { key: null, dir: -1 };
 let chartSeries = [];
 
 let REGIONS = [];                  // the nine regions from the team's regions.json
+// Landing Time (UTC ms, 10-minute grid, inside the Supported Span) shared by the region map and the site view:
+// the start of the 7-day Surface Stay that the team's ranking scores.
+let landingMs = snapLandingTime(Date.parse(START_DATE));
 const allSites = () => [...REGIONS, ...saved];
 const regionById = (id) => REGIONS.find((r) => r.id === id);
 
@@ -125,7 +130,9 @@ async function showSite(region, cell) {
   site.team = team;
   ensureView();
   el.loading.hidden = true;
-  setInputs(cell.lat, cell.lon, state ? null : new Date(START_DATE));
+  // Follow a Landing Time picked on the region map; otherwise keep the time already shown here.
+  const shown = readInputs().date;
+  setInputs(cell.lat, cell.lon, !state || Number.isNaN(shown.getTime()) || snapLandingTime(shown.getTime()) !== landingMs ? new Date(landingMs) : null);
   loadPatch(dem, sameRegion);
   await apply();
 }
@@ -240,7 +247,51 @@ async function apply() {
   // With team Horizons, the Sun's disc is tested against the site's Horizon (the pipeline's Clearance).
   view.setSun(sun, team ? discAbove(sunH.el, team.at(sunH.az), 0.267)
     : visibility(data, cell.lat * D, cell.lon * D, fromSite(eph, cell.lat, cell.lon, h).sun, 0.267 * D));
+  landingMs = snapLandingTime(date.getTime());
+  updateTopTen();
   setTimeout(() => { updateTimeline(); if (windowChanged) updateSites(); else markActive(); }, 30);
+}
+
+/* ---------- top 10 Landing Sites (team ranking, computed in a worker) ---------- */
+let topToken = 0;
+async function updateTopTen() {
+  const token = ++topToken, cur = site;
+  if (!cur || !cur.region.hasSiteData) {
+    el.top10.hidden = true;
+    el.oRank.textContent = "— (no team site data)";
+    if (view) view.setMarks([]);
+    return;
+  }
+  el.top10.hidden = false;
+  el.topWhen.textContent = `from ${formatUtc(landingMs).slice(0, 16).replace("T", " ")} UTC`;
+  el.topStatus.textContent = "Scoring every Landing Site over the Surface Stay…";
+  el.oRank.textContent = "…";
+  try {
+    const r = await ranking(cur.region.id, landingMs, (f) => {
+      if (token === topToken) el.topStatus.textContent = `Scoring every Landing Site over the Surface Stay… ${Math.round(f * 100)} %`;
+    });
+    if (token !== topToken) return;
+    el.topStatus.textContent = "";
+    const grid = siteGrid(cur.region);
+    renderTopList(r, cur);
+    const me = r.byId.get(cur.cell.id);
+    el.oRank.textContent = me ? `${me.rank.toLocaleString()} of ${r.doc.sites.length.toLocaleString()}${me.top ? " · top 10" : ""} · ${coverageLabel(me)}` : "—";
+    view.setMarks(r.top.map((e) => ({ cell: grid.byId(e.site_id), color: coverageColor(e) })).filter((m) => m.cell));
+  } catch (e) {
+    if (token !== topToken) return;
+    console.error(e);
+    el.topStatus.textContent = `Couldn't rank the sites: ${e.message}`;
+    el.oRank.textContent = "—";
+  }
+}
+function renderTopList(r, cur) {
+  el.topList.replaceChildren(...r.top.map((e, i) => {
+    const li = document.createElement("li");
+    if (e.site_id === cur.cell.id) li.className = "active";
+    li.innerHTML = `<button type="button" title="${escapeHtml(coverageLabel(e))}"><span class="rk">${i + 1}</span><span class="sw" style="background:${coverageColor(e)}"></span><span class="id">${e.site_id}</span><span class="lb">${escapeHtml(coverageLabel(e))}</span><span class="cl" title="Worst-case minimum Clearance over the stay (Sun or Earth)">${e.worst_case_min_clearance_deg.toFixed(2)}°</span></button>`;
+    li.querySelector("button").addEventListener("click", () => go(`#${cur.region.id}/${e.site_id}`));
+    return li;
+  }));
 }
 
 /* ---------- timeline ---------- */
@@ -360,6 +411,7 @@ async function boot() {
   loadPositions().then((p) => { useTeamPositions(p); if (site && !el.app.hidden) apply(); }).catch((e) => console.error(e));
   mapView = new MapView(el.mapview, {
     homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
+    ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); },
     onRegion: (id) => go(`#${id}`),
     onSite: (rid, cid) => go(`#${rid}/${cid}`),
     onHome: () => go("#"),
