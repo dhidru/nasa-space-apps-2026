@@ -275,6 +275,30 @@ Each dataset below also has a conventions card in
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** GitHub, Inc. https://github.com
 
+### GitHub Actions and GitHub Pages, with the official `actions/*` workflow actions
+- **Type:** Tool
+- **Used for:** Building, testing and publishing the web app to GitHub Pages
+  (`.github/workflows/pages.yml`). The workflow references these actions by
+  version; none of their code is copied into the repo or the site:
+  `actions/checkout@v7` (v7.0.1), `actions/setup-node@v7` (v7.1.0),
+  `actions/upload-pages-artifact@v5` (v5.0.0) and `actions/deploy-pages@v5` (v5.0.1).
+- **Source:** https://github.com/actions/checkout, https://github.com/actions/setup-node,
+  https://github.com/actions/upload-pages-artifact, https://github.com/actions/deploy-pages;
+  service: https://docs.github.com/en/pages
+- **Accessed:** 2026-11-14
+- **License / permission:** Each action is MIT ([checkout](https://github.com/actions/checkout/blob/main/LICENSE),
+  [setup-node](https://github.com/actions/setup-node/blob/main/LICENSE),
+  [upload-pages-artifact](https://github.com/actions/upload-pages-artifact/blob/main/LICENSE),
+  [deploy-pages](https://github.com/actions/deploy-pages/blob/main/LICENSE)).
+  The Actions and Pages services fall under the
+  [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service)
+  and the [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
+  (1 GB site, 100 GB/month soft bandwidth limit; our site is about 11 MB).
+- **Requirements:** None for our use. We only run the actions on GitHub's
+  runners and don't redistribute them. MIT is compatible with Apache 2.0.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** GitHub, Inc. *GitHub Actions* and *GitHub Pages*. https://github.com/features/actions, https://pages.github.com
+
 ### Matt Pocock's agent skills (`mattpocock-skills`)
 - **Type:** Tool (Claude Code agent skills: Markdown instructions plus a few shell templates)
 - **Used for:** Development workflow skills for Claude Code (grilling, spec and
@@ -325,6 +349,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Weighed static site vs. server using measured data sizes and wrote ADR 0001 (static site, clearance in the browser); updated the design doc and data contract to match | `docs/adr/`, `docs/design.md`, `docs/data-contract.md` |
 | 2026-11-14 | Claude Code | Measured region data sizes, tested a long-term-average site filter on Mons Mouton and recorded the decision to keep Mons Mouton Plateau "coming soon" | `docs/design.md`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Checked the npm licenses; built the web front end (React + OpenLayers) and the TypeScript port of the clearance, ranking and Landing Windows code, test-first against the committed Python results; added the build plugins for site data and third-party notices | `web/`, `.claude/launch.json`, `docs/`, `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Checked the licenses of the official GitHub Actions; wrote the GitHub Pages deploy workflow (tests, build, publish) and checked the built site under the Pages subpath | `.github/workflows/pages.yml`, `README.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 

@@ -26,7 +26,7 @@ _What we built, how it works, and why it matters._
 
 ## Demo
 
-- **Live demo:** _TBD_
+- **Live demo:** https://dhidru.github.io/nasa-space-apps-2026/
 - **Video (30s max for judging):** _TBD_
 - **Project page:** _TBD_
 
@@ -102,6 +102,19 @@ npm run build      # static site in web/dist/, including THIRD-PARTY-NOTICES.txt
 
 If the science changes, change the Python first, regenerate `results/`, then port
 the change. The parity tests in `web/src/science/*.test.ts` fail until the two agree.
+
+### Publishing (GitHub Pages)
+
+Every push to `main` runs [`.github/workflows/pages.yml`](.github/workflows/pages.yml):
+it runs `npm test`, then `npm run build`, and publishes `web/dist/` to
+https://dhidru.github.io/nasa-space-apps-2026/. You can also run it by hand from
+the repo's **Actions** tab ("Deploy to GitHub Pages" → **Run workflow**). The app
+uses relative paths and `#/` routes, so it works under the `/nasa-space-apps-2026/`
+subpath without any extra config.
+
+One-time repo setting (a repo admin does this once): **Settings → Pages → Build
+and deployment → Source: GitHub Actions**. If the deploy job fails with "Get
+Pages site failed" or "not found", this setting is missing.
 
 ## Repository Layout
 
