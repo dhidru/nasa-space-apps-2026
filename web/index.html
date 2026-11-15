@@ -99,13 +99,6 @@
         </dl>
       </section>
 
-      <section class="view">
-        <label for="exag">
-          <span class="range-head">Vertical exaggeration <output id="exagOut">1×</output></span>
-          <input id="exag" type="range" min="1" max="6" step="0.5" value="1">
-        </label>
-      </section>
-
     </aside>
 
     <main class="stage" aria-label="3D view">
@@ -122,7 +115,7 @@
           </select>
         </div>
         <div class="view-menu" data-for="slice">
-          <button type="button" class="view-menu-btn" aria-haspopup="true" aria-expanded="false"><span class="view-menu-name">Slice around the site</span> <span class="view-menu-value"></span><span class="view-menu-caret" aria-hidden="true">▾</span></button>
+          <button type="button" class="view-menu-btn" aria-haspopup="true" aria-expanded="false"><span class="view-menu-name" title="Slice around the site">Slice</span> <span class="view-menu-value"></span><span class="view-menu-caret" aria-hidden="true">▾</span></button>
           <ul class="view-menu-list" role="menu" aria-label="Slice around the site"></ul>
           <select id="slice" class="view-menu-select" tabindex="-1" aria-hidden="true">
             <option value="2000" data-short="2 km">2 km (10 × 10 sites)</option>
@@ -143,6 +136,12 @@
             </div>
           </div>
         </div>
+        <!-- Vertical exaggeration of the 3D terrain, as a slider in the same bar. -->
+        <label class="view-range" for="exag">
+          <span class="view-menu-name" title="Vertical exaggeration of the terrain">Exaggeration</span>
+          <input id="exag" type="range" min="1" max="6" step="0.5" value="1">
+          <output id="exagOut" for="exag">1×</output>
+        </label>
       </div>
       <!-- Orientation window (src/ui/inset.js): overhead view of the slice with 0° (Earth) at the top, as on the home map. -->
       <figure class="inset" id="inset" aria-label="Orientation: overhead view of the slice, 0° (Earth side) at the top; the wedge is the 3D camera's view">
@@ -161,19 +160,6 @@
         <g id="cSun"><circle r="5.5" class="c-sun"/></g>
       </svg>
     </main>
-
-    <section class="panel timeline" aria-label="Sun and Earth over a lunar day">
-      <header>
-        <h2>Sun &amp; Earth elevation at <span id="tlSite">—</span></h2>
-        <div class="legend">
-          <span class="lg lg-sun">Sun</span>
-          <span class="lg lg-earth">Earth</span>
-          <span class="lg lg-dark">Sun hidden</span>
-          <span class="tl-read" id="tlRead">Click to jump to a time</span>
-        </div>
-      </header>
-      <svg id="chart" role="img" aria-label="Elevation of the Sun and Earth over one lunar day"></svg>
-    </section>
 
     <aside class="panel sites" aria-label="Site comparison">
       <section class="stay" id="stay" hidden aria-label="Surface Stay">

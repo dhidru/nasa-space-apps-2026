@@ -13,7 +13,7 @@ site in 3D. It reads the pipeline's output in `../data/processed/site-data` (see
    (at least 2 km apart) drawn and listed, and each cell's height, slope and rank on hover.
 3. **Site view**: a 3D slice of terrain (2 to 16 km) around the site (three.js, LOLA 80 m), shaded by relief, by
    sunlight with cast shadows at the chosen time, or by slope class, with the top-10 sites outlined. Around it:
-   - Sun and Earth readouts with **Clearance**, the site's rank, a compass and a lunar-day timeline;
+   - Sun and Earth readouts with **Clearance**, the site's rank, and a compass;
    - **Top 10 Landing Sites** for the Landing Time;
    - **Surface Stay**: stats over the stay, sky plot, Sun and Earth elevation over the Horizon, and **Landing
      Windows** (click one to move to that Landing Time);
