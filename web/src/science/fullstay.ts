@@ -87,3 +87,34 @@ export function computeNoFullStayDays(region: Region, span: Positions, progress?
   for (let d = 0; d < nDays; d++) if (!ok[d]) out.push(SPAN_START + d * DAY_MS);
   return out;
 }
+
+/** The Landing Time on one UTC day at which the most sites look Full on the hourly samples, and how many. */
+export type DayBest = { landing: number; sites: number };
+
+/**
+ * The best Landing Time on UTC day `day` (ms) for the "jump to the next day that works" button: the hour (on the
+ * 10-minute grid) at which the most sites keep Sun and Earth Clearance > 0 at every hourly sample of the stay. Hourly
+ * samples can miss a short dip, so callers confirm with a ranking. `coarse` is the span sampled hourly (hourlySpan).
+ * Checks one day plus its 7-day stays, so it takes well under a second even for the largest region.
+ */
+export function bestLandingOnDay(region: Region, coarse: Positions, day: number): DayBest | null {
+  const d = Math.round((day - SPAN_START) / DAY_MS);
+  const hoursPerDay = 24, stayCoarse = STAY_STEPS / COARSE;
+  const from = d * hoursPerDay, n = Math.min(hoursPerDay + stayCoarse, coarse.n - from);
+  if (d < 0 || n <= stayCoarse) return null;
+  const counts = new Int32Array(hoursPerDay);
+  for (let i = 0; i < region.siteIds.length; i++) {
+    const w = worst(region, i, coarse, from, n);
+    let run = 0; // positive run starting at sample k, counted from the end
+    for (let k = n - 1; k >= 0; k--) {
+      run = w[k] > 0 ? run + 1 : 0;
+      if (k < hoursPerDay && run > stayCoarse) counts[k]++; // stay [k, k + stayCoarse] all positive
+    }
+  }
+  let best = 0;
+  for (let k = 1; k < hoursPerDay; k++) if (counts[k] > counts[best]) best = k;
+  return counts[best] ? { landing: SPAN_START + (from + best) * COARSE * STEP_MS, sites: counts[best] } : null;
+}
+
+/** The Supported Span sampled once an hour, for bestLandingOnDay. */
+export const hourlySpan = (span: Positions): Positions => subsample(span, COARSE);

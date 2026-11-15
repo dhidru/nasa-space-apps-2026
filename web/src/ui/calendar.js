@@ -74,8 +74,11 @@ export class Calendar {
       const lead = (m.getUTCDay() + 6) % 7, nDays = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
       html = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<span class="cal-dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
       for (let d = 1; d <= nDays; d++) {
-        const day = Date.UTC(y, mo, d), out = day < SPAN_START || day >= SPAN_END, nostay = !out && !!this.noStay?.has(day), sel = day === chosenDay;
+        const day = Date.UTC(y, mo, d), out = day < SPAN_START || day >= SPAN_END, sel = day === chosenDay;
         const n = chosen ? Math.round((day - chosenDay) / DAY_MS) + 1 : 0, stay = n >= 2 && n <= 7; // day n of the stay
+        // A No-Full-Stay Day is about starting a stay there, so days 2–7 of the chosen stay aren't crossed out:
+        // inside the band it read as "a bad day in my stay".
+        const nostay = !out && !stay && !!this.noStay?.has(day);
         const col = (lead + d - 1) % 7;
         const cls = ["cal-day", nostay && "nostay", sel && "sel", stay && "stay",
           (sel || stay) && (n === 7 || col === 6 || d === nDays) && "band-end", stay && col === 0 && "band-start"].filter(Boolean).join(" ");

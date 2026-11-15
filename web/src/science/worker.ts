@@ -7,7 +7,7 @@ import { loadPositions, loadRegion, type Positions, type PositionsCache, type Re
 import { computeLandingWindows, computeRanking, computeSiteDetail, loadSpanPositions, type RankingDoc } from "./results";
 import { N_SAMPLES } from "./time";
 import { computeDarkDays } from "./darkness";
-import { computeNoFullStayDays } from "./fullstay";
+import { bestLandingOnDay, computeNoFullStayDays, hourlySpan } from "./fullstay";
 import { fetchSiteData } from "./fetchSiteData";
 import type { WorkerRequest, WorkerResponse } from "./protocol";
 
@@ -17,6 +17,7 @@ const read = fetchSiteData(ctx.name);
 const positionsCache: PositionsCache = new Map();
 let region: { id: string; data: Promise<Region> } | undefined;
 let span: Promise<Positions> | undefined;
+let hourly: Promise<Positions> | undefined; // span sampled hourly, for bestOnDay
 const rankings = new Map<string, RankingDoc>(); // `${regionId}|${landing}`, last few only
 
 function getRegion(id: string): Promise<Region> {
@@ -69,6 +70,13 @@ ctx.onmessage = async (ev: MessageEvent<WorkerRequest>) => {
         const r = await getRegion(req.regionId);
         span ??= loadSpanPositions(read, positionsCache);
         post({ id: req.id, type: "darkDays", doc: computeDarkDays(r, await span) });
+        break;
+      }
+      case "bestOnDay": {
+        const r = await getRegion(req.regionId);
+        span ??= loadSpanPositions(read, positionsCache);
+        hourly ??= span.then(hourlySpan);
+        post({ id: req.id, type: "bestOnDay", doc: bestLandingOnDay(r, await hourly, req.day) });
         break;
       }
       case "noFullStayDays": {

@@ -64,3 +64,15 @@ const noStayCache = new Map();
  * `progress` (0–1) is only called for the request that starts the work. Runs on its own worker so rankings aren't held up.
  */
 export const noFullStayDays = (regionId, progress) => lru(noStayCache, regionId, () => scanner.noFullStayDays(regionId, progress), 4);
+
+/**
+ * The Landing Time on a UTC day at which the most sites keep the Sun and Earth in view all week, checked with a ranking
+ * (the search uses hourly samples, which can miss a short dip). Resolves to { landing, sites } or null.
+ */
+export async function bestOnDay(regionId, day) {
+  const hit = await science.bestOnDay(regionId, day);
+  if (!hit) return null;
+  const r = await ranking(regionId, hit.landing);
+  const sites = r.doc.sites.filter((s) => s.coverage === "full").length;
+  return sites ? { landing: hit.landing, sites } : null;
+}
