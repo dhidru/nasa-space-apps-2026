@@ -75,7 +75,8 @@ The current registry follows NASA's release of 2024-10-28 (9 regions).
 ## 4. Folder layout
 
 The same layout is used for the mock data (`contract/mock/data/`) and for real
-pipeline output (the final location depends on the static-vs-server decision):
+pipeline output (`data/processed/site-data/`, copied into the static site's build;
+see [ADR 0001](adr/0001-static-site-clearance-in-browser.md)):
 
 ```
 regions.json                         Region registry (section 5.1)
@@ -95,10 +96,9 @@ regions/<region-id>/
 `<landing-time>` in file names uses the compact form `20270301T0000Z`, because
 `:` is not allowed in Windows file names.
 
-If we choose a server, the three `results/` documents become API responses with
-the same JSON. If we choose a static site, the browser builds them from
-`sites.json`, `horizons.bin.gz` and `ephemeris/`. Either way the pages read the
-same documents.
+The site is static (ADR 0001): the browser builds the three `results/` documents
+from `sites.json`, `horizons.bin.gz` and `ephemeris/`. The committed `results/`
+files are golden fixtures that the browser's port has to reproduce.
 
 ## 5. Static files (JSON / GeoJSON / PNG)
 

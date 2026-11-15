@@ -195,10 +195,11 @@ outlined.
 - The front end is a React app with OpenLayers (it supports polar stereographic
   maps). Check each library's license before adding it.
 
-### Open: static site vs. server
+### Decided: static site, clearance in the browser
 
-We'll decide once the Mons Mouton pipeline works, then record the
-decision in an ADR (`docs/adr/`).
+This was decided after the Mons Mouton pipeline worked. See
+[ADR 0001](adr/0001-static-site-clearance-in-browser.md). The table below shows
+the trade-off we weighed.
 
 | | Static site (clearance in the browser) | Python server (clearance on a server) |
 |---|---|---|
@@ -266,7 +267,7 @@ the design work doesn't wait on the pipeline.
 2. Compare our long-run % in sunlight against the published LOLA
    average-illumination maps (Mazarico et al. 2011).
 3. Round-trip tests: lat/lon → map x/y → lat/lon, and 0–360° ↔ −180–180°.
-4. If the static option is chosen: Python produces known answers, and the
+4. Python produces known answers (ADR 0001), and the
    TypeScript clearance module has to match them.
 
 ## 11. Team split

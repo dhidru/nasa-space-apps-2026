@@ -282,6 +282,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Measured Horizon compression options on the real data and, at the team's request, switched the Horizons to a delta-along-azimuth + gzip format (`horizons.bin.gz`, 18.4 → 3.7 MB): contract, schema, encoder/decoder with tests, build, mock generator and validator | `docs/`, `contract/`, `src/pipeline/`, `tests/`, `.gitignore` |
 | 2026-11-14 | Claude Code | Un-ignored and committed the real pipeline output (`data/processed/site-data/`, ~11 MB) so the design side can use it, and noted it in the README | `.gitignore`, `README.md`, `data/processed/site-data/` |
 | 2026-11-14 | Claude Code | Wrote the Clearance, metrics, ranking (2 km top 10) and Landing Windows code test-first, the results writer, and a real-data cross-check; built and validated the Mons Mouton results for 2027-03-01T00:00Z | `src/pipeline/clearance.py`, `src/pipeline/scoring.py`, `src/pipeline/results.py`, `tests/`, `data/processed/site-data/regions/mons-mouton/results/`, `README.md` |
+| 2026-11-14 | Claude Code | Weighed static site vs. server using measured data sizes and wrote ADR 0001 (static site, clearance in the browser); updated the design doc and data contract to match | `docs/adr/`, `docs/design.md`, `docs/data-contract.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
