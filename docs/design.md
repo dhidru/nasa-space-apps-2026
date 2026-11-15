@@ -276,10 +276,19 @@ the design work doesn't wait on the pipeline.
 
 ## 10. Validation
 
-1. Spot-check our flat-ground Sun and Earth azimuth/elevation against JPL
-   Horizons for a few sites and times. Check Horizons' terms of use first.
-2. Compare our long-run % in sunlight against the published LOLA
-   average-illumination maps (Mazarico et al. 2011).
+1. **Done (2026-11-14).** Spot-check our flat-ground Sun and Earth
+   azimuth/elevation with an independent code path. We use SPICE's own `azlcpo`
+   routine instead of JPL Horizons, whose terms we haven't checked:
+   `tests/test_validation_spice.py` compares 5 Mons Mouton sites at 25 times
+   across the Supported Span and agrees to within 3e-5°.
+   `tests/test_validation_orbit.py` checks the paths against Moon Fact Sheet
+   values: the Sun's highest elevation, one turn of the sky per synodic month
+   (east to west), Earth near the sub-Earth direction, Sun and Earth aligned at
+   full moon and opposite at new moon, and the Earth-Moon distance.
+2. **Blocked.** Compare our long-run % in sunlight against the published LOLA
+   average-illumination maps (Mazarico et al. 2011). The PGDA data has no stated
+   license (ATTRIBUTIONS.md), and the team decided on 2026-11-14 not to ask for
+   permission, so we don't use it.
 3. Round-trip tests: lat/lon → map x/y → lat/lon, and 0–360° ↔ −180–180°.
 4. Python produces known answers (ADR 0001), and the
    TypeScript clearance module has to match them.

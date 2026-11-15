@@ -389,6 +389,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Moved the Lunar Site Viewer from `web/` to `viewer/` so it sits beside the team's React front end, merged `main` and resolved the attribution conflicts | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Merged `main` again: dropped the viewer's separate Pages workflow and added the viewer build to the team's workflow, so it publishes under `/viewer/` on the same site | `.github/workflows/pages.yml`, `viewer/`, `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-14 | Claude Code | Added the top 10 Landing Sites to the Lunar Site Viewer by reusing the web app's science worker and coverage helpers (no second copy of the science): Landing Time picker, top 10 on the region grid and in a list, rank readout, top-10 outlines in the 3D view; checked the top 10 against `results/ranking/20270301T0000Z.json` | `viewer/`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | At the team's request (no unlicensed data), validated our Sun/Earth azimuth and elevation against SPICE's own `azlcpo` routine and against Moon Fact Sheet values (tilt, synodic month, Earth distance, full/new moon); checked the fact sheet's terms | `tests/test_validation_spice.py`, `tests/test_validation_orbit.py`, `docs/design.md`, `README.md`, `ATTRIBUTIONS.md` |
 | 2026-11-14 | Claude Code | Combined the two front ends at the team's request: the Lunar Site Viewer is now the site's front end at the root, running on the web app's data and science code (siteData and notices plugins, fetchSiteData/readJson/loadRegion/loadPositions, track, the science worker, coverage and route helpers); ported the web app's coverage heatmap, stats table, sky plot, time charts and Landing Windows to the viewer; moved the web app to `/app/`; checked ranking, site detail and Landing Windows against the committed results | `viewer/`, `.github/workflows/pages.yml`, `README.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
@@ -422,6 +423,20 @@ _None yet._
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** NASA (2024, October 28). *NASA Provides Update on Artemis III Moon Landing Regions* [News release 24-136]. https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/
 
+### NASA Moon Fact Sheet (NSSDCA)
+- **Type:** Information
+- **Used for:** Reference values in the orbit checks (`tests/test_validation_orbit.py`):
+  synodic period, obliquity to orbit, orbit inclination to the ecliptic and the
+  Earth-Moon distance range. We use the numbers (facts) only; no text is copied.
+- **Source:** https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html (last updated 2024-01-11)
+- **Accessed:** 2026-11-14
+- **License / permission:** NASA web content. The page has no copyright notice, and the
+  [NASA Images and Media Usage Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/)
+  say NASA material is generally not subject to copyright in the US and ask that NASA be credited.
+- **Requirements:** Credit NASA as the source. Don't use NASA logos or imply NASA endorsement.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Williams, D. R. (2024). *Moon Fact Sheet*. NASA Space Science Data Coordinated Archive, Goddard Space Flight Center. https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html
+
 ## Candidate Resources (not yet used, licenses not yet verified)
 
 These are the resources the challenge suggests. Before any of them is used,
@@ -429,7 +444,7 @@ check its license or terms and move it to the right section above.
 
 | Resource | Provider | What we might use it for | URL | Status |
 | -------- | -------- | ------------------------ | --- | ------ |
-| JPL Horizons System | NASA/JPL (Caltech) | Sun and Earth positions (azimuth and elevation) from lunar surface sites | https://ssd.jpl.nasa.gov/horizons/ | ⚠️ Not verified |
+| JPL Horizons System | NASA/JPL (Caltech) | Sun and Earth positions (azimuth and elevation) from lunar surface sites | https://ssd.jpl.nasa.gov/horizons/ | ⚠️ Not verified. Not needed: SPICE's `azlcpo` covers the spot-check (design.md §10) |
 | LROC QuickMap | Arizona State University / LRO | Exploring terrain at south-pole sites | https://quickmap.lroc.asu.edu/ | ⚠️ Not verified |
 | Moon Trek | NASA/JPL (Solar System Treks) | 3D terrain context and topography | https://trek.nasa.gov/moon/ | ⚠️ Not verified |
 | LOLA topography (DEMs) | NASA GSFC / LRO, via PDS | Horizon profiles that include terrain | https://pds-geosciences.wustl.edu/missions/lro/lola.htm | ✅ Adopted: see "Data" above |
