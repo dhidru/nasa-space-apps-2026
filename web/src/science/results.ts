@@ -3,8 +3,8 @@
  * Mirrors src/pipeline/results.py; the committed Python results are the golden fixtures.
  */
 import { loadPositions, type Positions, type PositionsCache, type ReadBytes, type Region } from "./data";
-import { BODIES, clearance, track, type Body } from "./geometry";
-import { bodyStats, landingWindows, rankSites, selectTop, type BodyStats } from "./scoring";
+import { BODIES, clearance, track, trackStats, type Body } from "./geometry";
+import { landingWindows, rankSites, selectTop, type BodyStats } from "./scoring";
 import { checkLandingTime, formatUtc, N_LANDING_TIMES, N_SAMPLES, SPAN_END, SPAN_START, STAY_STEPS, STEP_MS, STEP_S } from "./time";
 
 export const SCHEMA_VERSION = 1;
@@ -100,12 +100,15 @@ export function computeRanking(region: Region, positions: Positions, landing: nu
   const n = region.siteIds.length;
   const stats: Record<Body, BodyStats[]> = { sun: [], earth: [] };
   for (let i = 0; i < n; i++) {
-    for (const b of BODIES) {
-      const t = track(region, i, positions, b);
-      stats[b].push(bodyStats(t.elevationDeg, clearance(t), STEP_S));
-    }
+    for (const b of BODIES) stats[b].push(trackStats(region, i, positions, b, STEP_S));
     if (progress && i % 256 === 255) progress((i + 1) / n);
   }
+  return assembleRanking(region, landing, stats);
+}
+
+/** The ranking document from every site's Sun and Earth stats (in site order), however they were computed. */
+export function assembleRanking(region: Region, landing: number, stats: Record<Body, BodyStats[]>): RankingDoc {
+  checkLandingTime(landing);
   const ranking = rankSites(stats.sun, stats.earth);
   const top = new Set(selectTop(ranking.order, region.xM, region.yM, TOP_N, TOP_SEPARATION_M));
   const sites = ranking.order.map((i, r): RankingEntry => ({

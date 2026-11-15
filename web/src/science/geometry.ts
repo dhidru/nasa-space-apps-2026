@@ -1,9 +1,15 @@
 /** Where a body appears from a site (design.md §5, data-contract §2). */
 import type { Positions, Region } from "./data";
+import type { BodyStats } from "./scoring";
 
 export const R_M = 1_737_400;
 const RAD = Math.PI / 180;
 const DEG = 180 / Math.PI;
+
+/** The parts of a Region that trackStats() reads, so a slice of the sites can be sent to a helper worker. */
+export type TrackSites = Pick<Region, "latDeg" | "lonDeg" | "observerAboveSphereM"> & {
+  horizons: Pick<Region["horizons"], "values" | "scale" | "nAzimuths">;
+};
 
 export type Body = "sun" | "earth";
 export const BODIES: Body[] = ["sun", "earth"];
@@ -59,6 +65,58 @@ export function track(region: Region, site: number, positions: Positions, body: 
     hz[k] = (1 - w) * (values[base + k0] * scale) + w * (values[base + k1] * scale);
   }
   return { azimuthDeg: az, elevationDeg: el, horizonElevationDeg: hz };
+}
+
+/**
+ * bodyStats(track.elevationDeg, clearance(track), stepS) for all of `positions`, without building the arrays.
+ * Same arithmetic in the same order as track() + clearance() + bodyStats(), so the numbers are identical;
+ * this is the hot loop of every ranking (sites × 2 bodies × 1,009 samples).
+ */
+export function trackStats(region: TrackSites, site: number, positions: Positions, body: Body, stepS: number): BodyStats {
+  const lat = region.latDeg[site] * RAD;
+  const lon = region.lonDeg[site] * RAD;
+  const rKm = (R_M + region.observerAboveSphereM[site]) / 1000;
+  const cl = Math.cos(lon), sl = Math.sin(lon), cp = Math.cos(lat), sp = Math.sin(lat);
+  const ux = cp * cl, uy = cp * sl, uz = sp;
+  const ex = -sl, ey = cl;
+  const nx = -sp * cl, ny = -sp * sl, nz = cp;
+  const v = positions[body];
+  const { values, scale, nAzimuths } = region.horizons;
+  const base = site * nAzimuths;
+  const perDeg = nAzimuths / 360;
+  const n = positions.n;
+  let minE = Infinity, maxE = -Infinity, sumE = 0;
+  let minC = Infinity, maxC = -Infinity, sumC = 0;
+  let los = 0, firstLoss = -1;
+  for (let k = 0; k < n; k++) {
+    const j = k * 3;
+    const bx = v[j], by = v[j + 1], bz = v[j + 2];
+    const e = ex * bx + ey * by;
+    const no = nx * bx + ny * by + nz * bz;
+    const u = ux * bx + uy * by + uz * bz - rKm;
+    let a = Math.atan2(e, no) * DEG + 0;
+    if (a < 0) a += 360;
+    if (a >= 360) a -= 360;
+    const el = Math.atan2(u, Math.sqrt(e * e + no * no)) * DEG;
+    const f = a * perDeg;
+    const k0 = Math.floor(f);
+    const w = f - k0;
+    const k1 = k0 + 1 === nAzimuths ? 0 : k0 + 1;
+    const c = el - ((1 - w) * (values[base + k0] * scale) + w * (values[base + k1] * scale));
+    if (el < minE) minE = el;
+    if (el > maxE) maxE = el;
+    sumE += el;
+    if (c < minC) minC = c;
+    if (c > maxC) maxC = c;
+    sumC += c;
+    if (c > 0) los++;
+    else if (firstLoss < 0) firstLoss = k;
+  }
+  return {
+    minElevationDeg: minE, meanElevationDeg: sumE / n, maxElevationDeg: maxE,
+    minClearanceDeg: minC, meanClearanceDeg: sumC / n, maxClearanceDeg: maxC,
+    losFraction: los / n, losDurationH: (los * stepS) / 3600, firstLosLossIndex: firstLoss,
+  };
 }
 
 /** Clearance (degrees) at each sample: elevation − Horizon Elevation. Negative means blocked. */
