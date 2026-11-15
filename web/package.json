@@ -9,9 +9,10 @@
     "node": ">=18.17"
   },
   "scripts": {
+    "site-data": "node scripts/copy-site-data.mjs",
     "data": "node scripts/prepare-data.mjs",
-    "dev": "vite",
-    "build": "node scripts/prepare-data.mjs --if-missing && vite build",
+    "dev": "node scripts/copy-site-data.mjs && vite",
+    "build": "node scripts/copy-site-data.mjs && node scripts/prepare-data.mjs --if-missing && vite build",
     "preview": "vite preview",
     "licenses": "node scripts/check-licenses.mjs"
   },

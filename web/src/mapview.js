@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // 2D south polar map: the home view (all nine Artemis III regions) and the region view (200 m site grid).
 // Map coordinates are polar stereographic metres (src/polar.js); SVG y is the negative of map y.
+// Hillshades, outlines and site heights come from the team's site-data (src/teamdata.js).
 
 import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
@@ -32,7 +33,8 @@ const LAT_RINGS = [-80, -85, -88]; // dashed parallels for orientation
 export class MapView {
   /**
    * @param {HTMLElement} root  the #mapview element
-   * @param {{ base:string, meta:object, regions:object[], onRegion:(id)=>void, onSite:(regionId, cellId)=>void,
+   * @param {{ homeBasemap:object, regionBasemap:(region)=>Promise<object>, teamSites:(id)=>Promise<object|null>,
+   *           regions:object[], onRegion:(id)=>void, onSite:(regionId, cellId)=>void,
    *           onHome:()=>void, demFor:(id)=>Promise<object> }} opts
    */
   constructor(root, opts) {
@@ -125,8 +127,8 @@ export class MapView {
     this.svg.replaceChildren();
     this.labels.replaceChildren();
     this.svg.setAttribute("aria-label", "Map of the lunar south pole with the nine Artemis III candidate regions");
-    const h = this.meta.home, [x0, y0, x1, y1] = h.extent_m;
-    svgEl("image", { href: `${this.base}/polar/${h.image}`, x: x0, y: -y1, width: x1 - x0, height: y1 - y0, preserveAspectRatio: "none", class: "map-img" }, this.svg);
+    const h = this.homeBasemap, [x0, y0, x1, y1] = h.extent_m;
+    svgEl("image", { href: h.href, x: x0, y: -y1, width: x1 - x0, height: y1 - y0, preserveAspectRatio: "none", class: "map-img" }, this.svg);
     const g = svgEl("g", { class: "graticule" }, this.svg);
     for (const lat of LAT_RINGS) {
       const rho = 2 * 1737400 * Math.tan(Math.PI / 4 + (lat * Math.PI) / 360);
@@ -146,7 +148,7 @@ export class MapView {
       const pts = r.xy.map(([x, y]) => `${x},${-y}`).join(" ");
       const poly = svgEl("polygon", { points: pts, class: "region", "data-id": r.id, tabindex: 0, role: "button", "aria-label": `Open ${r.name}` }, this.svg);
       this.polys[r.id] = poly;
-      const L = LABELS[r.id];
+      const L = LABELS[r.id] || { x: bbox(r.xy).xmin - 3000, y: (bbox(r.xy).ymin + bbox(r.xy).ymax) / 2, a: "end" };
       const lab = this.addLabel({ x: L.x, y: L.y, text: r.name, cls: "region-label", a: L.a, id: r.id });
       lab.addEventListener("pointerenter", () => this.hover(r.id));
       lab.addEventListener("pointerleave", () => this.hover(null));
@@ -187,9 +189,9 @@ export class MapView {
       <p class="hint">NASA's nine candidate landing regions near the south pole. Hover to highlight one, click to open its 200 m site grid. Scroll to zoom, drag to pan.</p>
       <ol class="region-list">${this.regions.map((r) => {
         const [w, h] = sizeKm(r);
-        return `<li><button type="button" data-id="${r.id}"><span>${r.name}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites</small></button></li>`;
+        return `<li><button type="button" data-id="${r.id}"><span>${r.name}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites${r.hasSiteData ? " · team data" : ""}</small></button></li>`;
       }).join("")}</ol>
-      <p class="credits">Hillshade: NASA LRO LOLA 80 m polar DEM (public domain). Region outlines: USGS (CC0, doi:10.5066/P1MEQ6UK).</p>`;
+      <p class="credits">Hillshade: ${this.homeBasemap.source} (NASA, public domain). Region outlines: USGS (CC0, doi:10.5066/P1MEQ6UK). Processed by the team pipeline.</p>`;
     for (const b of this.card.querySelectorAll("button[data-id]")) {
       b.addEventListener("pointerenter", () => this.hover(b.dataset.id));
       b.addEventListener("pointerleave", () => this.hover(null));
@@ -208,13 +210,15 @@ export class MapView {
     this.svg.replaceChildren();
     this.labels.replaceChildren();
     this.svg.setAttribute("aria-label", `Map of ${r.name} with its 200 m landing site grid`);
-    const info = this.meta.regions[id], px = info.pixel_m;
-    const left = info.x0_m - px / 2, top = info.y0_m + px / 2;
-    svgEl("image", { href: `${this.base}/polar/${info.basemap}`, x: left, y: -top, width: info.width_px * px, height: info.height_px * px, preserveAspectRatio: "none", class: "map-img" }, this.svg);
+    this.teamSiteData = null;
+    const bm = await this.regionBasemap(r);
+    if (this.region !== r) return; // another region was opened meanwhile
+    const [left, bottom, right, top] = bm.extent_m, bw = right - left, bh = top - bottom;
+    svgEl("image", { href: bm.href, x: left, y: -top, width: bw, height: bh, preserveAspectRatio: "none", class: "map-img" }, this.svg);
 
     const grid = (this.grid = siteGrid(r)), e = grid.extent;
     // dim everything outside the region
-    const outer = `M${left},${-top}h${info.width_px * px}v${info.height_px * px}h${-info.width_px * px}z`;
+    const outer = `M${left},${-top}h${bw}v${bh}h${-bw}z`;
     const inner = `M${e.xmin},${-e.ymax}H${e.xmax}V${-e.ymin}H${e.xmin}z`;
     svgEl("path", { d: outer + inner, class: "mask", "fill-rule": "evenodd" }, this.svg);
     // grid lines on the 200 m cell edges
@@ -228,11 +232,12 @@ export class MapView {
 
     this.fit({ xmin: e.xmin, xmax: e.xmax, ymin: e.ymin, ymax: e.ymax }, 0.05);
     this.setCrumbs([{ text: "Lunar south pole", go: () => this.onHome() }, { text: r.name }]);
-    this.renderRegionCard(r, grid);
+    this.renderRegionCard(r, grid, bm);
     if (selectedCell) this.markCell(grid.byId(selectedCell), this.selRect);
 
     this.dem = null;
     this.demFor(id).then((dem) => { if (this.region === r) { this.dem = dem; this.renderCell(this.lastCell); } }).catch((err) => console.error(err));
+    if (r.hasSiteData) this.teamSites(id).then((t) => { if (this.region === r) { this.teamSiteData = t; this.renderCell(this.lastCell); } }).catch((err) => console.error(err));
 
     this.onMove = (ev) => {
       const [x, y] = this.toMap(ev), cell = grid.cellAt(x, y);
@@ -258,7 +263,7 @@ export class MapView {
     this.gridPath.style.opacity = cellPx < 4 ? 0 : Math.min(0.55, (cellPx - 4) / 10 + 0.15);
     this.zoomHint.hidden = cellPx >= 4;
   }
-  renderRegionCard(r, grid) {
+  renderRegionCard(r, grid, bm) {
     const [w, h] = sizeKm(r);
     this.card.innerHTML = `
       <h2>${r.name}</h2>
@@ -271,8 +276,11 @@ export class MapView {
         <dt>Elevation</dt><dd data-k="h">—</dd>
         <dt>Slope (200 m)</dt><dd data-k="s">—</dd>
       </dl>
+      <p class="team-note">${r.hasSiteData
+        ? "Team data: site heights from the pipeline's sites.json; Sun and Earth Clearance in the 3D view use the team's Horizons."
+        : "Team site data (heights, Horizons) for this region is coming soon. Heights here are from the 80 m LOLA DEM."}</p>
       <button type="button" class="back">← All regions</button>
-      <p class="credits">Hillshade and heights: NASA LRO LOLA 80 m polar DEM (public domain). Outline: USGS (CC0).</p>`;
+      <p class="credits">Hillshade: ${bm.source} (NASA, public domain), via the team pipeline. Slope: LOLA 80 m DEM. Outline: USGS (CC0).</p>`;
     this.card.querySelector(".back").addEventListener("click", () => this.onHome());
   }
   renderCell(cell) {
@@ -282,10 +290,12 @@ export class MapView {
     set("id", cell.id);
     set("lat", fmtLat(cell.lat));
     set("lon", fmtLon(cell.lon));
+    const team = this.teamSiteData && this.teamSiteData.byId.get(cell.id);
+    if (team) set("h", `${Math.round(team.terrain_height_m).toLocaleString()} m`);
     if (this.dem) {
-      set("h", `${Math.round(this.dem.at(cell.x, cell.y)).toLocaleString()} m`);
+      if (!team) set("h", `${Math.round(this.dem.at(cell.x, cell.y)).toLocaleString()} m`);
       set("s", `${this.dem.slope(cell.x, cell.y).toFixed(1)}°`);
-    } else { set("h", "loading…"); set("s", "loading…"); }
+    } else { if (!team) set("h", "loading…"); set("s", "loading…"); }
   }
 
   setCrumbs(items) {

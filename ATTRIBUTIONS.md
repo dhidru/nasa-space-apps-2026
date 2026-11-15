@@ -102,6 +102,22 @@ Each dataset below also has a conventions card in
   - Acton, C., Bachman, N., Semenov, B., Wright, E. (2017). A look toward the future in the handling of space science mission geometry. *Planetary and Space Science*. https://doi.org/10.1016/j.pss.2017.02.013 (as listed on https://naif.jpl.nasa.gov/naif/credit.html)
   - Park, R.S., Folkner, W.M., Williams, J.G., Boggs, D.H. (2021). The JPL Planetary and Lunar Ephemerides DE440 and DE441. *The Astronomical Journal*, 161(3), 105. https://doi.org/10.3847/1538-3881/abd414
 
+### NASA SVS CGI Moon Kit (global LOLA elevation map only)
+- **Type:** Data
+- **Used for:** The coarse global elevation tiles and shadow grid the viewer uses for its 3D terrain beyond the
+  80 m region DEMs and for the far-horizon ray march (`web/scripts/prepare-data.mjs` → `web/public/tiles`, built at
+  deploy time, not committed). File: `ldem_16.tif` (66 MB). We do **not** use the kit's colour map by default
+  (see Requirements).
+- **Source:** https://svs.gsfc.nasa.gov/4720
+- **Accessed:** 2026-11-14
+- **License / permission:** Public domain. The SVS help page (https://svs.gsfc.nasa.gov/help/) says "All of our
+  content is in the public domain (unless otherwise noted)". The CGI Moon Kit page notes no exception.
+- **Requirements:** The page asks: "Please give credit for this item to: NASA's Scientific Visualization Studio".
+  The kit's colour map is adapted from the LROC WAC mosaic (Arizona State University) and its license isn't stated,
+  so the viewer doesn't download or ship it (`prepare-data --with-color` builds it locally only).
+- **Status:** ✅ elevation map (checked by Claude Code, 2026-11-14) · ⚠️ colour map: not used
+- **Citation:** NASA's Scientific Visualization Studio (2019). *CGI Moon Kit* (ID 4720). Visualizer: Ernie Wright; scientist: Noah Petro. https://svs.gsfc.nasa.gov/4720
+
 > NASA data is generally free to use, but check each dataset's own page. Some
 > NASA-hosted data comes from partners (ESA, JAXA, commercial providers) under
 > different terms. See [NASA Images and Media Usage Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/)
@@ -190,6 +206,22 @@ Each dataset below also has a conventions card in
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** Krekel, H. et al. *pytest* [Software, MIT License]. https://github.com/pytest-dev/pytest
 
+### Lunar Site Viewer front end (`web/`), with three.js and Astronomy Engine
+- **Type:** Code/Library
+- **Used for:** The web front end in `web/` (Vite + three.js + Astronomy Engine), built on the team's
+  `data/processed/site-data` and deployed to GitHub Pages by `.github/workflows/pages.yml`. The viewer code was
+  written by a team member with Claude, started from a Claude design chat; it is MIT-licensed (`web/LICENSE`),
+  which is compatible with our Apache 2.0.
+- **Source:** three.js https://github.com/mrdoob/three.js (npm `three@0.160.0`); Astronomy Engine
+  https://github.com/cosinekitty/astronomy (npm `astronomy-engine@2.1.19`). Build-time only: Vite `5.4.11`,
+  geotiff `2.1.3`, pngjs `7.0.0`.
+- **Accessed:** 2026-11-14
+- **License / permission:** All MIT, from each installed package's `package.json`. `npm run licenses` in `web/`
+  lists the shipped tree (3 packages, all MIT).
+- **Requirements:** Keep the MIT notices; the build keeps legal comments. Credits are in `web/THIRD_PARTY_NOTICES.md`.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** three.js authors. *three.js* [Software, MIT]. https://threejs.org/ · Cross, D. *Astronomy Engine* [Software, MIT]. https://github.com/cosinekitty/astronomy
+
 ## Tools
 
 ### Git
@@ -234,6 +266,18 @@ Each dataset below also has a conventions card in
 - **Requirements:** None for the project's content. We keep ownership of our code.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** GitHub, Inc. https://github.com
+
+### GitHub Pages and GitHub Actions
+- **Type:** Tool
+- **Used for:** Building and hosting the static front end (`.github/workflows/pages.yml`, using the official
+  `actions/checkout`, `actions/setup-node`, `actions/cache`, `actions/upload-pages-artifact` and
+  `actions/deploy-pages`, all MIT). Being tested as a replacement for the viewer's earlier Vercel deployment.
+- **Source:** https://docs.github.com/en/pages
+- **Accessed:** 2026-11-14
+- **License / permission:** [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service)
+- **Requirements:** Pages sites on this plan are public.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** GitHub, Inc. *GitHub Pages*. https://pages.github.com/
 
 ### Matt Pocock's agent skills (`mattpocock-skills`)
 - **Type:** Tool (Claude Code agent skills: Markdown instructions plus a few shell templates)
@@ -283,6 +327,7 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Un-ignored and committed the real pipeline output (`data/processed/site-data/`, ~11 MB) so the design side can use it, and noted it in the README | `.gitignore`, `README.md`, `data/processed/site-data/` |
 | 2026-11-14 | Claude Code | Wrote the Clearance, metrics, ranking (2 km top 10) and Landing Windows code test-first, the results writer, and a real-data cross-check; built and validated the Mons Mouton results for 2027-03-01T00:00Z | `src/pipeline/clearance.py`, `src/pipeline/scoring.py`, `src/pipeline/results.py`, `tests/`, `data/processed/site-data/regions/mons-mouton/results/`, `README.md` |
 | 2026-11-14 | Claude Code | Weighed static site vs. server using measured data sizes and wrote ADR 0001 (static site, clearance in the browser); updated the design doc and data contract to match | `docs/adr/`, `docs/design.md`, `docs/data-contract.md` |
+| 2026-11-14 | Claude Code | Moved the Lunar Site Viewer (started from a Claude design chat, first hosted on Vercel) into `web/`; switched it to the team's site-data (regions, outlines, hillshades, `sites.json` heights, Horizons for Clearance, SPICE positions); fixed the overlapping-region lookup; made the unlicensed CGI Moon Kit colour map opt-in; added the GitHub Pages workflow; checked the viewer's Clearance against the pipeline's golden site detail | `web/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 
 ## Media (images, icons, fonts, video, audio)
 

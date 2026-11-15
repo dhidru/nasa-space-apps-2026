@@ -3,11 +3,11 @@
 // 200 m site heights and the 20 m LOLA hillshade (dhidru/nasa-space-apps-2026, data/processed/site-data).
 import { PatchView, gridSampler, sunVector } from "../src/patchview.js";
 import { siteGrid } from "../src/polar.js";
-import { ARTEMIS_REGIONS } from "../src/regions.js";
 import { ephemeris, enu, horizontal } from "../src/ephemeris.js";
 
 const P = window.PREVIEW;
-const region = ARTEMIS_REGIONS.find((r) => r.id === "mons-mouton");
+// Mons Mouton outline corners, from data/processed/site-data/regions/mons-mouton/outline.geojson.
+const region = { id: "mons-mouton", xy: [[65000, 126000], [81000, 126000], [81000, 110000], [65000, 110000]] };
 const grid = siteGrid(region);
 const sample = gridSampler(P.heights);
 const $ = (id) => document.getElementById(id);

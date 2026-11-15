@@ -23,10 +23,10 @@ Run `npm run licenses` to print the current list.
 
 | Data | Source | Status |
 |---|---|---|
-| Lunar elevation (`public/tiles/terrain`, `public/tiles/shadow-grid.png`) | NASA LRO Lunar Orbiter Laser Altimeter (LOLA), via the NASA Scientific Visualization Studio CGI Moon Kit (SVS #4720) | Public domain (US Government work). Credit: NASA's Goddard Space Flight Center. |
-| South polar hillshade and region DEMs (`public/tiles/polar`) | NASA LRO LOLA LDEM_80S_80M (PDS LRO-L-LOLA-4-GDR) | Public domain. |
-| Artemis III region outlines (`src/regions.js`) | USGS, doi:10.5066/P1MEQ6UK | CC0. |
-| 200 m site grid convention; preview heights and 20 m hillshade (`preview/`) | dhidru/nasa-space-apps-2026 (team repository); LOLA LDEM_80S_20M | Apache-2.0 (code/design); NASA data public domain. |
+| Lunar elevation (`public/tiles/terrain`, `public/tiles/shadow-grid.png`) | NASA LRO Lunar Orbiter Laser Altimeter (LOLA), via the NASA Scientific Visualization Studio CGI Moon Kit (SVS #4720) | Public domain (SVS: "All of our content is in the public domain (unless otherwise noted)"). Credit: NASA's Scientific Visualization Studio. |
+| Region DEMs (`public/tiles/polar`) | NASA LRO LOLA LDEM_80S_80M (PDS LRO-L-LOLA-4-GDR) | Public domain. |
+| Regions, outlines, hillshades, site grid and heights, Horizons, Sun/Earth positions (`public/site-data`, copied from `data/processed/site-data`) | This repository's pipeline, from USGS outlines (CC0, doi:10.5066/P1MEQ6UK), LOLA LDEM_80S_20M/80M (public domain) and NAIF SPICE kernels (public domain) | See the repository's `ATTRIBUTIONS.md`. |
+| CGI Moon Kit colour map (only with `prepare-data --with-color`, not shipped) | LROC WAC mosaic, Arizona State University, via SVS #4720 | ⚠️ License for the ASU-derived map not stated; not used. |
 
 ## Fonts
 

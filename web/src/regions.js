@@ -1,23 +1,10 @@
 // SPDX-License-Identifier: MIT
-// NASA's nine Artemis III candidate landing regions (NASA release 24-136, 2024-10-28).
-// Outlines: USGS Artemis III region outlines (CC0, DOI 10.5066/P1MEQ6UK), as processed by the team's pipeline
-// (dhidru/nasa-space-apps-2026, data/processed/site-data). Corners are in the south polar stereographic map
-// (1,737,400 m sphere, true scale at the pole), where each region's edges are straight lines.
-// Centers are the outline centroids.
+// Region helpers. The nine Artemis III regions themselves (NASA release 24-136, 2024-10-28; USGS outlines,
+// CC0, DOI 10.5066/P1MEQ6UK) come from the team pipeline's regions.json at run time: see src/teamdata.js.
+// Outline corners are in the south polar stereographic map (1,737,400 m sphere, true scale at the pole),
+// where each region's edges are straight lines.
 
 const R = 1737400;
-
-export const ARTEMIS_REGIONS = [
-  { id: "peak-near-cabeus-b", name: "Peak near Cabeus B", lat: -83.63746, lon: -68.74949, xy: [[-189997.5, 79997.5], [-170002.5, 79997.5], [-170002.5, 60002.5], [-189997.5, 60002.5]] },
-  { id: "haworth", name: "Haworth", lat: -86.76394, lon: -22.77702, xy: [[-52900, 105400], [-23100, 105400], [-23100, 75600], [-52900, 75600]] },
-  { id: "malapert-massif", name: "Malapert Massif", lat: -85.99478, lon: -0.23578, xy: [[-11000, 132000], [10000, 132000], [10000, 111000], [-11000, 111000]] },
-  { id: "mons-mouton-plateau", name: "Mons Mouton Plateau", lat: -84.3347, lon: 30.59227, xy: [[49052.5, 176947.5], [125947.5, 176947.5], [125947.5, 119052.5], [49052.5, 119052.5]] },
-  { id: "mons-mouton", name: "Mons Mouton", lat: -85.42658, lon: 31.74276, xy: [[65000, 126000], [81000, 126000], [81000, 110000], [65000, 110000]] },
-  { id: "nobile-rim-1", name: "Nobile Rim 1", lat: -85.4364, lon: 37.34704, xy: [[73993.7, 120069.9], [93993.7, 120069.9], [93993.7, 100069.9], [73993.7, 100069.9]] },
-  { id: "nobile-rim-2", name: "Nobile Rim 2", lat: -83.95405, lon: 58.82155, xy: [[146998.3, 105000.9], [166998.3, 105000.9], [166998.3, 85000.9], [146998.3, 85000.9]] },
-  { id: "de-gerlache-rim-2", name: "de Gerlache Rim 2", lat: -88.22998, lon: -64.62844, xy: [[-58500, 33000], [-38500, 33000], [-38500, 13000], [-58500, 13000]] },
-  { id: "slater-plain", name: "Slater Plain", lat: -87.16371, lon: 125.53768, xy: [[60002.5, -40002.5], [79997.5, -40002.5], [79997.5, -59997.5], [60002.5, -59997.5]] },
-];
 
 /** Polar stereographic metres -> [lat, lon] in degrees. */
 export function xyToLatLon(x, y) {

@@ -3,19 +3,22 @@
 //   (empty)                 2D map of the south pole with the nine Artemis III regions
 //   #<region>               2D map of one region with its 200 m landing-site grid
 //   #<region>/<site>        3D topography of one grid site, with the Sun/Earth dashboard
+// Regions, hillshades, site heights, Horizons and Sun/Earth positions come from the team pipeline's site-data
+// (src/teamdata.js); the 3D terrain still comes from NASA tiles built by scripts/prepare-data.mjs.
 import "./style.css";
 import "./map.css";
-import { D, ephemeris, latlon, enu, horizontal, phaseName } from "./ephemeris.js";
+import { D, ephemeris, latlon, enu, horizontal, phaseName, fromSite, useTeamPositions } from "./ephemeris.js";
 import { MoonData } from "./data.js";
-import { SYNODIC_DAYS, sampleEphemeris, siteSeries, summarize, slopeDeg, visibility } from "./metrics.js";
-import { DEFAULT_SITES, loadSaved, saveSaved } from "./sites.js";
+import { SYNODIC_DAYS, sampleEphemeris, siteSeries, summarize, slopeDeg, visibility, discAbove } from "./metrics.js";
+import { regionSites, loadSaved, saveSaved } from "./sites.js";
+import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadSites, loadHorizons, loadPositions } from "./teamdata.js";
 import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView } from "./mapview.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
 
 
-const BASE = "/tiles";
+const BASE = `${import.meta.env.BASE_URL}tiles`;
 const START_DATE = "2026-11-18T12:00:00Z";
 const SITE_STEP_H = 2;     // sampling for the region table
 const CHART_STEP_H = 1;    // sampling for the timeline
@@ -49,8 +52,26 @@ let siteRows = [];
 let sort = { key: null, dir: -1 };
 let chartSeries = [];
 
-const allSites = () => [...DEFAULT_SITES, ...saved];
-const regionById = (id) => DEFAULT_SITES.find((r) => r.id === id);
+let REGIONS = [];                  // the nine regions from the team's regions.json
+const allSites = () => [...REGIONS, ...saved];
+const regionById = (id) => REGIONS.find((r) => r.id === id);
+
+/* ---------- team site data (sites.json + Horizons) for regions that have it ---------- */
+const teamCache = new Map();       // "sites:<id>" | "hz:<id>" -> Promise
+function cached(key, make) {
+  if (!teamCache.has(key)) { const p = make(); p.catch(() => teamCache.delete(key)); teamCache.set(key, p); }
+  return teamCache.get(key);
+}
+const teamSitesFor = (id) => cached(`sites:${id}`, () => loadSites(id));
+const horizonsFor = (id) => cached(`hz:${id}`, () => loadHorizons(id));
+/** { h, at(az) } for one site from the team data, or null when the region has none. */
+async function teamFor(region, cell) {
+  if (!region.hasSiteData) return null;
+  const [sites, hz] = await Promise.all([teamSitesFor(region.id), horizonsFor(region.id)]);
+  const s = sites.byId.get(cell.id);
+  if (!s) return null;
+  return { h: s.terrain_height_m, at: (az) => hz.horizonAt(s.index, az) };
+}
 const siteAt = (lat, lon) => allSites().find((s) => Math.abs(s.lat - lat) < 0.006 && Math.abs(wrapLon(s.lon - lon)) < 0.006);
 
 /* ---------- region terrain (80 m DEM) ---------- */
@@ -67,7 +88,10 @@ function demFor(id) {
 /** The Artemis region and grid site containing a coordinate, or null. */
 function cellFor(lat, lon) {
   const [x, y] = llToXY(lat, lon);
-  for (const r of DEFAULT_SITES) { const cell = siteGrid(r).cellAt(x, y); if (cell) return { region: r, cell }; }
+  // Regions overlap (Mons Mouton lies inside Mons Mouton Plateau): prefer the open region, then the smallest.
+  const area = (r) => r.size[0] * r.size[1];
+  const order = [...REGIONS].sort((a, b) => (site && b.id === site.region.id) - (site && a.id === site.region.id) || area(a) - area(b));
+  for (const r of order) { const cell = siteGrid(r).cellAt(x, y); if (cell) return { region: r, cell }; }
   return null;
 }
 
@@ -95,9 +119,10 @@ async function showSite(region, cell) {
   el.mapview.hidden = true;
   el.app.hidden = false;
   renderCrumbs();
-  if (!sameRegion) { el.loading.hidden = false; el.loading.textContent = "Loading terrain…"; }
-  const dem = await demFor(region.id);
+  if (!sameRegion) { el.loading.hidden = false; el.loading.textContent = region.hasSiteData ? "Loading terrain and team Horizons…" : "Loading terrain…"; }
+  const [dem, team] = await Promise.all([demFor(region.id), teamFor(region, cell).catch((e) => { console.error(e); return null; })]);
   if (site.cell !== cell) return; // another site was opened meanwhile
+  site.team = team;
   ensureView();
   el.loading.hidden = true;
   setInputs(cell.lat, cell.lon, state ? null : new Date(START_DATE));
@@ -136,8 +161,10 @@ function setInputs(lat, lon, date) {
 
 /* ---------- readout ---------- */
 function renderReadout(s) {
-  const f = enu(s.lat, s.lon);
-  const sunH = horizontal(s.eph.sun, f), earthH = horizontal(s.eph.earth, f);
+  const f = enu(s.lat, s.lon), dir = fromSite(s.eph, s.lat, s.lon, s.h);
+  const sunH = horizontal(dir.sun, f), earthH = horizontal(dir.earth, f);
+  const team = site && site.team;
+  const clr = (h) => { if (!team) return ""; const c = h.el - team.at(h.az); return ` · clearance ${c >= 0 ? "+" : ""}${c.toFixed(2)}°`; };
   const sub = latlon(s.eph.sun);
   const lst = (((12 + wrapLon(s.lon - sub[1]) / 15) % 24) + 24) % 24;
   const hh = Math.floor(lst), mm = Math.floor((lst - hh) * 60);
@@ -145,11 +172,11 @@ function renderReadout(s) {
   el.chip.className = "chip" + (night ? " night" : low ? " dusk" : "");
   el.chip.textContent = night ? "Lunar night" : low ? (lst < 12 ? "Low sun · rising" : "Low sun · setting") : "Daylight";
   el.when.textContent = fmtUTC(s.date);
-  el.oSunEl.innerHTML = `<b>${sunH.el.toFixed(2)}°</b>`;
+  el.oSunEl.innerHTML = `<b>${sunH.el.toFixed(2)}°</b>${clr(sunH)}`;
   el.oSunAz.textContent = `${sunH.az.toFixed(1)}° ${compass16(sunH.az)}`;
   el.oLst.textContent = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
   el.oSub.textContent = `${fmtLat(sub[0])}, ${fmtLon(sub[1])}`;
-  el.oEarth.textContent = earthH.el > -1 ? `el ${earthH.el.toFixed(1)}°, az ${earthH.az.toFixed(0)}°` : "Below horizon";
+  el.oEarth.textContent = earthH.el > -1 ? `el ${earthH.el.toFixed(1)}°, az ${earthH.az.toFixed(0)}°${clr(earthH)}` : "Below horizon";
   el.oPhase.textContent = `${phaseName(s.eph.phaseAngle)} · ${(s.eph.illum * 100).toFixed(0)}%`;
   const place = (g, h) => {
     const r = 40 * (1 - Math.max(0, h.el) / 90);
@@ -195,9 +222,9 @@ async function apply() {
   const { date, errs } = readInputs();
   if (errs.length) { el.hint.textContent = errs.join(" "); return; }
   if (!view || !site || !curDem) return;
-  const { cell } = site, dem = curDem;
+  const { cell, team } = site, dem = curDem;
   const eph = ephemeris(date);
-  const h = dem.at(cell.x, cell.y);
+  const h = team ? team.h : dem.at(cell.x, cell.y);
   const windowChanged = !state || state.date.getTime() !== date.getTime();
   state = { lat: cell.lat, lon: cell.lon, date, eph, h };
   const sunH = renderReadout(state);
@@ -210,16 +237,19 @@ async function apply() {
   await dataReady;
   if (state !== now) return;
   // Terrain beyond the slice can still hide the Sun: check the far horizon over the global terrain.
-  view.setSun(sun, visibility(data, cell.lat * D, cell.lon * D, eph.sun, 0.267 * D));
+  // With team Horizons, the Sun's disc is tested against the site's Horizon (the pipeline's Clearance).
+  view.setSun(sun, team ? discAbove(sunH.el, team.at(sunH.az), 0.267)
+    : visibility(data, cell.lat * D, cell.lon * D, fromSite(eph, cell.lat, cell.lon, h).sun, 0.267 * D));
   setTimeout(() => { updateTimeline(); if (windowChanged) updateSites(); else markActive(); }, 30);
 }
 
 /* ---------- timeline ---------- */
 function updateTimeline() {
   if (!state) return;
-  el.tlSite.textContent = site ? `${site.region.name} · ${site.cell.id}` : `${fmtLat(state.lat)}, ${fmtLon(state.lon)}`;
+  el.tlSite.textContent = (site ? `${site.region.name} · ${site.cell.id}` : `${fmtLat(state.lat)}, ${fmtLon(state.lon)}`)
+    + (site && site.team ? " · team Horizon" : "");
   const samples = sampleEphemeris(state.date, SYNODIC_DAYS, CHART_STEP_H);
-  chartSeries = siteSeries(data, state.lat, state.lon, samples);
+  chartSeries = siteSeries(data, state.lat, state.lon, samples, site && site.team);
   renderChart();
 }
 function renderChart() {
@@ -323,9 +353,13 @@ el.sitesTable.querySelector("thead").addEventListener("click", (e) => {
 async function boot() {
   const res = await fetch(`${BASE}/polar/meta.json`);
   if (!res.ok) throw new Error(`Missing ${BASE}/polar/meta.json. Run "npm run data" to build the NASA maps.`);
-  polarMeta = await res.json();
+  const [meta, regions, homeBasemap] = await Promise.all([res.json(), loadRegions(), loadHomeBasemap()]);
+  polarMeta = meta;
+  REGIONS = regionSites(regions);
+  // Team SPICE positions (2026-2027) replace Astronomy Engine's Sun/Earth vectors once they arrive.
+  loadPositions().then((p) => { useTeamPositions(p); if (site && !el.app.hidden) apply(); }).catch((e) => console.error(e));
   mapView = new MapView(el.mapview, {
-    base: BASE, meta: polarMeta, regions: DEFAULT_SITES,
+    homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
     onRegion: (id) => go(`#${id}`),
     onSite: (rid, cid) => go(`#${rid}/${cid}`),
     onHome: () => go("#"),

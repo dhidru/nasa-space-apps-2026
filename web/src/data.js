@@ -45,7 +45,7 @@ export class MoonData {
     this.meta = meta;
     this.S = meta.terrain.size;
     this.terrainMax = meta.terrain.maxLevel;
-    this.colorMax = meta.color.maxLevel;
+    this.colorMax = meta.color ? meta.color.maxLevel : -1; // colour tiles are optional (prepare-data --with-color)
     this.terrainCache = new LRU(1500);
     this.dems = []; // 80 m region DEMs (src/polar.js), blended over the coarse global terrain
     this.colorCache = new LRU(400);

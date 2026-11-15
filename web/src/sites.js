@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-// Built-in sites: NASA's nine Artemis III candidate regions. Plus spots the viewer saves in this browser.
+// Built-in sites: NASA's nine Artemis III candidate regions (from the team's regions.json). Plus spots the viewer
+// saves in this browser.
 
-import { ARTEMIS_REGIONS, sizeKm } from "./regions.js";
+import { sizeKm } from "./regions.js";
 
-export const DEFAULT_SITES = ARTEMIS_REGIONS.map((r) => ({ ...r, size: sizeKm(r), region: true }));
+export const regionSites = (regions) => regions.map((r) => ({ ...r, size: sizeKm(r), region: true }));
 
 const KEY = "lunar-site-viewer.saved-sites";
 

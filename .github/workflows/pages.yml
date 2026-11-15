@@ -1,0 +1,57 @@
+# Builds the Lunar Site Viewer (web/) with the team's site-data and publishes it to GitHub Pages.
+# One-time setup by a repo admin: Settings -> Pages -> Source: "GitHub Actions".
+# GitHub Pages sites on this plan are public.
+name: Deploy viewer to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", "data/processed/site-data/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      # NASA source files (~120 MB) and the tiles cut from them; rebuilt only when the data script changes.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            web/data-raw
+            web/public/tiles
+          key: nasa-tiles-${{ hashFiles('web/scripts/prepare-data.mjs', 'data/processed/site-data/regions.json') }}
+      - run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

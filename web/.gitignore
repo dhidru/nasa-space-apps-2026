@@ -5,3 +5,4 @@ public/tiles/
 preview/heights.json
 .vercel/
 .DS_Store
+public/site-data/

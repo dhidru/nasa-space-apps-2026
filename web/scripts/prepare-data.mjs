@@ -3,7 +3,8 @@
 // Downloads NASA's public-domain Moon maps (CGI Moon Kit, SVS #4720) and cuts them
 // into the tiles the viewer loads from /tiles:
 //
-//   tiles/color/{z}/{x}/{y}.png    LROC WAC colour mosaic, 256 px tiles, levels 0..COLOR_LEVELS
+//   tiles/color/{z}/{x}/{y}.png    LROC WAC colour mosaic, 256 px tiles (only with --with-color: the viewer does
+//                                  not draw it, and the CGI Moon Kit doesn't state a license for this ASU-derived map)
 //   tiles/terrain/{z}/{x}/{y}.png  LOLA elevation, 65 x 65 samples per tile, levels 0..TERRAIN_LEVELS
 //   tiles/shadow-grid.png          2048 x 1024 global elevation grid used for cast shadows
 //   tiles/meta.json                levels, encodings and data credits
@@ -29,10 +30,15 @@ import { fileURLToPath } from "node:url";
 import { fromFile } from "geotiff";
 import { PNG } from "pngjs";
 import { readFileSync } from "node:fs";
-import { ARTEMIS_REGIONS } from "../src/regions.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const RAW = join(root, "data-raw");
+// Region outlines come from the team pipeline's output (data/processed/site-data, docs/data-contract.md §5).
+const SITE_DATA = join(root, "..", "data", "processed", "site-data");
+const ARTEMIS_REGIONS = JSON.parse(readFileSync(join(SITE_DATA, "regions.json"), "utf8")).regions.map((r) => ({
+  id: r.id,
+  xy: JSON.parse(readFileSync(join(SITE_DATA, r.outline), "utf8")).features[0].geometry.coordinates[0],
+}));
 const OUT = join(root, "public", "tiles");
 
 const SVS = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720";
@@ -321,20 +327,20 @@ mkdirSync(OUT, { recursive: true });
 await buildPolar();
 if (onlyPolar) { log("done (polar maps only) -> public/tiles/polar"); process.exit(0); }
 const demFile = await obtain(process.env.DEM_FILE, DEM_URL);
-const colorFile = await obtain(process.env.COLOR_FILE, COLOR_URL);
+const withColor = process.argv.includes("--with-color") || !!process.env.COLOR_FILE;
 await buildTerrain(demFile);
-const colorMean = await buildColor(colorFile);
+const colorMean = withColor ? await buildColor(await obtain(process.env.COLOR_FILE, COLOR_URL)) : null;
 
 writeFileSync(join(OUT, "meta.json"), JSON.stringify({
   version: 1,
   generated: new Date().toISOString(),
   terrain: { maxLevel: TERRAIN_LEVELS, size: TERRAIN_SIZE, encoding: "rg16", offset: OFFSET, units: "m", reference: "sphere r=1737.4 km" },
-  color: { maxLevel: COLOR_LEVELS, tileSize: COLOR_TILE, mode: COLOR_MODE, mean: Number(colorMean.toFixed(2)) },
+  color: withColor ? { maxLevel: COLOR_LEVELS, tileSize: COLOR_TILE, mode: COLOR_MODE, mean: Number(colorMean.toFixed(2)) } : null,
   shadowGrid: { file: "shadow-grid.png", width: SHADOW_W, height: SHADOW_H, encoding: "rg16", offset: OFFSET },
   credits: [
-    "Elevation: NASA LRO Lunar Orbiter Laser Altimeter (LOLA), via NASA SVS CGI Moon Kit. Public domain.",
-    "Colour: NASA LRO Camera Wide Angle Camera (LROC WAC) mosaic, Arizona State University, via NASA SVS CGI Moon Kit. Public domain.",
+    "Elevation: NASA LRO Lunar Orbiter Laser Altimeter (LOLA), via NASA's Scientific Visualization Studio CGI Moon Kit (SVS #4720). Public domain.",
+    ...(withColor ? ["Colour: LROC WAC mosaic (Arizona State University), via NASA SVS CGI Moon Kit."] : []),
   ],
-  sources: { dem: process.env.DEM_FILE || DEM_URL, color: process.env.COLOR_FILE || COLOR_URL },
+  sources: { dem: process.env.DEM_FILE || DEM_URL, ...(withColor ? { color: process.env.COLOR_FILE || COLOR_URL } : {}) },
 }, null, 2));
 log("done -> public/tiles");

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Site metrics over a window of time: terrain-aware Sun and Earth visibility, darkness spells and slope.
-import { D, ephemeris } from "./ephemeris.js";
+import { D, ephemeris, enu, fromSite, horizontal } from "./ephemeris.js";
 
 export const SYNODIC_DAYS = 29.530589;
 const R_MOON = 1737400;
@@ -16,7 +16,7 @@ export function sampleEphemeris(center, days = SYNODIC_DAYS, stepHours = 2) {
   for (let i = 0; i < n; i++) {
     const t = new Date(t0 + i * stepHours * 3600000);
     const e = ephemeris(t);
-    out.push({ t, sun: e.sun, earth: e.earth });
+    out.push({ t, sun: e.sun, earth: e.earth, sunKm: e.sunKm, earthKm: e.earthKm });
   }
   return out;
 }
@@ -52,18 +52,32 @@ export function visibility(data, lat, lon, dir, half) {
   return clamp01(v);
 }
 
-/** Per-sample elevations (degrees above a flat horizon) and terrain-aware visibility for one site. */
-export function siteSeries(data, latDeg, lonDeg, samples) {
-  const lat = latDeg * D, lon = lonDeg * D;
-  const up = [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
-  const elev = (v) => Math.asin(Math.max(-1, Math.min(1, v[0] * up[0] + v[1] * up[1] + v[2] * up[2]))) / D;
-  return samples.map((s) => ({
-    t: s.t,
-    sunEl: elev(s.sun),
-    earthEl: elev(s.earth),
-    sunVis: visibility(data, lat, lon, s.sun, SUN_HALF),
-    earthVis: visibility(data, lat, lon, s.earth, EARTH_HALF),
-  }));
+/** Fraction (0..1) of a disc of angular radius `halfDeg` at elevation `elDeg` above a Horizon at `hzDeg`. */
+export const discAbove = (elDeg, hzDeg, halfDeg) => clamp01(0.5 + (elDeg - hzDeg) / (2 * halfDeg));
+
+/**
+ * Per-sample elevations (degrees above a flat horizon) and terrain-aware visibility for one site.
+ * With `hz` = { at(azDeg) -> Horizon Elevation (deg), h: site height (m) } from the team's Horizons, visibility
+ * is tested against that Horizon (as the pipeline's Clearance does); otherwise it is ray-marched over the
+ * global terrain. Clearance (deg) is returned when `hz` is given.
+ */
+export function siteSeries(data, latDeg, lonDeg, samples, hz = null) {
+  const lat = latDeg * D, lon = lonDeg * D, f = enu(latDeg, lonDeg);
+  return samples.map((s) => {
+    const dir = fromSite(s, latDeg, lonDeg, hz ? hz.h : 0);
+    const sun = horizontal(dir.sun, f), earth = horizontal(dir.earth, f);
+    const p = { t: s.t, sunEl: sun.el, earthEl: earth.el };
+    if (hz) {
+      p.sunClear = sun.el - hz.at(sun.az);
+      p.earthClear = earth.el - hz.at(earth.az);
+      p.sunVis = discAbove(p.sunClear, 0, SUN_HALF / D);
+      p.earthVis = discAbove(p.earthClear, 0, EARTH_HALF / D);
+    } else {
+      p.sunVis = visibility(data, lat, lon, dir.sun, SUN_HALF);
+      p.earthVis = visibility(data, lat, lon, dir.earth, EARTH_HALF);
+    }
+    return p;
+  });
 }
 
 /** Percent of time in sunlight / with Earth in view, and the longest continuous darkness (hours). */
