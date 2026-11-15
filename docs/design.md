@@ -322,7 +322,6 @@ the design work doesn't wait on the pipeline.
   top-10 lists show it.
 - Distance to the nearest permanently shadowed region (PGDA LPSR shapefile), as
   a proxy for ice.
-- Roughness filter or column (LOLA roughness, LDRM).
 - Fraction of the Sun's disk that is visible, instead of center only.
 - A "prioritize Sun / prioritize Earth" ranking toggle.
 - Check every point in the 100 m circle, not just the center (the lander can
@@ -340,6 +339,12 @@ Not planned for this challenge. We may add these afterwards.
 - **User-set Observer Height.** The Horizons are computed once for the 2 m
   Observer Height (data-contract §6.1), so any other height means computing
   them again in the pipeline.
+- **Surface roughness and hazards.** The hazards that matter to a lander are
+  meter-scale: boulders, small craters and holes. Our 20 m DEM can't see them,
+  so a roughness value from it would only repeat what the 100 m Landing Slope
+  already shows, and our sources give no Artemis roughness limit to check it
+  against. Assessing hazards needs higher-resolution data, such as LROC NAC
+  images or meter-scale DEMs, and a published limit for the Artemis landers.
 
 ## 14. Rules that apply
 
