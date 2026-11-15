@@ -427,6 +427,7 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Cut the 3D slice to the region outline, reduced the slope classes to <5°, 5–10° and >10°, and added a 0°-Earth-up orientation window to the 3D view | `web/index.html`, `web/src/ui/patchview.js`, `web/src/ui/inset.js`, `web/src/ui/main.js`, `web/src/ui/style.css` |
 | 2026-11-15 | Claude Code | Turned off panning in the 3D view (scroll zooms only) and coloured the orientation window by slope class | `web/index.html`, `web/src/ui/patchview.js`, `web/src/ui/inset.js`, `web/src/ui/main.js`, `web/src/ui/style.css` |
 | 2026-11-15 | Claude Code | Site view: green Full Coverage runs on the Landing Windows strip are clickable; Top 10 moved into a 3D-view menu next to "Slice around the site"; Max slope moved to the left pane; Date field gets an always-open calendar (shared with the region map, new calendar.js) and a grey yyyy-mm-dd mask while typing | `web/index.html`, `web/src/ui/main.js`, `web/src/ui/calendar.js`, `web/src/ui/mapview.js`, `web/src/ui/stayview.js`, `web/src/ui/style.css` |
+| 2026-11-15 | Claude Code | Fixed the Shading and Slice menus closing on the click that follows the hover that opened them | `web/src/ui/viewmenu.js` |
 
 ## Media (images, icons, fonts, video, audio)
 
