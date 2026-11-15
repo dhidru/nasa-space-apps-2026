@@ -320,18 +320,28 @@ the design work doesn't wait on the pipeline.
   Coverage (landing-criteria.md §2).~~ Done: `pipeline.robustness` stores it in
   `sites.json` (data-contract §5.3); the map readout, the site overview and both
   top-10 lists show it.
-- Surface Stay length as a setting (NASA gives 5.75–6.5 days).
 - Distance to the nearest permanently shadowed region (PGDA LPSR shapefile), as
   a proxy for ice.
 - Roughness filter or column (LOLA roughness, LDRM).
 - Fraction of the Sun's disk that is visible, instead of center only.
-- User-set Observer Height.
 - A "prioritize Sun / prioritize Earth" ranking toggle.
 - Check every point in the 100 m circle, not just the center (the lander can
   touch down anywhere within 100 m of the target). Landing Slope already does
   this; Clearance is still judged at the center only.
 
-## 13. Rules that apply
+## 13. Future development
+
+Not planned for this challenge. We may add these afterwards.
+
+- **Surface Stay length as a setting.** We use a fixed 7-day stay because it
+  covers every Artemis surface stay NASA gives (5.75–6.5 days,
+  landing-criteria.md §2 #7). A site with Full Coverage for 7 days also has it
+  for any shorter stay that starts at the same Landing Time.
+- **User-set Observer Height.** The Horizons are computed once for the 2 m
+  Observer Height (data-contract §6.1), so any other height means computing
+  them again in the pipeline.
+
+## 14. Rules that apply
 
 - Before using any dataset, library or tool: verify its license and add an entry
   to ATTRIBUTIONS.md (see CLAUDE.md).
