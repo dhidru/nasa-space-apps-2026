@@ -410,10 +410,41 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Follow-ups from the Timing Robustness review: one shared top-10 list builder for the map card and the 3D view (`web/src/ui/toplist.js`), with escaped text and a column header (Site, Coverage over the stay, Worst, Year) on fixed-width columns; confirmed the MIT headers in `web/src/ui` are required by that code's license | `web/src/ui/toplist.js`, `web/src/ui/main.js`, `web/src/ui/mapview.js`, `web/src/ui/style.css`, `web/src/ui/map.css`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | Added the landing slope stretch goal: compared NASA's LOLA slope map (LDSM_85S_40M) with slopes from our 20 m DEM for the team's choice of source; a new `pipeline.slope` step stores each site's Landing Slope (steepest 100 m-scale slope in its circle) in `sites.json` (contract, schema, mock generator, glossary, ADR note), a slow test checks it against LDSM, and the web app shows it and can limit the top 10 to sites under 10° or 8°; tests in Python and TypeScript, two-axis code review | `src/pipeline/`, `tests/`, `contract/`, `data/processed/site-data/regions/*/sites.json`, `web/`, `docs/`, `GLOSSARY.md`, `README.md`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | Ranked the remaining stretch goals by ease and importance; at the team's request, moved the Surface Stay length setting and the user-set Observer Height out of the stretch goals into a new Future development section, and marked the variable stay length as covered by the 7-day stay | `docs/design.md`, `docs/landing-criteria.md`, `ATTRIBUTIONS.md` |
+| 2026-11-15 | Claude Code | At the team's request, removed the in-app credits lines and cut long explanatory text in the map cards, site view, top-10 list, Surface Stay charts and status messages to short plain wording (sources stay credited in this file and THIRD-PARTY-NOTICES.txt) | `web/index.html`, `web/src/ui/mapview.js`, `web/src/ui/main.js`, `web/src/ui/stayview.js`, `web/src/ui/toplist.js`, `web/src/ui/map.css`, `web/src/ui/style.css` |
+| 2026-11-15 | Claude Code | At the team's request: vertical exaggeration starts at 1×; the region map panel fits one screen without scrolling (paired readout, one-row time picker, two-column legend, slimmer top-10 rows without the coverage text, no back button); Top 10 sites in the 3D view drawn as filled squares with numbered tags | `web/index.html`, `web/src/ui/mapview.js`, `web/src/ui/map.css`, `web/src/ui/toplist.js`, `web/src/ui/patchview.js`, `web/src/ui/main.js` |
+| 2026-11-15 | Claude Code | At the team's request, switched the web app to Source Sans 3 (text) and Merriweather (headings), self-hosted from @fontsource; checked both OFL-1.1 licences upstream and recorded them | `web/package.json`, `web/package-lock.json`, `web/src/ui/main.js`, `web/src/ui/style.css`, `web/src/ui/map.css`, `web/THIRD_PARTY_NOTICES.md`, `ATTRIBUTIONS.md` |
+| 2026-11-15 | Claude Code | At the team's request: a "← back" button at the start of the breadcrumb on the region map and 3D views, Esc goes up one level, and the map-to-3D hand-off no longer pauses (shorter cross-fade, 3D motion starts at once) | `web/src/ui/mapview.js`, `web/src/ui/main.js`, `web/src/ui/patchview.js`, `web/src/ui/map.css` |
 
 ## Media (images, icons, fonts, video, audio)
 
-_None yet._
+### Source Sans 3 (font), via `@fontsource/source-sans-3` 5.3.1
+- **Type:** Media
+- **Used for:** All interface text in the web app (`--f-ui` in `web/src/ui/style.css`), weights 400, 600 and 700,
+  self-hosted from the npm package (imported in `web/src/ui/main.js`). Source Sans 3 is Adobe's current name for
+  Source Sans Pro, the same typeface.
+- **Source:** https://github.com/adobe-fonts/source-sans (typeface); https://www.npmjs.com/package/@fontsource/source-sans-3 (package)
+- **Accessed:** 2026-11-15
+- **License / permission:** [SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/)
+  (upstream `LICENSE.md` in adobe-fonts/source-sans; the package's `license` field is `OFL-1.1`). The package has no dependencies.
+- **Requirements:** Ship the copyright notice and licence text with the font files: the build writes both into
+  `THIRD-PARTY-NOTICES.txt`. Don't sell the font by itself; a modified version can't use the reserved name "Source"
+  (we don't modify it). OFL covers only the font files, so it doesn't affect the project's Apache-2.0 licence.
+- **Status:** ✅ (checked by Claude Code, 2026-11-15)
+- **Citation:** Adobe. *Source Sans 3* [typeface], with Reserved Font Name "Source". SIL Open Font License 1.1. https://github.com/adobe-fonts/source-sans
+
+### Merriweather (font), via `@fontsource/merriweather` 5.3.0
+- **Type:** Media
+- **Used for:** Headings in the web app (`--f-head` in `web/src/ui/style.css`), weight 700, self-hosted from the
+  npm package (imported in `web/src/ui/main.js`).
+- **Source:** https://github.com/SorkinType/Merriweather (typeface); https://www.npmjs.com/package/@fontsource/merriweather (package)
+- **Accessed:** 2026-11-15
+- **License / permission:** [SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/)
+  (upstream `OFL.txt` in SorkinType/Merriweather; the package's `license` field is `OFL-1.1`). The package has no dependencies.
+- **Requirements:** Ship the copyright notice and licence text with the font files: the build writes both into
+  `THIRD-PARTY-NOTICES.txt`. Don't sell the font by itself; a modified version can't use the reserved name
+  "Merriweather" (we don't modify it). OFL covers only the font files, so it doesn't affect the project's Apache-2.0 licence.
+- **Status:** ✅ (checked by Claude Code, 2026-11-15)
+- **Citation:** The Merriweather Project Authors (Eben Sorkin). *Merriweather* [typeface], with Reserved Font Name "Merriweather". SIL Open Font License 1.1. https://github.com/SorkinType/Merriweather
 
 ## Information Sources (articles, papers, docs, websites)
 

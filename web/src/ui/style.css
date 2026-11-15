@@ -20,13 +20,15 @@
   --dusk: #e98a5f;
   --dusk-dim: rgba(233, 138, 95, 0.16);
   --shade: rgba(127, 156, 255, 0.07);
-  --f-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --f-ui: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --f-head: Merriweather, Georgia, "Times New Roman", serif;
   --f-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--fg); font: 14px/1.4 var(--f-ui); overflow: hidden; }
+h1, h2, h3 { font-family: var(--f-head); }
 
 .app {
   position: fixed; inset: 0;
@@ -45,7 +47,7 @@ body { background: var(--bg); color: var(--fg); font: 14px/1.4 var(--f-ui); over
 
 .panel { background: var(--panel); display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow-y: auto; }
 .panel header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.panel h1, .panel h2 { margin: 0; font-weight: 650; letter-spacing: .01em; text-wrap: balance; }
+.panel h1, .panel h2 { margin: 0; font-weight: 700; letter-spacing: 0; text-wrap: balance; }
 .panel h1 { font-size: 17px; }
 .panel h2 { font-size: 14px; }
 .panel header small { font: 10.5px var(--f-mono); color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
@@ -85,7 +87,6 @@ dd b { font-weight: 500; color: var(--sun); }
 .toggle input { width: auto; accent-color: var(--sun); }
 .range-head { display: flex; justify-content: space-between; }
 .range-head output { font-family: var(--f-mono); color: var(--fg); letter-spacing: 0; }
-.credits { margin-top: auto; padding: 10px 16px 12px; border-top: 1px solid var(--line); font-size: 10.5px; line-height: 1.45; color: #6c717b; }
 
 /* compass */
 .compass { position: absolute; z-index: 5; pointer-events: none; width: 92px; height: 92px; right: 16px; top: 16px; }
@@ -152,7 +153,7 @@ tbody tr.active td:first-child { box-shadow: inset 2px 0 0 var(--sun); }
   .timeline { order: 3; height: 240px; }
   .sites { order: 4; border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
   .controls { order: 2; border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
-  .panel header, form, .readout, .view, .credits, .sites-actions, .sites .hint {
+  .panel header, form, .readout, .view, .sites-actions, .sites .hint {
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
   .compass { width: 72px; height: 72px; }
@@ -185,7 +186,7 @@ tbody tr.active td:first-child { box-shadow: inset 2px 0 0 var(--sun); }
 /* Surface Stay panel: charts and tables ported from the team web app (web/src/app/styles.css) */
 .stay { border-bottom: 1px solid var(--line); }
 .stay-body { padding: 10px 16px 14px; display: grid; gap: 10px; }
-.stay h3 { margin: 6px 0 0; font-size: 12.5px; font-weight: 650; }
+.stay h3 { margin: 6px 0 0; font-size: 12.5px; font-weight: 700; }
 .stay .sub { font-weight: 400; color: var(--muted); font-size: 12px; }
 .stay .fine, .map-card .fine { color: var(--muted); font-size: 11.5px; margin: 0; }
 .stay .status { color: var(--muted); font-size: 12px; margin: 0; }
@@ -217,4 +218,3 @@ button.link { background: none; border: none; color: var(--sun); padding: 0; tex
 .steps button { flex: 1; padding: 5px 0; font: 11.5px var(--f-mono); }
 .tagline { font-size: 12px; color: var(--muted); }
 .soon { font-style: normal; font: 10px var(--f-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }
-.credits a { color: inherit; }

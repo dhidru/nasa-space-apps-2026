@@ -25,7 +25,7 @@ export function statsTable(doc) {
   const w = doc.worst_case_min_clearance_deg;
   return `<table class="stats"><thead><tr><th></th><th class="sun">Sun</th><th class="earth">Earth</th></tr></thead><tbody>
     ${rows.map(([label, f]) => `<tr><th>${label}</th><td>${f(doc.stats.sun)}</td><td>${f(doc.stats.earth)}</td></tr>`).join("")}
-    <tr><th>Worst-case min Clearance</th><td colspan="2">${deg(w)} ${w > 0 ? "(both always in Line of Sight)" : "(negative = blocked at some point)"}</td></tr>
+    <tr><th>Worst-case min Clearance</th><td colspan="2">${deg(w)} ${w > 0 ? "(always in view)" : "(blocked at times)"}</td></tr>
   </tbody></table>`;
 }
 
@@ -64,7 +64,7 @@ export function skyPlot(doc) {
     <g class="key" transform="translate(${L + 8}, ${T + 14})">
       <circle r="4" fill="${SUN_COLOR}"/><text x="8" y="4">Sun path</text>
       <circle cx="80" r="4" fill="${EARTH_COLOR}"/><text x="88" y="4">Earth path</text>
-      <text x="170" y="4">(dot = Landing Time) · gray = Horizon</text>
+      <text x="170" y="4">· gray = terrain</text>
     </g>
   </svg>`;
 }
@@ -94,7 +94,7 @@ function panel(name, color, s, times) {
 }
 export function timeCharts(doc) {
   return panel("Sun", SUN_COLOR, doc.series.sun, doc.series.time_utc) + panel("Earth", EARTH_COLOR, doc.series.earth, doc.series.time_utc) +
-    `<p class="fine">Coloured line: Sun or Earth Elevation. Gray line: the Horizon Elevation at that body's azimuth (the terrain under it). Green: in Line of Sight. Red: blocked by terrain. Dates are UTC (MM-DD).</p>`;
+    `<p class="fine">Green: in view. Red: blocked by terrain. Gray line: the terrain.</p>`;
 }
 
 /* ---------- Landing Windows (LandingWindowsPanel.tsx) ---------- */

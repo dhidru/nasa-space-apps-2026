@@ -6,6 +6,11 @@
 // Data and science come from src/science (the TypeScript port of the Python pipeline): regions, hillshades, site heights, Horizons,
 // Sun/Earth positions, Clearance (track), rankings, site details and Landing Windows (src/teamdata.js, src/ranking.js).
 // The 3D terrain still comes from NASA tiles built by scripts/prepare-data.mjs.
+// Self-hosted fonts (SIL Open Font License 1.1, see ATTRIBUTIONS.md): Source Sans 3 for text, Merriweather for headings.
+import "@fontsource/source-sans-3/400.css";
+import "@fontsource/source-sans-3/600.css";
+import "@fontsource/source-sans-3/700.css";
+import "@fontsource/merriweather/700.css";
 import "./style.css";
 import "./map.css";
 import { D, ephemeris, latlon, enu, horizontal, phaseName, fromSite, useTeamPositions } from "./ephemeris.js";
@@ -15,7 +20,7 @@ import { regionSites, loadSaved, saveSaved } from "./sites.js";
 import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadTeamRegion, loadAllPositions, siteTracks } from "./teamdata.js";
 import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
-import { MapView } from "./mapview.js";
+import { MapView, setBreadcrumbs } from "./mapview.js";
 import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
 import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
@@ -218,18 +223,18 @@ async function showSite(region, cell) {
 }
 
 function renderCrumbs() {
-  const items = [
-    { text: "Lunar south pole", hash: "" },
-    { text: site.region.name, hash: `#${site.region.id}` },
+  setBreadcrumbs(el.crumbs, [
+    { text: "Lunar south pole", go: () => go("#") },
+    { text: site.region.name, go: () => go(`#${site.region.id}`) },
     { text: `Site ${site.cell.id}` },
-  ];
-  el.crumbs.replaceChildren(...items.flatMap((it, i) => {
-    const n = it.hash !== undefined
-      ? Object.assign(document.createElement("button"), { type: "button", textContent: it.text, onclick: () => go(it.hash || "#") })
-      : Object.assign(document.createElement("span"), { textContent: it.text });
-    return i ? [Object.assign(document.createElement("span"), { className: "sep", textContent: "›" }), n] : [n];
-  }));
+  ]);
 }
+/** Esc goes up one level: site view -> region map -> all regions (not while typing in a field). */
+window.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || e.defaultPrevented || e.target.closest?.("input, select, textarea")) return;
+  if (site && !el.app.hidden) go(`#${site.region.id}`);
+  else if (mapView && mapView.mode === "region" && !mapView.flying) go("#");
+});
 
 /* ---------- inputs ---------- */
 function readInputs() {
@@ -282,7 +287,7 @@ async function slopeFor(lat, lon) {
 }
 
 /* ---------- 3D grid slice ---------- */
-const HINT = "Drag to orbit, right-drag to pan, scroll to zoom. Click a cell to move to it.";
+const HINT = "Drag to turn · right-drag to pan · scroll to zoom";
 function ensureView() {
   if (view) return;
   view = new PatchView($("globe"), {
@@ -350,11 +355,11 @@ async function updateTopTen() {
   }
   el.top10.hidden = false;
   el.topWhen.textContent = `from ${formatUtc(landingMs).slice(0, 16).replace("T", " ")} UTC`;
-  el.topStatus.textContent = "Scoring every Landing Site over the Surface Stay…";
+  el.topStatus.textContent = "Scoring sites…";
   el.oRank.textContent = "…";
   try {
     const [r, tr] = await Promise.all([ranking(cur.region.id, landingMs, (f) => {
-      if (token === topToken) el.topStatus.textContent = `Scoring every Landing Site over the Surface Stay… ${Math.round(f * 100)} %`;
+      if (token === topToken) el.topStatus.textContent = `Scoring sites… ${Math.round(f * 100)} %`;
     }), teamSitesFor(cur.region.id).catch(() => null)]);
     if (token !== topToken) return;
     const top = topUnderSlope(r, tr, slopeLimitDeg);
@@ -363,7 +368,7 @@ async function updateTopTen() {
     renderTopList(top, cur, tr);
     const me = r.byId.get(cur.cell.id);
     el.oRank.textContent = me ? `${me.rank.toLocaleString()} of ${r.doc.sites.length.toLocaleString()}${top.some((e) => e.site_id === me.site_id) ? " · top 10" : ""} · ${coverageLabel(me)}` : "—";
-    view.setMarks(top.map((e) => ({ cell: grid.byId(e.site_id), color: coverageColor(e) })).filter((m) => m.cell));
+    view.setMarks(top.map((e, i) => ({ cell: grid.byId(e.site_id), color: coverageColor(e), rank: i + 1 })).filter((m) => m.cell));
     updateStay(cur, me, token);
   } catch (e) {
     if (token !== topToken) return;
@@ -377,7 +382,7 @@ let windowsKey = null;
 async function updateStay(cur, entry, token) {
   el.stay.hidden = false;
   el.stayTitle.innerHTML = stayTitle(cur.cell.id, entry);
-  el.stayStatus.textContent = "Computing the Sun and Earth over the Surface Stay…";
+  el.stayStatus.textContent = "Working out the week…";
   const key = `${cur.region.id}|${cur.cell.id}`;
   if (key !== windowsKey) { windowsKey = key; resetWindows(); } else refreshWindows();
   try {
@@ -385,7 +390,7 @@ async function updateStay(cur, entry, token) {
     if (token !== topToken) return;
     el.stayStatus.textContent = "";
     el.stayRange.textContent = stayRange(doc);
-    el.stayDetail.innerHTML = `<h3>Stats over the Surface Stay</h3>${statsTable(doc)}<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth Elevation over the Horizon</h3>${timeCharts(doc)}`;
+    el.stayDetail.innerHTML = `<h3>Over the 7-day stay</h3>${statsTable(doc)}<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth above the terrain</h3>${timeCharts(doc)}`;
   } catch (e) {
     if (token !== topToken) return;
     console.error(e);

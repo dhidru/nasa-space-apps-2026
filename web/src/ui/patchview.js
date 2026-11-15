@@ -37,7 +37,7 @@ export class PatchView {
     this.container = container;
     this.onHover = onHover;
     this.onPick = onPick;
-    this.exag = 2;
+    this.exag = 1;
     this.mode = "sun"; // sun | relief | slope | texture
     this.sun = { dir: new THREE.Vector3(0.5, 0.6, 0.3).normalize(), vis: 1 };
 
@@ -166,8 +166,8 @@ export class PatchView {
 
   /**
    * Hand-off from the 2D map: start straight overhead on a flattened slice (the map's last frame, which the map
-   * lines up with this canvas), hold it while the map fades out, then tilt and swing into the default oblique view
-   * while the relief rises to the set exaggeration. Any pointer or wheel input on the canvas jumps to the final
+   * lines up with this canvas), then at once tilt and swing into the default oblique view while the relief rises
+   * to the set exaggeration. Any pointer or wheel input on the canvas jumps to the final
    * frame; the controls stay on, so that first drag already orbits.
    */
   playIntro() {
@@ -180,11 +180,12 @@ export class PatchView {
     const fitDist = Math.max(half / tanV, half / (tanV * this.camera.aspect)) * SLICE_FIT_MARGIN;
     const top = new THREE.Spherical(fitDist, 0.0001, 0); // theta 0: camera on +Z, so map north is up as on the map
     const dTheta = Math.atan2(Math.sin(end.theta - top.theta), Math.cos(end.theta - top.theta)); // shortest turn
-    const ms = 2600, t0 = performance.now(), sph = new THREE.Spherical();
+    const ms = 2200, t0 = performance.now(), sph = new THREE.Spherical();
     const frame = (now) => {
       const t = Math.min(1, (now - t0) / ms);
-      // The map's cross-fade takes ~0.55 s: the relief starts rising under it, the camera tilts once it has gone.
-      const reliefK = easeOutCubic(phase(t, 0.12, 0.7)), tiltK = easeInOutCubic(phase(t, 0.22, 0.78));
+      // No hold: the relief starts rising and the camera starts tilting at once, under the map's short cross-fade,
+      // so the motion carries straight on from the map's zoom.
+      const reliefK = easeOutCubic(phase(t, 0, 0.7)), tiltK = easeInOutCubic(t);
       const heightScale = 0.03 + 0.97 * reliefK;
       this.mesh.scale.y = this.overlay.scale.y = heightScale;
       sph.set(top.radius + (end.radius - top.radius) * tiltK, top.phi + (end.phi - top.phi) * tiltK, top.theta + dTheta * tiltK);
@@ -348,6 +349,7 @@ export class PatchView {
     return pts;
   }
   drawOverlay() {
+    this.overlay.traverse((o) => { if (o === this.overlay) return; o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); });
     this.overlay.clear();
     const { center, outline, sizeM } = this.p, half = sizeM / 2;
     this.overlay.add(this.drape(this.cellLoop(center), 0xffffff, 4));
@@ -365,23 +367,58 @@ export class PatchView {
         if (pts.length > 1) this.overlay.add(this.drape(pts, AMBER, 6));
       }
     }
-    // top-10 sites: an inset outline in the coverage colour, and a pin so they stand out in large slices
-    for (const m of this.marks || []) {
+    // Top 10 sites, as on the region map: the square filled in its coverage colour with a white edge, and a pin
+    // with its rank number that is drawn over the terrain, so each one stays visible from any angle.
+    const pinH = sizeM * 0.05, tag = sizeM * 0.045;
+    for (const [i, m] of (this.marks || []).entries()) {
       const { cell } = m;
-      if (cell.id === center.id || Math.abs(cell.x - center.x) > half || Math.abs(cell.y - center.y) > half) continue;
-      const color = new THREE.Color(m.color);
-      this.overlay.add(this.drape(this.cellLoop(cell, 12, 80), color, 4));
+      if (Math.abs(cell.x - center.x) > half || Math.abs(cell.y - center.y) > half) continue;
+      const color = new THREE.Color(m.color), x = cell.x - center.x, z = -(cell.y - center.y);
+      this.overlay.add(this.drapedSquare(cell, color));
+      if (cell.id !== center.id) this.overlay.add(this.drape(this.cellLoop(cell), 0xffffff, 4));
       const base = (this.p.sample(cell.x, cell.y) - this.h0) * this.exag;
-      const pin = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(cell.x - center.x, base, -(cell.y - center.y)),
-        new THREE.Vector3(cell.x - center.x, base + Math.max(60, sizeM * 0.03) * this.exag, -(cell.y - center.y)),
-      ]), new THREE.LineBasicMaterial({ color }));
+      const pin = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, base, z), new THREE.Vector3(x, base + pinH, z)]),
+        new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }));
       pin.renderOrder = 2;
-      this.overlay.add(pin);
+      const label = this.rankTag(m.rank ?? i + 1, m.color);
+      label.position.set(x, base + pinH, z);
+      label.scale.set(tag, tag, 1);
+      this.overlay.add(pin, label);
     }
     this.dirty = true;
   }
-  /** Highlight sites (e.g. the top 10): [{ cell, color }]. Redrawn with the slice. */
+  /** A 200 m site square laid on the terrain, filled with `color`. */
+  drapedSquare(cell, color) {
+    const { center } = this.p, n = 8, geo = new THREE.PlaneGeometry(200, 200, n, n);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position;
+    for (let k = 0; k < pos.count; k++) {
+      const mx = cell.x + pos.getX(k), my = cell.y - pos.getZ(k);
+      pos.setXYZ(k, mx - center.x, (this.p.sample(mx, my) - this.h0) * this.exag + 2 * this.exag, -(my - center.y));
+    }
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+    mesh.renderOrder = 1;
+    return mesh;
+  }
+  /** A round tag with a rank number, always facing the camera and drawn over the terrain. */
+  rankTag(rank, color) {
+    const S = 64, c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d");
+    g.beginPath(); g.arc(S / 2, S / 2, S / 2 - 3, 0, 2 * Math.PI);
+    g.fillStyle = color; g.fill();
+    g.lineWidth = 4; g.strokeStyle = "#fff"; g.stroke();
+    g.fillStyle = "#fff"; g.font = `700 ${rank > 9 ? 26 : 32}px system-ui, sans-serif`;
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(String(rank), S / 2, S / 2 + 1);
+    const map = new THREE.CanvasTexture(c);
+    map.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, depthTest: false, transparent: true }));
+    sprite.center.set(0.5, 0); // sits on top of its pin
+    sprite.renderOrder = 3;
+    return sprite;
+  }
+  /** Highlight sites (e.g. the top 10): [{ cell, color, rank? }]. Redrawn with the slice. */
   setMarks(marks) {
     this.marks = marks;
     if (this.p) this.drawOverlay();

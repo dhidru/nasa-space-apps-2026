@@ -16,8 +16,6 @@ const svgEl = (tag, attrs = {}, parent) => {
   if (parent) parent.appendChild(n);
   return n;
 };
-const fmtLat = (v) => `${Math.abs(v).toFixed(3)}° ${v >= 0 ? "N" : "S"}`;
-const fmtLon = (v) => `${Math.abs(v).toFixed(3)}° ${v >= 0 ? "E" : "W"}`;
 
 // Label anchors (map metres) and text alignment, placed by hand so the clustered regions stay readable.
 const LABELS = {
@@ -195,12 +193,11 @@ export class MapView {
   renderHomeCard() {
     this.card.innerHTML = `
       <h2>Pick a Landing Region</h2>
-      <p class="hint">The nine candidate regions near the lunar south pole. Pick one, then a Landing Time, and every Landing Site is scored on whether the Sun and Earth stay in Line of Sight for the whole 7-day Surface Stay. Open any site to see it in 3D. Scroll to zoom, drag to pan.</p>
+      <p class="hint">Pick one of the nine Artemis III regions to see its best Landing Sites.</p>
       <ol class="region-list">${this.regions.map((r) => {
         const [w, h] = sizeKm(r);
         return `<li><button type="button" data-id="${r.id}"><span>${r.name}${r.hasSiteData ? "" : ' <em class="soon">coming soon</em>'}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites</small></button></li>`;
-      }).join("")}</ol>
-      <p class="credits">Hillshade: ${this.homeBasemap.source} (NASA, public domain). Regions: NASA news release 24-136 (2024-10-28). Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
+      }).join("")}</ol>`;
     for (const b of this.card.querySelectorAll("button[data-id]")) {
       b.addEventListener("pointerenter", () => this.hover(b.dataset.id));
       b.addEventListener("pointerleave", () => this.hover(null));
@@ -284,21 +281,19 @@ export class MapView {
   renderRegionCard(r, grid, bm) {
     const [w, h] = sizeKm(r);
     this.card.innerHTML = `
-      <h2>${r.name}</h2>
-      <p class="sub">${w.toFixed(1)} × ${h.toFixed(1)} km · ${grid.rows} × ${grid.cols} = ${grid.count.toLocaleString()} sites</p>
-      <p class="hint">Each cell is one landing site: a 200 m grid with a 100 m-radius site circle at its centre, the grid from the team design. Hover a cell to read it, click it to open its 3D topography.</p>
+      <h2>${r.name} <span class="sub">${w.toFixed(0)} × ${h.toFixed(0)} km · ${grid.count.toLocaleString()} sites</span></h2>
       <dl class="cell-read" id="cellRead">
-        <dt>Site</dt><dd data-k="id">—</dd>
-        <dt>Latitude</dt><dd data-k="lat">—</dd>
-        <dt>Longitude</dt><dd data-k="lon">—</dd>
+        <dt>Site</dt><dd data-k="id" class="placeholder">hover a square</dd>
         <dt>Elevation</dt><dd data-k="h">—</dd>
-        <dt data-k="sl">Slope (200 m)</dt><dd data-k="s">—</dd>
-        ${r.hasSiteData ? `<dt>Rank</dt><dd data-k="rank">—</dd><dt title="${ROBUSTNESS_TITLE}">Timing robustness</dt><dd data-k="robust">—</dd><dt title="${WALKABLE_TITLE}">EVA walkable (2 km)</dt><dd data-k="walk">—</dd>` : ""}
+        <dt data-k="sl">Slope</dt><dd data-k="s">—</dd>
+        ${r.hasSiteData ? `<dt title="${ROBUSTNESS_TITLE}">Timing</dt><dd data-k="robust">—</dd><dt title="${WALKABLE_TITLE}">EVA walk</dt><dd data-k="walk">—</dd><dt class="wide">Rank</dt><dd class="wide" data-k="rank">—</dd>` : ""}
       </dl>
       ${r.hasSiteData ? `
       <section class="map-top">
-        <label class="landing">Landing Time <span class="unit">UTC · 7-day Surface Stay</span>
-          <input type="datetime-local" step="600" min="${formatUtc(SPAN_START).slice(0, 16)}" max="${formatUtc(SPAN_END - STEP_MS).slice(0, 16)}" value="${formatUtc(this.getLanding()).slice(0, 16)}">
+        <span class="landing-head">Landing Time <span class="unit">UTC · 7-day stay</span></span>
+        <div class="time-row">
+        <label class="landing">
+          <input type="datetime-local" aria-label="Landing Time (UTC)" step="600" min="${formatUtc(SPAN_START).slice(0, 16)}" max="${formatUtc(SPAN_END - STEP_MS).slice(0, 16)}" value="${formatUtc(this.getLanding()).slice(0, 16)}">
         </label>
         <div class="steps" role="group" aria-label="Step the Landing Time">
           <button type="button" data-step="-86400000" title="One day earlier">−1 d</button>
@@ -306,24 +301,17 @@ export class MapView {
           <button type="button" data-step="3600000" title="One hour later">+1 h</button>
           <button type="button" data-step="86400000" title="One day later">+1 d</button>
         </div>
-        <p class="fine">Supported Span: ${formatUtc(SPAN_START).slice(0, 10)} to ${formatUtc(SPAN_END).slice(0, 10)}. Surface Stay: 7 days from the Landing Time.</p>
-        <div class="legend">
-          <span><i style="background:${rgb(FULL_HIGH)}"></i> Full coverage (darker = more Clearance)</span>
-          <span><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Partial (by the weaker of Sun and Earth)</span>
-          <span><i class="outlined"></i> Top 10 (at least 2 km apart)</span>
-          <span><i class="steep"></i> Landing slope over the limit</span>
         </div>
-        <h3>Top 10 Landing Sites</h3>
-        ${slopeLimitHtml(this.getSlopeLimit())}
+        <div class="legend">
+          <span title="The Sun and Earth stay in view for the whole 7-day stay"><i style="background:${rgb(FULL_HIGH)}"></i> In view all week</span>
+          <span title="The Sun or Earth is blocked by terrain for part of the stay"><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Blocked at times</span>
+          <span><i class="outlined"></i> Top 10</span>
+          <span><i class="steep"></i> Too steep</span>
+        </div>
+        <div class="top-title"><h3>Top 10 sites</h3>${slopeLimitHtml(this.getSlopeLimit())}</div>
         <p class="hint top-status"></p>
         <ol class="top-list"></ol>
-      </section>` : ""}
-      <p class="team-note">${r.hasSiteData
-        ? "Team data: site heights from the pipeline's sites.json; Sun and Earth Clearance in the 3D view use the team's Horizons."
-        : "Team site data (heights, Horizons) for this region is coming soon. Heights here are from the 80 m LOLA DEM."}</p>
-      <button type="button" class="back">← All regions</button>
-      <p class="credits">Hillshade: ${bm.source} (NASA, public domain). ${r.hasSiteData ? "Landing slope: LOLA 20 m DEM." : "Slope: LOLA 80 m DEM."} Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
-    this.card.querySelector(".back").addEventListener("click", () => this.onHome());
+      </section>` : ""}`;
     const input = this.card.querySelector(".landing input");
     const setT = (t) => {
       this.setLanding(t);
@@ -348,11 +336,11 @@ export class MapView {
     this.heatLayer.replaceChildren();
     this.steepLayer.replaceChildren();
     for (const l of this.labels.querySelectorAll(".top-label")) l.remove();
-    if (status) status.textContent = "Scoring every Landing Site over the Surface Stay…";
+    if (status) status.textContent = "Scoring sites…";
     if (list) list.replaceChildren();
     try {
       const [res, team] = await Promise.all([this.ranking(r.id, landing, (f) => {
-        if (token === this.topToken && status) status.textContent = `Scoring every Landing Site over the Surface Stay… ${Math.round(f * 100)} %`;
+        if (token === this.topToken && status) status.textContent = `Scoring sites… ${Math.round(f * 100)} %`;
       }), this.teamSites(r.id).catch(() => null)]);
       if (token !== this.topToken || this.region !== r) return;
       this.rankData = res;
@@ -380,10 +368,13 @@ export class MapView {
       }
       const nFull = res.doc.sites.filter((x) => x.coverage === "full").length;
       const nFullFlat = hasSlope && limitDeg !== null ? res.doc.sites.filter((x) => x.coverage === "full" && !steep(x)).length : null;
-      if (status) status.textContent = `${nFull.toLocaleString()} of ${res.doc.sites.length.toLocaleString()} sites have Full Coverage`
-        + (nFullFlat === null ? "" : `, ${nFullFlat.toLocaleString()} of them with a Landing Slope under ${limitDeg}°`)
-        + `. Sites in the list are at least 2 km apart.`
-        + (limitDeg !== null && !hasSlope ? " (No Landing Slopes for this region, so the slope limit is off.)" : "");
+      const total = res.doc.sites.length.toLocaleString();
+      if (status) status.textContent = (!nFull
+        ? "No site keeps the Sun and Earth in view all week at this time. Try another Landing Time."
+        : nFullFlat === null ? `${nFull.toLocaleString()} of ${total} sites keep the Sun and Earth in view all week.`
+        : nFullFlat ? `${nFullFlat.toLocaleString()} of ${total} sites keep the Sun and Earth in view all week and are flat enough.`
+        : `${nFull.toLocaleString()} sites keep the Sun and Earth in view all week, but none are flat enough.`)
+        + (limitDeg !== null && !hasSlope ? " No slope data here yet." : "");
       top.forEach((e, i) => {
         const cell = grid.byId(e.site_id);
         if (!cell) return;
@@ -408,15 +399,14 @@ export class MapView {
     if (!cell || this.mode !== "region") return;
     const set = (k, v) => { const n = this.card.querySelector(`[data-k="${k}"]`); if (n) n.textContent = v; };
     set("id", cell.id);
-    set("lat", fmtLat(cell.lat));
-    set("lon", fmtLon(cell.lon));
+    this.card.querySelector('[data-k="id"]')?.classList.remove("placeholder");
     const teamH = this.teamSiteData ? this.teamSiteData.heightOf(cell.id) : undefined;
     const team = teamH !== undefined;
     if (team) set("h", `${Math.round(teamH).toLocaleString()} m`);
     const teamSlope = this.teamSiteData ? this.teamSiteData.slopeOf(cell.id) : undefined;
     if (teamSlope !== undefined) set("s", slopeLabel(teamSlope));
     const label = this.card.querySelector('[data-k="sl"]');
-    if (label) { label.textContent = teamSlope !== undefined ? "Landing slope" : "Slope (200 m)"; label.title = teamSlope !== undefined ? SLOPE_TITLE : ""; }
+    if (label) label.title = teamSlope !== undefined ? SLOPE_TITLE : "Slope over 200 m";
     if (this.dem) {
       if (!team) set("h", `${Math.round(this.dem.at(cell.x, cell.y)).toLocaleString()} m`);
       if (teamSlope === undefined) set("s", `${this.dem.slope(cell.x, cell.y).toFixed(1)}°`);
@@ -495,7 +485,7 @@ export class MapView {
     if (!this.flight) return;
     this.stage.querySelector(".flight-notice")?.remove();
     this.root.classList.add("leaving");
-    this.flight.fadeTimer = setTimeout(() => { this.root.hidden = true; this.endFlight(); }, prefersReducedMotion() ? 0 : 600);
+    this.flight.fadeTimer = setTimeout(() => { this.root.hidden = true; this.endFlight(); }, prefersReducedMotion() ? 0 : 320);
   }
   /** The site view couldn't open: give the map back, zoomed where it is, with the reason. */
   abortFlight(message) {
@@ -511,12 +501,22 @@ export class MapView {
     this.stage.querySelector(".flight-notice:not(.error)")?.remove();
   }
 
-  setCrumbs(items) {
-    this.crumbs.replaceChildren(...items.flatMap((it, i) => {
-      const n = it.go ? Object.assign(document.createElement("button"), { type: "button", textContent: it.text, onclick: it.go }) : Object.assign(document.createElement("span"), { textContent: it.text });
-      return i ? [Object.assign(document.createElement("span"), { className: "sep", textContent: "›" }), n] : [n];
-    }));
-  }
+  setCrumbs(items) { setBreadcrumbs(this.crumbs, items); }
+}
+
+/**
+ * Fill a breadcrumb <nav> with items [{ text, go? }] (the last is the current page). Below the top level it starts
+ * with a "← <parent>" button, so going back up is one obvious click.
+ */
+export function setBreadcrumbs(nav, items) {
+  const parent = items.length > 1 ? items[items.length - 2] : null;
+  const back = parent && parent.go
+    ? [Object.assign(document.createElement("button"), { type: "button", className: "back-btn", textContent: `← ${parent.text === "Lunar south pole" ? "All regions" : parent.text}`, onclick: parent.go, title: "Back (Esc)" })]
+    : [];
+  nav.replaceChildren(...back, ...items.flatMap((it, i) => {
+    const n = it.go ? Object.assign(document.createElement("button"), { type: "button", textContent: it.text, onclick: it.go }) : Object.assign(document.createElement("span"), { textContent: it.text });
+    return i ? [Object.assign(document.createElement("span"), { className: "sep", textContent: "›" }), n] : [n];
+  }));
 }
 
 export { xyToLL };
