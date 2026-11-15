@@ -41,6 +41,17 @@ a specific Artemis mission number.
   of compute). The team switched to Mons Mouton on 2026-11-14 because it fits
   the sizes below and sits right next to the plateau. The other regions are
   20–30 km squares, except the plateau.
+- **Mons Mouton Plateau stays "coming soon"** (decided 2026-11-14). The other
+  8 regions fit a static site. Each is at most about 13 MB of Horizons for
+  Haworth, and only the open region is loaded. The plateau would be about
+  63 MB of Horizons, or 320 MB unpacked, which is too much for one browser page.
+  - We rejected filtering sites by the PGDA long-term average Sun and Earth
+    maps. It's lossy: on Mons Mouton, the loosest threshold that kept every
+    Full Coverage winner still kept 37% of sites. Also, the maps state no
+    license.
+  - If we revisit the plateau, split it into 20 tiles of 16 × 16 km, each the
+    size of Mons Mouton. A coarse 800 m overview could later give a
+    plateau-wide top 10.
 - Regions without computed site data still open their region map, with a
   hillshade and outline. A banner says "Site analysis for this region is coming
   soon." The demo never shows a disabled or broken page.
