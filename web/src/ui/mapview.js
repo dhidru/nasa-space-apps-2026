@@ -278,6 +278,10 @@ export class MapView {
     const [left, bottom, right, top] = bm.extent_m, bw = right - left, bh = top - bottom;
     svgEl("image", { href: bm.href, x: left, y: -top, width: bw, height: bh, preserveAspectRatio: "none", class: "map-img" }, this.svg);
 
+    // Diagonal hatch for too-steep sites (map metres: two stripes per 200 m site).
+    const hatch = svgEl("pattern", { id: "steep-hatch", class: "steep-hatch", patternUnits: "userSpaceOnUse", width: GRID_M / 2, height: GRID_M / 2, patternTransform: "rotate(45)" }, svgEl("defs", {}, this.svg));
+    svgEl("line", { x1: GRID_M / 4, y1: 0, x2: GRID_M / 4, y2: GRID_M / 2 }, hatch);
+
     const grid = (this.grid = siteGrid(r)), e = grid.extent;
     // dim everything outside the region
     const outer = `M${left},${-top}h${bw}v${bh}h${-bw}z`;
@@ -397,9 +401,9 @@ export class MapView {
         <span class="cal-status">Checking for dark days…</span>
       </div>
       <div class="time-pick">
-        <label>Hour <input class="t-hour" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Landing hour, 00 to 23 (UTC)" placeholder="00"></label>
+        <label>Hour <input class="t-hour" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Landing hour, 00 to 23 (UTC)" placeholder="hh"></label>
         <span class="colon">:</span>
-        <label>Minute <input class="t-min" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Landing minute, 00 to 59 (UTC)" placeholder="00"></label>
+        <label>Minute <input class="t-min" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Landing minute, 00 to 59 (UTC)" placeholder="mm"></label>
         <span class="utc">UTC</span>
       </div>
       <p class="filter-note time-note">Minutes round to the nearest 10. ↑ / ↓ step the value.</p>
@@ -414,18 +418,21 @@ export class MapView {
 
     // Typed hour and minute: digits only; on Enter, blur or ↑/↓ the value is clamped (minutes to the 10-minute grid).
     const hour = this.filterBody.querySelector(".t-hour"), min = this.filterBody.querySelector(".t-min");
-    const time = { h: t.getUTCHours(), m: Math.floor(t.getUTCMinutes() / 10) * 10 };
-    const show = () => { hour.value = pad(time.h); min.value = pad(time.m); };
+    // Until a Landing Time is chosen the hour and minute are blank (null); picking a day with no time typed lands at 00:00.
+    const time = this.picked ? { h: t.getUTCHours(), m: Math.floor(t.getUTCMinutes() / 10) * 10 } : { h: null, m: null };
+    const show = () => { hour.value = time.h === null ? "" : pad(time.h); min.value = time.m === null ? "" : pad(time.m); };
     show();
     const dayOf = (ms) => ms - (((ms % DAY_MS) + DAY_MS) % DAY_MS);
     this.pickDay = (day) => {
+      time.h ??= 0; time.m ??= 0;
+      show();
       this.setLanding(day + (time.h * 60 + time.m) * 60000);
       this.picked = true; // before drawing, so the calendar marks the chosen day
       this.drawCalendar();
       this.setPicked(true, r, grid);
     };
     const commit = (h, m) => {
-      const nh = Math.min(23, Math.max(0, h)), nm = Math.min(50, Math.max(0, Math.round(m / 10) * 10));
+      const nh = h === null ? null : Math.min(23, Math.max(0, h)), nm = m === null ? null : Math.min(50, Math.max(0, Math.round(m / 10) * 10));
       const changed = nh !== time.h || nm !== time.m;
       Object.assign(time, { h: nh, m: nm });
       show();
@@ -441,9 +448,9 @@ export class MapView {
         if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
         e.preventDefault();
         const d = e.key === "ArrowUp" ? 1 : -1;
-        // wrap within the day: 23 → 00, 50 → 00
-        if (isHour) commit((time.h + d + 24) % 24, time.m);
-        else commit(time.h, (time.m + d * 10 + 60) % 60);
+        // wrap within the day: 23 → 00, 50 → 00; a blank field steps to 00
+        if (isHour) commit(time.h === null ? 0 : (time.h + d + 24) % 24, time.m);
+        else commit(time.h, time.m === null ? 0 : (time.m + d * 10 + 60) % 60);
         input.select();
       });
     }
@@ -457,7 +464,12 @@ export class MapView {
       this.calMonth = this.calView === "days" ? Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, 1) : Date.UTC(d.getUTCFullYear() + k, d.getUTCMonth(), 1);
       this.drawCalendar();
     });
-    this.filterBody.querySelector(".filter-clear").addEventListener("click", () => { this.setPicked(false, r, grid); this.drawCalendar(); });
+    this.filterBody.querySelector(".filter-clear").addEventListener("click", () => {
+      time.h = time.m = null;
+      show();
+      this.setPicked(false, r, grid);
+      this.drawCalendar();
+    });
     this.drawCalendar();
     const status = (text) => { const st = this.filterBody.querySelector(".cal-status"); if (st) st.textContent = text; };
     darkDays(r.id).then((days) => {

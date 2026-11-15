@@ -420,6 +420,7 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Home map: fixed (no zoom or pan, Reset view hidden); labelled latitude/longitude grid and a cursor lat/lon readout; a "Lunar South Pole" title over the map that scales with its size, and "South Pole" in the header title | `web/index.html`, `web/src/ui/mapview.js`, `web/src/ui/map.css` |
 | 2026-11-15 | Claude Code | At the team's request: left pane for selection only (home: region list; region: back, Landing Time, Landing Slope), right pane for site data on region maps only; removed the map title overlay and enlarged the header title with the 80°–90° S line; made the lat/lon grid and labels clearly visible | `web/index.html`, `web/src/ui/mapview.js`, `web/src/ui/map.css` |
 | 2026-11-15 | Claude Code | Region map: typed hour and minute fields (digits only, clamped, minutes rounded to 10, arrow keys step); calendar title opens a month view, then a year view; one fixed left-pane width (340 px) on every page | `web/src/ui/mapview.js`, `web/src/ui/map.css`, `web/src/ui/style.css` |
+| 2026-11-15 | Claude Code | Region map starts with no Landing Time when opened from the home map; coverage heatmap blends into the terrain (hard-light) so topography stays visible; too-steep sites hatched; top-10 cells outline-only | `web/src/ui/mapview.js`, `web/src/ui/main.js`, `web/src/ui/map.css`, `web/src/ui/style.css` |
 
 ## Media (images, icons, fonts, video, audio)
 

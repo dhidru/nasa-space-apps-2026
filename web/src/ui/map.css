@@ -82,14 +82,18 @@
 }
 
 /* top 10 on the region map */
-.heat-cells { opacity: .55; pointer-events: none; }
+/* Coverage heatmap: hard-light tints the terrain instead of covering it. Dark colours multiply and bright ones screen,
+   so the hillshade's light and shadow (crater rims, slopes) still read through every cell, at the legend's hues. */
+.heat-cells { opacity: .8; mix-blend-mode: hard-light; pointer-events: none; }
 .heat { stroke: none; shape-rendering: crispEdges; }
-/* Sites at or over the Landing Slope limit: darkened, so the landable ground stands out. */
+/* Sites at or over the Landing Slope limit: hatched rather than filled, so the terrain shows between the stripes. */
 .steep-cells { pointer-events: none; }
-.steep { fill: #000; fill-opacity: .55; stroke: none; shape-rendering: crispEdges; }
+.steep { fill: url(#steep-hatch); stroke: none; shape-rendering: crispEdges; }
+.steep-hatch line { stroke: rgba(8, 9, 12, .8); stroke-width: 34; }
 .map-top .top-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
 .map-top .slope-limit select { padding: 1px 6px; }
-.top-cell { fill-opacity: .9; stroke: #fff !important; stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+/* Outline only: the heatmap underneath already gives the colour, so the terrain stays visible inside the top 10. */
+.top-cell { fill-opacity: 0; stroke: #fff !important; stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
 .map-label.top-label { font: 600 11px var(--f-mono); color: #fff; background: rgba(14,16,21,.85); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; cursor: pointer; }
 .map-top { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
 .map-top h3 { margin: 0; font-size: 13px; font-weight: 700; }
