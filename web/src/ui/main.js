@@ -3,7 +3,7 @@
 //   (empty)                 2D map of the south pole with the nine Artemis III regions
 //   #<region>               2D map of one region with its 200 m landing-site grid
 //   #<region>/<site>        3D topography of one grid site, with the Sun/Earth dashboard
-// Data and science come from the team web app's code (web/src/science): regions, hillshades, site heights, Horizons,
+// Data and science come from src/science (the TypeScript port of the Python pipeline): regions, hillshades, site heights, Horizons,
 // Sun/Earth positions, Clearance (track), rankings, site details and Landing Windows (src/teamdata.js, src/ranking.js).
 // The 3D terrain still comes from NASA tiles built by scripts/prepare-data.mjs.
 import "./style.css";
@@ -17,9 +17,8 @@ import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView } from "./mapview.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
-import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, DEFAULT_LANDING } from "./ranking.js";
+import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
 import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
-import { parseRoute } from "../../web/src/app/route.ts";
 
 
 const BASE = `${import.meta.env.BASE_URL}tiles`;
@@ -74,8 +73,8 @@ function cached(key, make) {
 }
 const teamSitesFor = (id) => cached(`region:${id}`, () => loadTeamRegion(id));
 /**
- * For one site with team data: { h: terrain height (m), tracks(vectors) } where tracks() runs the web app's
- * track() for the Sun and Earth at the given position vectors. Null when the region has no site data.
+ * For one site with team data: { h: terrain height (m), tracks(vectors) } where tracks() runs
+ * track() (src/science) for the Sun and Earth at the given position vectors. Null when the region has no site data.
  */
 async function teamFor(region, cell) {
   if (!region.hasSiteData) return null;
@@ -113,21 +112,34 @@ function cellFor(lat, lon) {
   return null;
 }
 
-/* ---------- routing ---------- */
-function go(hash) { const t = hash === "#" ? "" : hash; if (location.hash === t) route(); else location.hash = t; }
+/* ---------- routing ----------
+ * Links carry the Landing Time, so any view can be shared (src/app/route.ts):
+ *   #/                                        south pole map
+ *   #/region/<id>?t=20270301T0000Z            region grid
+ *   #/region/<id>?t=20270301T0000Z&site=<id>  3D site view
+ * Inside this file views are named "#", "#<region>" and "#<region>/<site>"; toHash() turns them into links.
+ */
+function toHash(path) {
+  const [regionId, siteId] = path.replace(/^#/, "").split("/");
+  return regionId ? formatRoute({ page: "region", regionId, landing: landingMs, siteId: siteId || undefined }) : "#/";
+}
+function go(path) { const h = toHash(path); if (location.hash === h) route(); else location.hash = h; }
+/** Keep the address bar's Landing Time in step without reloading the view. */
+function syncUrl() {
+  const path = site && !el.app.hidden ? `#${site.region.id}/${site.cell.id}` : mapView && mapView.mode === "region" && mapView.region ? `#${mapView.region.id}` : "#";
+  const h = toHash(path);
+  if (location.hash !== h) history.replaceState(null, "", h);
+}
 async function route() {
-  // Links in the web app's format (#/region/<id>?t=20270301T0000Z&site=r041c026) open the same view here.
-  if (location.hash.startsWith("#/")) {
-    const r = parseRoute(location.hash);
-    if (r.page === "region") { landingMs = r.landing; location.replace(`#${r.regionId}${r.siteId ? `/${r.siteId}` : ""}`); }
-    else location.replace("#");
-    return;
-  }
-  const [regionId, cellId] = decodeURIComponent(location.hash.slice(1)).split("/");
-  const region = regionId && regionById(regionId);
-  if (!region) return showMap(() => mapView.showHome());
-  if (!cellId) return showMap(() => mapView.showRegion(region.id, site && site.region.id === region.id ? site.cell.id : null));
-  const cell = siteGrid(region).byId(cellId);
+  // Older links (#<region>/<site>, from the first viewer) open the same view.
+  if (location.hash.length > 1 && !location.hash.startsWith("#/")) { location.replace(toHash(decodeURIComponent(location.hash))); return; }
+  const r = parseRoute(location.hash);
+  if (r.page === "home") return showMap(() => mapView.showHome());
+  const region = regionById(r.regionId);
+  if (!region) return go("#");
+  landingMs = r.landing;
+  if (!r.siteId) return showMap(() => mapView.showRegion(region.id, site && site.region.id === region.id ? site.cell.id : null));
+  const cell = siteGrid(region).byId(r.siteId);
   if (!cell) return go(`#${region.id}`);
   await showSite(region, cell);
 }
@@ -268,6 +280,7 @@ async function apply() {
   view.setSun(sun, sunH.clear !== undefined ? discAbove(sunH.clear, 0, 0.267)
     : visibility(data, cell.lat * D, cell.lon * D, fromSite(eph, cell.lat, cell.lon, h).sun, 0.267 * D));
   landingMs = snapLandingTime(date.getTime());
+  syncUrl();
   updateTopTen();
   setTimeout(() => { updateTimeline(); if (windowChanged) updateSites(); else markActive(); }, 30);
 }
@@ -306,7 +319,7 @@ async function updateTopTen() {
     el.oRank.textContent = "—";
   }
 }
-/* ---------- Surface Stay: the web app's site view (stats, sky plot, time charts, Landing Windows) ---------- */
+/* ---------- Surface Stay: stats, sky plot, time charts, Landing Windows (src/ui/stayview.js) ---------- */
 let windowsKey = null;
 async function updateStay(cur, entry, token) {
   el.stay.hidden = false;
@@ -479,7 +492,7 @@ async function boot() {
   loadAllPositions().then((p) => { useTeamPositions(p); if (site && !el.app.hidden) apply(); }).catch((e) => console.error(e));
   mapView = new MapView(el.mapview, {
     homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
-    ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); },
+    ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); syncUrl(); },
     onRegion: (id) => go(`#${id}`),
     onSite: (rid, cid) => go(`#${rid}/${cid}`),
     onHome: () => go("#"),
@@ -501,6 +514,13 @@ el.form.addEventListener("submit", (e) => {
   if (!f) { el.hint.textContent = `${fmtLat(lat)}, ${fmtLon(lon)} is outside the nine Artemis III regions.`; return; }
   if (site && f.cell.id === site.cell.id && f.region.id === site.region.id) apply();
   else go(`#${f.region.id}/${f.cell.id}`);
+});
+// −1 d / −1 h / +1 h / +1 d, as in the Landing Time picker on the region map.
+for (const b of document.querySelectorAll("#form .steps button")) b.addEventListener("click", () => {
+  const { date } = readInputs();
+  if (Number.isNaN(date.getTime())) return;
+  setInputs(null, null, new Date(date.getTime() + Number(b.dataset.step)));
+  apply();
 });
 el.now.addEventListener("click", () => {
   const d = new Date(); d.setUTCSeconds(0, 0);
@@ -524,5 +544,5 @@ function escapeHtml(s) {
 boot().catch((e) => {
   console.error(e);
   el.loading.hidden = false;
-  el.loading.textContent = `Couldn't start the viewer: ${e?.message ?? e}`;
+  el.loading.textContent = `Couldn't start the app: ${e?.message ?? e}`;
 });

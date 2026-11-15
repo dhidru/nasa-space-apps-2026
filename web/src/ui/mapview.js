@@ -186,14 +186,13 @@ export class MapView {
   }
   renderHomeCard() {
     this.card.innerHTML = `
-      <h2>Artemis III candidate regions</h2>
-      <p class="hint">NASA's nine candidate landing regions near the south pole. Hover to highlight one, click to open its 200 m site grid. Scroll to zoom, drag to pan.</p>
+      <h2>Pick a Landing Region</h2>
+      <p class="hint">The nine candidate regions near the lunar south pole. Pick one, then a Landing Time, and every Landing Site is scored on whether the Sun and Earth stay in Line of Sight for the whole 7-day Surface Stay. Open any site to see it in 3D. Scroll to zoom, drag to pan.</p>
       <ol class="region-list">${this.regions.map((r) => {
         const [w, h] = sizeKm(r);
-        return `<li><button type="button" data-id="${r.id}"><span>${r.name}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites${r.hasSiteData ? " · team data" : ""}</small></button></li>`;
+        return `<li><button type="button" data-id="${r.id}"><span>${r.name}${r.hasSiteData ? "" : ' <em class="soon">coming soon</em>'}</span><small>${w.toFixed(0)} × ${h.toFixed(0)} km · ${siteGrid(r).count.toLocaleString()} sites</small></button></li>`;
       }).join("")}</ol>
-      <p class="fine">The team's original 2D web app is still available: <a href="app/">open it</a>.</p>
-      <p class="credits">Hillshade: ${this.homeBasemap.source} (NASA, public domain). Region outlines: USGS (CC0, doi:10.5066/P1MEQ6UK). Processed by the team pipeline.</p>`;
+      <p class="credits">Hillshade: ${this.homeBasemap.source} (NASA, public domain). Regions: NASA news release 24-136 (2024-10-28). Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
     for (const b of this.card.querySelectorAll("button[data-id]")) {
       b.addEventListener("pointerenter", () => this.hover(b.dataset.id));
       b.addEventListener("pointerleave", () => this.hover(null));
@@ -288,6 +287,13 @@ export class MapView {
         <label class="landing">Landing Time <span class="unit">UTC · 7-day Surface Stay</span>
           <input type="datetime-local" step="600" min="${formatUtc(SPAN_START).slice(0, 16)}" max="${formatUtc(SPAN_END - STEP_MS).slice(0, 16)}" value="${formatUtc(this.getLanding()).slice(0, 16)}">
         </label>
+        <div class="steps" role="group" aria-label="Step the Landing Time">
+          <button type="button" data-step="-86400000" title="One day earlier">−1 d</button>
+          <button type="button" data-step="-3600000" title="One hour earlier">−1 h</button>
+          <button type="button" data-step="3600000" title="One hour later">+1 h</button>
+          <button type="button" data-step="86400000" title="One day later">+1 d</button>
+        </div>
+        <p class="fine">Supported Span: ${formatUtc(SPAN_START).slice(0, 10)} to ${formatUtc(SPAN_END).slice(0, 10)}. Surface Stay: 7 days from the Landing Time.</p>
         <div class="legend">
           <span><i style="background:${rgb(FULL_HIGH)}"></i> Full coverage (darker = more Clearance)</span>
           <span><i style="background:${rgb(PARTIAL_HIGH)}"></i><i style="background:${rgb(PARTIAL_LOW)}"></i> Partial (by the weaker of Sun and Earth)</span>
@@ -301,16 +307,18 @@ export class MapView {
         ? "Team data: site heights from the pipeline's sites.json; Sun and Earth Clearance in the 3D view use the team's Horizons."
         : "Team site data (heights, Horizons) for this region is coming soon. Heights here are from the 80 m LOLA DEM."}</p>
       <button type="button" class="back">← All regions</button>
-      <p class="credits">Hillshade: ${bm.source} (NASA, public domain), via the team pipeline. Slope: LOLA 80 m DEM. Outline: USGS (CC0).</p>`;
+      <p class="credits">Hillshade: ${bm.source} (NASA, public domain). Slope: LOLA 80 m DEM. Terrain: LOLA (NASA PDS) · Region outlines: USGS candidate landing regions (CC0) · Sun/Earth: NAIF SPICE kernels (NASA JPL) · <a href="THIRD-PARTY-NOTICES.txt">Third-party software notices</a> · <a href="https://github.com/dhidru/nasa-space-apps-2026/blob/main/ATTRIBUTIONS.md">All attributions</a> · Not an official NASA product.</p>`;
     this.card.querySelector(".back").addEventListener("click", () => this.onHome());
     const input = this.card.querySelector(".landing input");
-    if (input) input.addEventListener("change", () => {
-      const t = Date.parse(`${input.value}:00Z`);
-      if (Number.isNaN(t)) return;
+    const setT = (t) => {
       this.setLanding(t);
       input.value = formatUtc(this.getLanding()).slice(0, 16); // snapped to the 10-minute grid and the span
       this.loadTopTen(r, grid);
-    });
+    };
+    if (input) {
+      input.addEventListener("change", () => { const t = Date.parse(`${input.value}:00Z`); if (!Number.isNaN(t)) setT(t); });
+      for (const b of this.card.querySelectorAll(".map-top .steps button")) b.addEventListener("click", () => setT(this.getLanding() + Number(b.dataset.step)));
+    }
   }
 
   /** Rank every site for the shared Landing Time and draw the top 10 (team science port, in a worker). */
@@ -329,7 +337,7 @@ export class MapView {
       });
       if (token !== this.topToken || this.region !== r) return;
       this.rankData = res;
-      // Coverage heatmap (as in the web app's region page): every site coloured by coverage, one path per colour.
+      // Coverage heatmap: every site coloured by coverage, one path per colour.
       const byColor = new Map(), h = GRID_M / 2;
       for (const e of res.doc.sites) {
         const cell = grid.byId(e.site_id);

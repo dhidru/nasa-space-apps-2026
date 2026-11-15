@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-// The Surface Stay panel: plain-DOM ports of the team web app's site view (web/src/app/components: StatsTable,
-// SkyPlot, TimeCharts, LandingWindowsPanel; design.md §5, §7). Same layout, wording and colours; the numbers
-// come from the web app's science worker (src/ranking.js detail / windows).
+// The Surface Stay panel: stats, sky plot, time charts and Landing Windows (first written as React components
+// StatsTable, SkyPlot, TimeCharts, LandingWindowsPanel; design.md §5, §7), as plain DOM. The numbers
+// come from the science worker (src/ui/ranking.js detail / windows).
 import {
   pct, coverageLabel, parseUtc, formatUtc, HOUR_MS, DAY_MS, STEP_MS, SPAN_START, SPAN_END,
   SUN_COLOR, EARTH_COLOR, LOS_COLOR, BLOCKED_COLOR,

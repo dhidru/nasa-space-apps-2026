@@ -58,7 +58,7 @@ export const discAbove = (elDeg, hzDeg, halfDeg) => clamp01(0.5 + (elDeg - hzDeg
 /**
  * Per-sample elevations (degrees above a flat horizon) and terrain-aware visibility for one site.
  * With `team` = { h, tracks(vectors) } (src/main.js teamFor) and team positions for every sample, elevation and
- * Clearance come from the web app's track() against the site's Horizon, as in the pipeline; otherwise
+ * Clearance come from track() (src/science) against the site's Horizon, as in the pipeline; otherwise
  * visibility is ray-marched over the global terrain.
  */
 export function siteSeries(data, latDeg, lonDeg, samples, team = null) {
