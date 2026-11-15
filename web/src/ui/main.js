@@ -24,6 +24,7 @@ import { MapView, setBreadcrumbs } from "./mapview.js";
 import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
 import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute, noFullStayDays, SPAN_START, SPAN_END } from "./ranking.js";
+import { featuredLanding } from "../app/featured.ts";
 import { parseDateTime } from "../app/utctime.ts";
 import { bindViewMenus } from "./viewmenu.js";
 import { Calendar, calendarHtml } from "./calendar.js";
@@ -626,8 +627,14 @@ async function boot() {
     homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
     ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); syncUrl(); },
     getSlopeLimit: () => slopeLimitDeg, setSlopeLimit: (deg) => { slopeLimitDeg = deg; showSlopeLimit(); },
-    // Opening a region from the home map starts with no Landing Time chosen (a shared link or a return from a site keeps its own).
-    onRegion: (id) => { mapView.picked = false; go(`#${id}`); },
+    // Opening a region from the home map starts at its Featured Landing Time (src/app/featured.ts), already scored, so
+    // the first thing a visitor sees is sites that keep the Sun and Earth all week. A region without one starts unpicked.
+    onRegion: (id) => {
+      const f = featuredLanding(id);
+      if (f !== undefined) landingMs = f;
+      mapView.picked = f !== undefined;
+      go(`#${id}`);
+    },
     onSite: (rid, cid) => flyToSite(rid, cid),
     onHome: () => go("#"),
     demFor,

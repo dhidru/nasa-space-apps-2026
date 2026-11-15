@@ -57,3 +57,8 @@ class ScienceClient {
 }
 
 export const science = new ScienceClient();
+/**
+ * A second worker for the long whole-year scans (No-Full-Stay Days, ~30-60 s per region). A worker runs one
+ * request at a time, so on the main worker a scan would hold back the ranking the user is waiting for.
+ */
+export const scanner = new ScienceClient();

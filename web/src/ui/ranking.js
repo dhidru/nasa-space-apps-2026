@@ -3,7 +3,7 @@
 // (src/science/client.ts: a Web Worker running the TypeScript port of the Python science; ADR 0001).
 // This module only adds small caches and the shapes the UI wants. Coverage labels and colours, Landing Time
 // rules and the link format come from src/app and src/science too.
-import { science } from "../science/client.ts";
+import { science, scanner } from "../science/client.ts";
 
 export { snapLandingTime, formatUtc, parseUtc, compactUtc, SPAN_START, SPAN_END, STAY_STEPS, STEP_MS, STEP_S, HOUR_MS, DAY_MS } from "../science/time.ts";
 export { coverageLabel, coverageColor, pct, robustnessLabel, ROBUSTNESS_TITLE, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb, SUN_COLOR, EARTH_COLOR, LOS_COLOR, BLOCKED_COLOR } from "../app/coverage.ts";
@@ -61,6 +61,6 @@ export const darkDays = (regionId) => lru(darkCache, regionId, () => science.dar
 const noStayCache = new Map();
 /**
  * Start (UTC ms) of each No-Full-Stay Day for a region: no Landing Time that day gives any site Full Coverage.
- * `progress` (0–1) is only called for the request that starts the work.
+ * `progress` (0–1) is only called for the request that starts the work. Runs on its own worker so rankings aren't held up.
  */
-export const noFullStayDays = (regionId, progress) => lru(noStayCache, regionId, () => science.noFullStayDays(regionId, progress), 4);
+export const noFullStayDays = (regionId, progress) => lru(noStayCache, regionId, () => scanner.noFullStayDays(regionId, progress), 4);

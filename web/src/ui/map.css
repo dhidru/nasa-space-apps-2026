@@ -202,6 +202,7 @@
 .time-pick .utc { font-size: 14px; color: var(--muted); padding-bottom: 9px; }
 .filter-picked { margin: 0; font-size: 14px; color: var(--muted); }
 .filter-picked b { color: var(--fg); }
+.filter-picked .featured-note { display: inline-block; margin-top: 4px; font-size: 13px; color: var(--sun); }
 .filter-clear { justify-self: start; font-size: 14px; }
 .filter-clear:disabled { opacity: .4; cursor: default; }
 .pick-prompt { margin: 0; padding: 10px 12px; border: 1px dashed var(--line-strong); border-radius: 6px; font-size: 14px; color: var(--muted); }

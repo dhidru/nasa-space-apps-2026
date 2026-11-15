@@ -10,6 +10,7 @@ import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
 import { Calendar, calendarHtml } from "./calendar.js";
 import { parseHms, hms } from "../app/utctime.ts";
 import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, noFullStayDays, DAY_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
+import { featuredLanding } from "../app/featured.ts";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}, parent) => {
@@ -592,6 +593,7 @@ export class MapView {
     this.cal.draw();
     this.filterBody.querySelector(".filter-picked").innerHTML = chosen
       ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 19)} UTC</b>`
+        + (this.region && featuredLanding(this.region.id) === this.getLanding() ? `<br><span class="featured-note">A suggested time when sites here keep the Sun and Earth in view all week. Pick any other day to compare.</span>` : "")
       : "No date chosen yet";
     this.filterBody.querySelector(".filter-clear").disabled = !this.picked;
     const warn = this.filterBody.querySelector(".nostay-warn");

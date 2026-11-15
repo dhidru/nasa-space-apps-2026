@@ -428,6 +428,7 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Turned off panning in the 3D view (scroll zooms only) and coloured the orientation window by slope class | `web/index.html`, `web/src/ui/patchview.js`, `web/src/ui/inset.js`, `web/src/ui/main.js`, `web/src/ui/style.css` |
 | 2026-11-15 | Claude Code | Site view: green Full Coverage runs on the Landing Windows strip are clickable; Top 10 moved into a 3D-view menu next to "Slice around the site"; Max slope moved to the left pane; Date field gets an always-open calendar (shared with the region map, new calendar.js) and a grey yyyy-mm-dd mask while typing | `web/index.html`, `web/src/ui/main.js`, `web/src/ui/calendar.js`, `web/src/ui/mapview.js`, `web/src/ui/stayview.js`, `web/src/ui/style.css` |
 | 2026-11-15 | Claude Code | Fixed the Shading and Slice menus closing on the click that follows the hover that opened them | `web/src/ui/viewmenu.js` |
+| 2026-11-15 | Claude Code | First-time UX review; calendar scan moved to its own worker; region map opens at a precomputed Featured Landing Time per region | `web/src/science/client.ts`, `web/src/ui/ranking.js`, `web/src/ui/main.js`, `web/src/ui/mapview.js`, `web/src/ui/map.css`, `web/src/app/featured.ts` |
 
 ## Media (images, icons, fonts, video, audio)
 
