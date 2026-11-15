@@ -9,7 +9,7 @@ import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from ".
 import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
 import { Calendar, calendarHtml } from "./calendar.js";
 import { parseHms, hm } from "../app/utctime.ts";
-import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, noFullStayDays, DAY_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
+import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, underSlopeLimit, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, topUnderSlope, noFullStayDays, bestOnDay, DAY_MS, SPAN_START, SPAN_END, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 import { featuredLanding } from "../app/featured.ts";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -541,6 +541,16 @@ export class MapView {
       this.drawCalendar();
       this.setPicked(true, r, grid);
     };
+    // Land at an exact time (the "jump to the next day that works" button).
+    this.jumpTo = (t) => {
+      sec = Math.round((t - dayOf(t)) / 1000);
+      show();
+      this.setLanding(t);
+      this.picked = true;
+      this.cal.showMonthOf(t);
+      this.drawCalendar();
+      this.setPicked(true, r, grid);
+    };
     const commit = (s) => {
       const next = s === null ? null : Math.min(DAY_S - STEP_S, Math.round(s / STEP_S) * STEP_S);
       const changed = next !== sec;
@@ -598,8 +608,26 @@ export class MapView {
     this.filterBody.querySelector(".filter-clear").disabled = !this.picked;
     const warn = this.filterBody.querySelector(".nostay-warn");
     warn.hidden = !(chosen && this.noStay?.has(chosenDay));
-    if (!warn.hidden) warn.innerHTML = `<b>No full 7-day window.</b> No site in this region keeps the Sun and Earth in view for a whole `
-      + `7-day stay starting on this day, at any landing time. The coverage colours and the top 10 show the best partial options.`;
+    if (warn.hidden) return;
+    const next = this.nearestGoodDay(chosenDay);
+    warn.innerHTML = `<b>No full 7-day window.</b> No site in this region keeps the Sun and Earth in view for a whole `
+      + `7-day stay starting on this day, at any landing time. The coverage colours and the top 10 show the best partial options.`
+      + (next ? `<button type="button" class="go nostay-jump">Jump to ${fmt(next.day, { weekday: "short", day: "numeric", month: "short" })}, the ${next.after ? "next" : "nearest"} day that works</button>` : "");
+    warn.querySelector(".nostay-jump")?.addEventListener("click", async (e) => {
+      const btn = e.currentTarget, r = this.region;
+      btn.disabled = true;
+      btn.textContent = "Finding the best time that day…";
+      const best = await bestOnDay(r.id, next.day).catch((err) => { console.error(err); return null; });
+      if (this.region !== r) return;
+      if (best) this.jumpTo(best.landing); else this.pickDay(next.day);
+    });
+  }
+  /** The first day after `day` that isn't a No-Full-Stay Day, else the last one before it; null if none or not known yet. */
+  nearestGoodDay(day) {
+    if (!this.noStay) return null;
+    for (let d = day + DAY_MS; d < SPAN_END; d += DAY_MS) if (!this.noStay.has(d)) return { day: d, after: true };
+    for (let d = day - DAY_MS; d >= SPAN_START; d -= DAY_MS) if (!this.noStay.has(d)) return { day: d, after: false };
+    return null;
   }
 
   /** Rank every site for the shared Landing Time and draw the top 10 (team science port, in a worker). */

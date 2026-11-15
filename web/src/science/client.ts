@@ -2,6 +2,7 @@
 import { dataRootFromPage } from "./fetchSiteData";
 import type { WorkerRequest, WorkerResponse } from "./protocol";
 import type { LandingWindowsDoc, RankingDoc, SiteDetailDoc } from "./results";
+import type { DayBest } from "./fullstay";
 
 type Pending = { resolve: (v: any) => void; reject: (e: Error) => void; progress?: (f: number) => void };
 
@@ -48,6 +49,11 @@ class ScienceClient {
   /** Start (UTC ms) of each day in the Supported Span with no sunlight anywhere in the region. */
   darkDays(regionId: string): Promise<number[]> {
     return this.call({ type: "darkDays", regionId });
+  }
+
+  /** The Landing Time on a UTC day (ms) at which the most sites look Full (src/science/fullstay.ts bestLandingOnDay). */
+  bestOnDay(regionId: string, day: number): Promise<DayBest | null> {
+    return this.call({ type: "bestOnDay", regionId, day });
   }
 
   /** Start (UTC ms) of each day in the Supported Span with no Full Coverage Landing Time at any site (src/science/fullstay.ts). */

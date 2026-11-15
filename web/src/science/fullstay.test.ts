@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadPositions, loadRegion, type Positions, type Region } from "./data";
-import { computeNoFullStayDays } from "./fullstay";
+import { bestLandingOnDay, computeNoFullStayDays, hourlySpan } from "./fullstay";
 import { computeLandingWindows, computeRanking, loadSpanPositions } from "./results";
 import { FIXTURE_SITES, readBytes, REGION } from "./testing/fixtures";
 import { clearance, track } from "./geometry";
@@ -59,4 +59,27 @@ describe("computeNoFullStayDays", () => {
     expect(expected.length).toBeGreaterThan(0);
     expect(computeNoFullStayDays(sub, span)).toEqual(expected);
   }, 120_000);
+});
+
+describe("bestLandingOnDay", () => {
+  let region: Region;
+  let span: Positions;
+  beforeAll(async () => {
+    region = await loadRegion(readBytes, REGION);
+    span = await loadSpanPositions(readBytes);
+  }, 120_000);
+
+  it("finds an hour on a working day whose ranking has Full Coverage", async () => {
+    const day = parseUtc("2026-11-20T00:00:00Z"); // the mons-mouton Featured Landing Time's day
+    const best = bestLandingOnDay(region, hourlySpan(span), day)!;
+    expect(best.sites).toBeGreaterThan(0);
+    expect(best.landing >= day && best.landing < day + DAY_MS).toBe(true);
+    expect((best.landing - SPAN_START) % HOUR_MS).toBe(0);
+    const doc = computeRanking(region, await loadPositions(readBytes, best.landing, N_SAMPLES), best.landing);
+    expect(doc.sites.some((s) => s.coverage === "full")).toBe(true);
+  }, 120_000);
+
+  it("is null outside the Supported Span", () => {
+    expect(bestLandingOnDay(region, hourlySpan(span), SPAN_END)).toBeNull();
+  });
 });
