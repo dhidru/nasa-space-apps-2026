@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from pipeline.build import build_dataset
 from pipeline.horizon import decode_horizons
@@ -36,11 +37,14 @@ def bumpy_dem(pixel, half_width=200_000.0):
     return DemGrid(heights_m=h.astype(np.float32), x0_m=float(xs[0]), y0_m=float(xs[-1]), pixel_m=pixel)
 
 
-def test_built_dataset_passes_the_contract_validator(tmp_path):
+@pytest.mark.parametrize("near_per_region", [False, True])
+def test_built_dataset_passes_the_contract_validator(tmp_path, near_per_region):
     outlines = {r.region_id: square_outline(r.region_id, -160.0 + 40.0 * i, -86.0) for i, r in enumerate(REGIONS)}
     far = bumpy_dem(400.0)
     near = bumpy_dem(100.0, half_width=200_000.0)
-    build_dataset(tmp_path, outlines, far=far, near=near, site_regions={"mons-mouton"},
+    asked = []
+    near_arg = (lambda outline: asked.append(outline.region_id) or near) if near_per_region else near
+    build_dataset(tmp_path, outlines, far=far, near=near_arg, site_regions={"mons-mouton"},
                   horizon_kw={"n_azimuths": 1440, "near_max_m": 1_000.0, "far_max_m": 5_000.0},
                   home_pixel_m=2_000.0)
 
@@ -50,6 +54,7 @@ def test_built_dataset_passes_the_contract_validator(tmp_path):
     assert regions["mock"] is False
     flags = {r["id"]: r["has_site_data"] for r in regions["regions"]}
     assert flags["mons-mouton"] is True and sum(flags.values()) == 1
+    assert asked == (["mons-mouton"] if near_per_region else [])
 
     folder = tmp_path / "regions" / "mons-mouton"
     sites = json.loads((folder / "sites.json").read_text())

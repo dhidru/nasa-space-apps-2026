@@ -56,12 +56,12 @@ python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt -r requirements-dev.txt   # macOS/Linux: .venv/bin/python
 ```
 
-### Data pipeline (Demo Region: Mons Mouton)
+### Data pipeline
 
 **You don't need to run the pipeline to use the real data.** A built copy is
-committed in `data/processed/site-data/` (about 11 MB): all 9 region outlines and
-base maps, the Mons Mouton site grid and Horizons, and Sun/Earth positions for
-the Supported Span. It has the same layout as the mock data in
+committed in `data/processed/site-data/` (about 83 MB): all 9 region outlines and
+base maps, the site grids and Horizons of the 8 regions other than Mons Mouton
+Plateau (design.md §3), and Sun/Earth positions for the Supported Span. It has the same layout as the mock data in
 `contract/mock/data/`, including the `results/` documents for one Landing Time
 (2027-03-01T00:00Z): the ranking, site details and Landing Windows for the top 10.
 After a rebuild, commit the changed files there.
@@ -76,11 +76,13 @@ Run these from `src/`:
    (it is behind a CAPTCHA) into `data/raw/usgs/`.
 2. `python -m pipeline.fetch small`: SPICE kernels (~44 MB), and unzips the outlines.
 3. `python -m pipeline.fetch lola80`: LOLA 80 m DEM (116 MB).
-4. `python -m pipeline.fetch lola20 mons-mouton`: only the rows of the LOLA 20 m DEM around the region (~100 MB).
-5. `python -m pipeline.build`: regions, outlines, base maps, sites and Horizons into `data/processed/site-data/` (a few minutes).
+4. `python -m pipeline.fetch lola20 REGION_ID`, once for each of the 8 regions with site data (every region in
+   `SITE_REGIONS` in `src/pipeline/build.py`): only the rows of the LOLA 20 m DEM around that region (~110 MB each).
+5. `python -m pipeline.build`: regions, outlines, base maps, sites and Horizons into `data/processed/site-data/` (about an hour on an 8-region run; Haworth alone is about 15 min).
 6. `python -m pipeline.ephemeris ../data/processed/site-data/ephemeris 2026 2027`: Sun and Earth positions for the Supported Span.
 7. `python -m pipeline.results --landing-time 2027-03-01T00:00:00Z`: Clearance, ranking, site details and
-   Landing Windows into `regions/mons-mouton/results/` (seconds; repeat `--landing-time` for more).
+   Landing Windows into `regions/mons-mouton/results/` (seconds; repeat `--landing-time` for more). These are
+   the golden files for the TypeScript parity tests, so only the Demo Region (Mons Mouton) needs them.
 8. `python ../contract/validate.py ../data/processed/site-data`: check the output against the data contract.
 
 Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks that need the downloaded data,

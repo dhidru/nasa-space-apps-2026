@@ -8,7 +8,7 @@ site in 3D. It reads the pipeline's output in `../data/processed/site-data` (see
 
 1. **South pole map**: hillshade of the pole with the nine Artemis III regions; regions without site data are marked
    "coming soon". Hover a region to highlight it, click to open it.
-2. **Region grid**: the 200 m Landing Site grid over the region's hillshade. With site data (today Mons Mouton):
+2. **Region grid**: the 200 m Landing Site grid over the region's hillshade. With site data (every region except Mons Mouton Plateau):
    a **Landing Time** picker (−1 d / −1 h / +1 h / +1 d steps), a **coverage heatmap** of every site, the **top 10**
    (at least 2 km apart) drawn and listed, and each cell's height, slope and rank on hover.
 3. **Site view**: a 3D slice of terrain (2 to 16 km) around the site (three.js, LOLA 80 m), shaded by relief, by
