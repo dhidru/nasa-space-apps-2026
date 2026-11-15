@@ -6,6 +6,7 @@
 import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
 import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
+import { fillTopList } from "./toplist.js";
 import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -363,14 +364,11 @@ export class MapView {
         svgEl("rect", { x: cell.x - GRID_M / 2, y: -(cell.y + GRID_M / 2), width: GRID_M, height: GRID_M, class: "top-cell", style: `fill:${coverageColor(e)};stroke:${coverageColor(e)}` }, this.topLayer);
         const lab = this.addLabel({ x: cell.x + GRID_M, y: cell.y + GRID_M, text: String(i + 1), cls: "top-label", a: "start", id: e.site_id });
         lab.addEventListener("click", () => this.onSite(r.id, e.site_id));
-        if (list) {
-          const li = document.createElement("li");
-          li.innerHTML = `<button type="button"><span class="rk">${i + 1}</span><span class="sw" style="background:${coverageColor(e)}"></span><span class="id">${e.site_id}</span><span class="lb">${coverageLabel(e)}</span><span class="cl" title="Worst-case minimum Clearance over the stay (Sun or Earth)">${e.worst_case_min_clearance_deg.toFixed(2)}°</span><span class="robust" title="${ROBUSTNESS_TITLE}">${robustnessLabel(team?.robustnessOf(e.site_id))}</span></button>`;
-          const b = li.querySelector("button");
-          b.addEventListener("click", () => this.onSite(r.id, e.site_id));
-          b.addEventListener("pointerenter", () => { this.markCell(cell, this.hoverRect); this.renderCell(cell); });
-          list.appendChild(li);
-        }
+      });
+      if (list) fillTopList(list, res.top, {
+        robustnessOf: team ? (id) => team.robustnessOf(id) : undefined,
+        onPick: (e) => this.onSite(r.id, e.site_id),
+        onHover: (e) => { const cell = grid.byId(e.site_id); if (cell) { this.markCell(cell, this.hoverRect); this.renderCell(cell); } },
       });
       this.renderCell(this.lastCell);
     } catch (err) {

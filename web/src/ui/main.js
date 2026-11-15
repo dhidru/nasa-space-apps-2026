@@ -16,6 +16,7 @@ import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadTeamRegion, loadAl
 import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView } from "./mapview.js";
+import { fillTopList } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
 import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
 import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
@@ -411,13 +412,11 @@ async function showWindows() {
   }
 }
 function renderTopList(r, cur, tr) {
-  el.topList.replaceChildren(...r.top.map((e, i) => {
-    const li = document.createElement("li");
-    if (e.site_id === cur.cell.id) li.className = "active";
-    li.innerHTML = `<button type="button" title="${escapeHtml(coverageLabel(e))}"><span class="rk">${i + 1}</span><span class="sw" style="background:${coverageColor(e)}"></span><span class="id">${e.site_id}</span><span class="lb">${escapeHtml(coverageLabel(e))}</span><span class="cl" title="Worst-case minimum Clearance over the stay (Sun or Earth)">${e.worst_case_min_clearance_deg.toFixed(2)}°</span><span class="robust" title="${ROBUSTNESS_TITLE}">${robustnessLabel(tr?.robustnessOf(e.site_id))}</span></button>`;
-    li.querySelector("button").addEventListener("click", () => go(`#${cur.region.id}/${e.site_id}`));
-    return li;
-  }));
+  fillTopList(el.topList, r.top, {
+    robustnessOf: tr ? (id) => tr.robustnessOf(id) : undefined,
+    activeId: cur.cell.id,
+    onPick: (e) => go(`#${cur.region.id}/${e.site_id}`),
+  });
 }
 
 /* ---------- timeline ---------- */

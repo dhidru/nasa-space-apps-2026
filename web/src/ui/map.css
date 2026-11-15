@@ -67,6 +67,7 @@
 .map-top h3 { margin: 4px 0 0; font-size: 13px; font-weight: 650; }
 .map-top .landing { display: grid; gap: 4px; font-size: 12px; }
 .map-top .top-list { padding: 0; }
+.map-top .top-head { padding: 0 9px; } /* button padding + border, with no list padding */
 .map-top .hint { margin: 0; }
 
 /* fly-in to a Landing Site: the layers marked .clears-on-flight fade while the map zooms onto the chosen site */
