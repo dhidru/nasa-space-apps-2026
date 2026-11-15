@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pipeline.scoring import body_stats, landing_windows, rank_sites, select_top
+from pipeline.scoring import body_stats, timing_robustness_fraction, landing_windows, rank_sites, select_top
 
 
 def test_body_stats_count_only_positive_clearance_as_line_of_sight():
@@ -74,3 +74,17 @@ def test_only_the_top_n_windows_are_kept_and_partial_only_sites_have_none():
     assert len(landing_windows(WORST, stay_samples=3, merge_gap_steps=3, top_n=1).windows) == 1
     none = landing_windows(-np.ones(12), stay_samples=3, merge_gap_steps=3, top_n=10)
     assert none.windows == [] and none.runs == [(0, 10, False)]
+
+
+def test_timing_robustness_is_the_share_of_landing_times_with_full_coverage():
+    # WORST has Full Coverage at Landing Times 0, 1 and 5-9: 7 of 10. A site that is always
+    # in Line of Sight scores 1, and Clearance of exactly 0 is not Line of Sight (GLOSSARY.md).
+    worst = np.stack([WORST, np.ones(12), np.zeros(12)])
+    np.testing.assert_allclose(timing_robustness_fraction(worst, stay_samples=3), [0.7, 1.0, 0.0])
+
+
+def test_a_sample_without_a_clearance_counts_as_blocked_like_in_landing_windows():
+    worst = WORST.copy()
+    worst[0] = np.nan  # landing_windows: NaN > 0 is false, so Landing Time 0 isn't Full
+    assert landing_windows(worst, stay_samples=3, merge_gap_steps=3, top_n=10).runs[0] == (0, 1, False)
+    np.testing.assert_allclose(timing_robustness_fraction(worst[None], stay_samples=3), [0.6])

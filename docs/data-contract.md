@@ -131,6 +131,15 @@ Fields:
     a region.
   - `x_m`, `y_m`, `lat_deg`, `lon_deg`
   - `terrain_height_m`
+  - `timing_robustness_fraction` (optional): the site's Timing Robustness, the
+    share of the Supported Span's Landing Times whose Surface Stay has Full
+    Coverage, rounded to 4 decimals. `pipeline.robustness` adds it after
+    `pipeline.build` and `pipeline.ephemeris`. It doesn't depend on the chosen
+    Landing Time, so the browser reads it instead of computing it. The front end
+    treats a missing value as "not computed". The stored value is never 0 for a
+    site with any Full Coverage Landing Time, and never 1 for a site with any
+    Partial one. The mock data's values are approximate: the mock generator
+    samples every 6 hours instead of every 10 minutes.
 - **The order of `sites[]` is the row order of the Horizons (`horizons.bin.gz`).**
 
 ### 5.4 Site-to-site distance

@@ -310,8 +310,10 @@ the design work doesn't wait on the pipeline.
 - Slope filter or column (from the LOLA slope maps, LDSM). NASA's limits are
   under 10° for landing at the 100 m scale and under 20° for EVA within 2 km;
   the ground doesn't need to be flat out to 2 km (landing-criteria.md §1–2).
-- Timing robustness column: the share of the Supported Span with Full
-  Coverage (landing-criteria.md §2).
+- ~~Timing robustness column: the share of the Supported Span with Full
+  Coverage (landing-criteria.md §2).~~ Done: `pipeline.robustness` stores it in
+  `sites.json` (data-contract §5.3); the map readout, the site overview and both
+  top-10 lists show it.
 - Surface Stay length as a setting (NASA gives 5.75–6.5 days).
 - Distance to the nearest permanently shadowed region (PGDA LPSR shapefile), as
   a proxy for ice.

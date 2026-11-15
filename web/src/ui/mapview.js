@@ -6,7 +6,7 @@
 import { GRID_M, siteGrid, bbox, xyToLL } from "./polar.js";
 import { sizeKm } from "./regions.js";
 import { prefersReducedMotion, easeInOutCubic, phase, SLICE_FIT_MARGIN } from "./transition.js";
-import { formatUtc, coverageLabel, coverageColor, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
+import { formatUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, SPAN_START, SPAN_END, STEP_MS, FULL_HIGH, PARTIAL_HIGH, PARTIAL_LOW, rgb } from "./ranking.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}, parent) => {
@@ -289,7 +289,7 @@ export class MapView {
         <dt>Longitude</dt><dd data-k="lon">—</dd>
         <dt>Elevation</dt><dd data-k="h">—</dd>
         <dt>Slope (200 m)</dt><dd data-k="s">—</dd>
-        ${r.hasSiteData ? '<dt>Rank</dt><dd data-k="rank">—</dd>' : ""}
+        ${r.hasSiteData ? `<dt>Rank</dt><dd data-k="rank">—</dd><dt title="${ROBUSTNESS_TITLE}">Timing robustness</dt><dd data-k="robust">—</dd>` : ""}
       </dl>
       ${r.hasSiteData ? `
       <section class="map-top">
@@ -341,9 +341,9 @@ export class MapView {
     if (status) status.textContent = "Scoring every Landing Site over the Surface Stay…";
     if (list) list.replaceChildren();
     try {
-      const res = await this.ranking(r.id, landing, (f) => {
+      const [res, team] = await Promise.all([this.ranking(r.id, landing, (f) => {
         if (token === this.topToken && status) status.textContent = `Scoring every Landing Site over the Surface Stay… ${Math.round(f * 100)} %`;
-      });
+      }), this.teamSites(r.id).catch(() => null)]);
       if (token !== this.topToken || this.region !== r) return;
       this.rankData = res;
       // Coverage heatmap: every site coloured by coverage, one path per colour.
@@ -365,7 +365,7 @@ export class MapView {
         lab.addEventListener("click", () => this.onSite(r.id, e.site_id));
         if (list) {
           const li = document.createElement("li");
-          li.innerHTML = `<button type="button"><span class="rk">${i + 1}</span><span class="sw" style="background:${coverageColor(e)}"></span><span class="id">${e.site_id}</span><span class="lb">${coverageLabel(e)}</span><span class="cl" title="Worst-case minimum Clearance over the stay (Sun or Earth)">${e.worst_case_min_clearance_deg.toFixed(2)}°</span></button>`;
+          li.innerHTML = `<button type="button"><span class="rk">${i + 1}</span><span class="sw" style="background:${coverageColor(e)}"></span><span class="id">${e.site_id}</span><span class="lb">${coverageLabel(e)}</span><span class="cl" title="Worst-case minimum Clearance over the stay (Sun or Earth)">${e.worst_case_min_clearance_deg.toFixed(2)}°</span><span class="robust" title="${ROBUSTNESS_TITLE}">${robustnessLabel(team?.robustnessOf(e.site_id))}</span></button>`;
           const b = li.querySelector("button");
           b.addEventListener("click", () => this.onSite(r.id, e.site_id));
           b.addEventListener("pointerenter", () => { this.markCell(cell, this.hoverRect); this.renderCell(cell); });
@@ -393,6 +393,7 @@ export class MapView {
       if (!team) set("h", `${Math.round(this.dem.at(cell.x, cell.y)).toLocaleString()} m`);
       set("s", `${this.dem.slope(cell.x, cell.y).toFixed(1)}°`);
     } else { if (!team) set("h", "loading…"); set("s", "loading…"); }
+    if (this.teamSiteData) set("robust", robustnessLabel(this.teamSiteData.robustnessOf(cell.id)));
     const e = this.rankData && this.rankData.byId.get(cell.id);
     set("rank", e ? `${e.rank.toLocaleString()} of ${this.rankData.doc.sites.length.toLocaleString()}${e.top ? " · top 10" : ""} · ${coverageLabel(e)}` : this.region && this.region.hasSiteData ? "scoring…" : "—");
   }

@@ -67,3 +67,7 @@ _Avoid_: Qualifying, passing
 **Partial Coverage**:
 A Landing Site where the Sun or Earth loses Line of Sight at some point during the Surface Stay, described by the percentage of the stay each body is in view.
 _Avoid_: Failing, degraded
+
+**Timing Robustness**:
+The share of Landing Times in the Supported Span for which a Landing Site has Full Coverage over the Surface Stay. It says how well a site holds up if the Landing Time slips, and it doesn't depend on the chosen Landing Time.
+_Avoid_: Reliability, availability, uptime

@@ -42,7 +42,8 @@ export function loadRegionBasemap(region) {
 }
 
 /**
- * A region's sites and Horizons, via loadRegion. Adds heightOf(siteId): terrain height (m).
+ * A region's sites and Horizons, via loadRegion. Adds heightOf(siteId): terrain height (m), and
+ * robustnessOf(siteId): Timing Robustness (0–1, data-contract §5.3), undefined if the pipeline didn't compute it.
  * `region.siteIndex` maps site ids to rows; Horizons are decoded once.
  */
 export async function loadTeamRegion(regionId) {
@@ -52,6 +53,10 @@ export async function loadTeamRegion(regionId) {
     heightOf(siteId) {
       const i = region.siteIndex.get(siteId);
       return i === undefined ? undefined : region.observerAboveSphereM[i] - region.observerHeightM;
+    },
+    robustnessOf(siteId) {
+      const i = region.siteIndex.get(siteId);
+      return i === undefined || !region.timingRobustness ? undefined : region.timingRobustness[i];
     },
   };
 }

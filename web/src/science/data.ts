@@ -20,6 +20,8 @@ export interface Region {
   gridSpacingM: number;
   horizons: Horizons;
   azimuthStepDeg: number;
+  /** Timing Robustness per site (data-contract §5.3), or null if sites.json doesn't have it for every site. */
+  timingRobustness: Float64Array | null;
 }
 
 export interface SiteRecord {
@@ -29,6 +31,7 @@ export interface SiteRecord {
   lat_deg: number;
   lon_deg: number;
   terrain_height_m: number;
+  timing_robustness_fraction?: number;
 }
 
 export interface SitesDoc {
@@ -61,6 +64,8 @@ export function makeRegion(doc: SitesDoc, horizons: Horizons): Region {
     gridSpacingM: doc.grid_spacing_m,
     horizons,
     azimuthStepDeg: 360 / horizons.nAzimuths,
+    timingRobustness: doc.sites.every((s) => s.timing_robustness_fraction !== undefined)
+      ? col((s) => s.timing_robustness_fraction!) : null,
   };
 }
 

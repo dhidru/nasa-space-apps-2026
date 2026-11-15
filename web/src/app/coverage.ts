@@ -6,6 +6,16 @@ export function pct(fraction: number): string {
   return `${Math.floor(fraction * 100 + 1e-9)} %`;
 }
 
+/** Tooltip wherever Timing Robustness is shown (GLOSSARY.md). */
+export const ROBUSTNESS_TITLE =
+  "Timing Robustness: the share of Landing Times in the Supported Span (one year) whose Surface Stay has Full Coverage";
+
+/** Timing Robustness as a percentage, rounded down; "< 1 %" rather than "0 %" for a rare site, "—" if not computed. */
+export function robustnessLabel(fraction: number | undefined): string {
+  if (fraction === undefined) return "—";
+  return fraction > 0 && fraction < 0.01 ? "< 1 %" : pct(fraction);
+}
+
 /** "Full coverage" or "Partial (Sun x %, Earth y %)". */
 export function coverageLabel(e: RankingEntry): string {
   return e.coverage === "full" ? "Full coverage" : `Partial (Sun ${pct(e.sun.los_fraction)}, Earth ${pct(e.earth.los_fraction)})`;

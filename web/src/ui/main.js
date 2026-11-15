@@ -17,7 +17,7 @@ import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView } from "./mapview.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
-import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
+import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
 import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
 
 
@@ -32,7 +32,7 @@ const el = {
   form: $("form"), lat: $("lat"), lon: $("lon"), date: $("date"), time: $("time"),
   now: $("now"), hint: $("hint"), chip: $("chip"), when: $("when"),
   oSunEl: $("oSunEl"), oSunAz: $("oSunAz"), oLst: $("oLst"), oSub: $("oSub"), oEarth: $("oEarth"), oPhase: $("oPhase"),
-  oElev: $("oElev"), oSlope: $("oSlope"),
+  oElev: $("oElev"), oSlope: $("oSlope"), oRobust: $("oRobust"),
   shade: $("shade"), slice: $("slice"), exag: $("exag"), exagOut: $("exagOut"), loading: $("loading"),
   cSun: $("cSun"), cEarth: $("cEarth"),
   chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
@@ -41,6 +41,7 @@ const el = {
   stay: $("stay"), stayTitle: $("stayTitle"), stayRange: $("stayRange"), stayStatus: $("stayStatus"),
   stayDetail: $("stayDetail"), stayWindows: $("stayWindows"),
 };
+$("oRobustLabel").title = ROBUSTNESS_TITLE;
 
 const compass16 = (az) => ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][Math.round(az / 22.5) % 16];
 const fmtLat = (v) => `${Math.abs(v).toFixed(2)}° ${v >= 0 ? "N" : "S"}`;
@@ -80,7 +81,7 @@ async function teamFor(region, cell) {
   if (!region.hasSiteData) return null;
   const tr = await teamSitesFor(region.id), h = tr.heightOf(cell.id);
   if (h === undefined) return null;
-  return { h, tracks: (vectors) => siteTracks(tr, cell.id, vectors) };
+  return { h, robustness: tr.robustnessOf(cell.id), tracks: (vectors) => siteTracks(tr, cell.id, vectors) };
 }
 /** Sun/Earth azimuth, elevation and Clearance at one instant from the team's track(), or null without km vectors. */
 function teamNow(team, eph) {
@@ -312,6 +313,7 @@ async function apply() {
   const sunH = renderReadout(state);
   el.oElev.textContent = `${Math.round(h).toLocaleString()} m`;
   el.oSlope.textContent = `${dem.slope(cell.x, cell.y).toFixed(1)}°`;
+  el.oRobust.textContent = team ? robustnessLabel(team.robustness) : "— (no team site data)";
   const sun = sunVector(sunH.az, sunH.el, cell.lon);
   view.setSun(sun, 1);
   el.hint.textContent = HINT;
@@ -344,13 +346,13 @@ async function updateTopTen() {
   el.topStatus.textContent = "Scoring every Landing Site over the Surface Stay…";
   el.oRank.textContent = "…";
   try {
-    const r = await ranking(cur.region.id, landingMs, (f) => {
+    const [r, tr] = await Promise.all([ranking(cur.region.id, landingMs, (f) => {
       if (token === topToken) el.topStatus.textContent = `Scoring every Landing Site over the Surface Stay… ${Math.round(f * 100)} %`;
-    });
+    }), teamSitesFor(cur.region.id).catch(() => null)]);
     if (token !== topToken) return;
     el.topStatus.textContent = "";
     const grid = siteGrid(cur.region);
-    renderTopList(r, cur);
+    renderTopList(r, cur, tr);
     const me = r.byId.get(cur.cell.id);
     el.oRank.textContent = me ? `${me.rank.toLocaleString()} of ${r.doc.sites.length.toLocaleString()}${me.top ? " · top 10" : ""} · ${coverageLabel(me)}` : "—";
     view.setMarks(r.top.map((e) => ({ cell: grid.byId(e.site_id), color: coverageColor(e) })).filter((m) => m.cell));
@@ -408,11 +410,11 @@ async function showWindows() {
     el.stayWindows.innerHTML = `<p class="status">Couldn't find Landing Windows: ${escapeHtml(e.message)}</p>`;
   }
 }
-function renderTopList(r, cur) {
+function renderTopList(r, cur, tr) {
   el.topList.replaceChildren(...r.top.map((e, i) => {
     const li = document.createElement("li");
     if (e.site_id === cur.cell.id) li.className = "active";
-    li.innerHTML = `<button type="button" title="${escapeHtml(coverageLabel(e))}"><span class="rk">${i + 1}</span><span class="sw" style="background:${coverageColor(e)}"></span><span class="id">${e.site_id}</span><span class="lb">${escapeHtml(coverageLabel(e))}</span><span class="cl" title="Worst-case minimum Clearance over the stay (Sun or Earth)">${e.worst_case_min_clearance_deg.toFixed(2)}°</span></button>`;
+    li.innerHTML = `<button type="button" title="${escapeHtml(coverageLabel(e))}"><span class="rk">${i + 1}</span><span class="sw" style="background:${coverageColor(e)}"></span><span class="id">${e.site_id}</span><span class="lb">${escapeHtml(coverageLabel(e))}</span><span class="cl" title="Worst-case minimum Clearance over the stay (Sun or Earth)">${e.worst_case_min_clearance_deg.toFixed(2)}°</span><span class="robust" title="${ROBUSTNESS_TITLE}">${robustnessLabel(tr?.robustnessOf(e.site_id))}</span></button>`;
     li.querySelector("button").addEventListener("click", () => go(`#${cur.region.id}/${e.site_id}`));
     return li;
   }));

@@ -60,3 +60,8 @@ ranking code. Python stays the reference implementation. There is no server.
   unpacks `horizons.bin.gz` itself, as data-contract §6.1 describes.
 - **Adding a region costs about 4 MB of Horizons** on that region's page and
   nothing on the server side.
+- **Values that don't depend on the Landing Time can be precomputed.** Timing
+  Robustness covers every Landing Time in the Supported Span, which is too slow
+  to compute per site in the browser. So `pipeline.robustness` stores it in
+  `sites.json` (data-contract §5.3) and the browser only reads it. It has no
+  TypeScript port, so it can't drift from the Python.

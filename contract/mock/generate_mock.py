@@ -383,6 +383,23 @@ def build_site_detail(rid, site, row, horizons, times, sun, earth, entry):
     }
 
 
+def add_timing_robustness(sites: list[dict], horizons: array.array, step_h: int = 6) -> None:
+    """Timing Robustness (data-contract §5.3) for every site. The real pipeline checks every
+    10-minute Landing Time; this mock samples every `step_h` hours to stay fast in pure Python."""
+    step_s = step_h * 3600
+    stay = (STAY_SAMPLES - 1) * STEP_S // step_s + 1  # the same 7 days, at the coarser step
+    n_land = int((SEARCH_END - SEARCH_START).total_seconds() // step_s)
+    sky = [(sun_az_el(t), earth_az_el(t))
+           for t in (SEARCH_START + timedelta(seconds=j * step_s) for j in range(n_land + stay - 1))]
+    for row, site in enumerate(sites):
+        prefix = [0]
+        for (sa, se), (ea, ee) in sky:
+            blocked = min(se - horizon_at(horizons, row, sa), ee - horizon_at(horizons, row, ea)) <= 0
+            prefix.append(prefix[-1] + blocked)
+        n_full = sum(prefix[j + stay] == prefix[j] for j in range(n_land))
+        site["timing_robustness_fraction"] = r(n_full / n_land, 4)
+
+
 def build_landing_windows(rid, site, row, horizons):
     n_land = int((SEARCH_END - SEARCH_START).total_seconds() // STEP_S)
     n_samp = n_land + STAY_SAMPLES - 1
@@ -504,13 +521,15 @@ def main() -> None:
 
     print("sites ...")
     sites = build_sites(cx, cy)
+
+    print("horizons ...")
+    horizons = build_horizons(sites, cx, cy)
+    print("timing robustness ...")
+    add_timing_robustness(sites, horizons)
     write_json(folder / "sites.json", {
         "schema_version": SCHEMA_VERSION, "mock": True, "region_id": DEMO_REGION,
         "grid_spacing_m": GRID_SPACING_M, "site_radius_m": SITE_RADIUS_M,
         "observer_height_m": OBSERVER_HEIGHT_M, "sites": sites})
-
-    print("horizons ...")
-    horizons = build_horizons(sites, cx, cy)
     write_packed_horizons(folder / "horizons.bin.gz", horizons, N_AZ)
     write_json(folder / "horizons.json", {
         "schema_version": SCHEMA_VERSION, "mock": True, "file": "horizons.bin.gz", "dtype": "int16",

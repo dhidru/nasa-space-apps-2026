@@ -121,3 +121,16 @@ def landing_windows(worst_clearance_deg: np.ndarray, *, stay_samples: int, merge
         windows.append(Window(a, b, gaps, best, float(stay_min[best])))
     windows.sort(key=lambda w: -w.best_worst_case_min_clearance_deg)
     return LandingWindows(runs=runs, windows=windows[:top_n])
+
+
+def timing_robustness_fraction(worst_clearance_deg: np.ndarray, *, stay_samples: int) -> np.ndarray:
+    """Timing Robustness of each site: the share of Landing Times whose stay has Full Coverage.
+
+    worst_clearance_deg is [n_sites, n_landing + stay_samples - 1], laid out as in
+    landing_windows. Landing Time j has Full Coverage when no sample of [j, j + stay_samples)
+    lacks Clearance > 0; a running count of blocked samples finds that in O(n) per site.
+    """
+    blocked = ~(np.atleast_2d(np.asarray(worst_clearance_deg, float)) > 0.0)  # as landing_windows: NaN is blocked
+    count = np.concatenate([np.zeros((blocked.shape[0], 1), np.int64), np.cumsum(blocked, axis=1)], axis=1)
+    in_stay = count[:, stay_samples:] - count[:, :-stay_samples]
+    return (in_stay == 0).mean(axis=1)

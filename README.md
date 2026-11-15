@@ -80,10 +80,12 @@ Run these from `src/`:
    `SITE_REGIONS` in `src/pipeline/build.py`): only the rows of the LOLA 20 m DEM around that region (~110 MB each).
 5. `python -m pipeline.build`: regions, outlines, base maps, sites and Horizons into `data/processed/site-data/` (about an hour on an 8-region run; Haworth alone is about 15 min).
 6. `python -m pipeline.ephemeris ../data/processed/site-data/ephemeris 2026 2027`: Sun and Earth positions for the Supported Span.
-7. `python -m pipeline.results --landing-time 2027-03-01T00:00:00Z`: Clearance, ranking, site details and
+7. `python -m pipeline.robustness`: Timing Robustness of every site, added to each region's `sites.json`
+   (about 35 min for all 8 regions; `--region ID` for one). Rerun it after step 5, which rewrites `sites.json`.
+8. `python -m pipeline.results --landing-time 2027-03-01T00:00:00Z`: Clearance, ranking, site details and
    Landing Windows into `regions/mons-mouton/results/` (seconds; repeat `--landing-time` for more). These are
    the golden files for the TypeScript parity tests, so only the Demo Region (Mons Mouton) needs them.
-8. `python ../contract/validate.py ../data/processed/site-data`: check the output against the data contract.
+9. `python ../contract/validate.py ../data/processed/site-data`: check the output against the data contract.
 
 Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks that need the downloaded data,
 including the validation against SPICE's own azimuth/elevation routine and known lunar orbit facts

@@ -23,7 +23,8 @@
           "y_m": {"type": "number"},
           "lat_deg": {"type": "number", "minimum": -90, "maximum": 90},
           "lon_deg": {"type": "number", "minimum": -180, "maximum": 180},
-          "terrain_height_m": {"type": "number"}
+          "terrain_height_m": {"type": "number"},
+          "timing_robustness_fraction": {"type": "number", "minimum": 0, "maximum": 1}
         }
       }
     }
