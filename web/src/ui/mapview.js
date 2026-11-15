@@ -29,7 +29,14 @@ const LABELS = {
   "de-gerlache-rim-2": { x: -64000, y: 23000, a: "end" },
   "slater-plain": { x: 86000, y: -50000, a: "start" },
 };
-const LAT_RINGS = [-80, -85, -88]; // dashed parallels for orientation
+const LAT_RINGS = [-80, -82, -84, -86, -88, -89]; // dashed parallels for orientation
+const LON_STEP = 30; // meridians every 30°
+const lonText = (lon) => (lon === 0 ? "0° · toward Earth" : lon === 180 ? "180°" : lon < 180 ? `${lon}° E` : `${360 - lon}° W`);
+/** "84.12° S, 35.40° E" for a map point. */
+export function llText(x, y) {
+  const [lat, lon] = xyToLL(x, y);
+  return `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "W" : "E"}`;
+}
 
 export class MapView {
   /**
@@ -49,6 +56,9 @@ export class MapView {
     this.card = root.querySelector(".map-card");
     this.crumbs = root.querySelector(".map-crumbs");
     this.zoomHint = root.querySelector(".map-zoomhint");
+    this.cursorLL = root.querySelector(".map-cursor-ll");
+    this.reset = root.querySelector(".map-reset");
+    this.homeTitle = root.querySelector(".map-title");
     this.filter = root.querySelector(".map-filter");
     this.filterBody = this.filter.querySelector(".filter-body");
     this.filter.querySelector(".map-back").addEventListener("click", () => this.onHome());
@@ -94,7 +104,7 @@ export class MapView {
     let drag = null;
     this.svg.addEventListener("wheel", (e) => {
       e.preventDefault();
-      if (this.flight) return;
+      if (this.flight || this.mode === "home") return; // the home map is fixed
       const [mx, my] = this.toMap(e), f = Math.exp(e.deltaY * 0.0015);
       const vb = this.vb, w = Math.min(Math.max(vb.w * f, 2000), 700000);
       const k = w / vb.w;
@@ -105,7 +115,7 @@ export class MapView {
     this.svg.addEventListener("pointermove", (e) => {
       if (drag) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-        if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; this.svg.setPointerCapture(drag.id); } // capture only once it is a drag
+        if (!drag.moved && this.mode !== "home" && Math.hypot(dx, dy) > 4) { drag.moved = true; this.svg.setPointerCapture(drag.id); } // capture only once it is a drag
         if (drag.moved) {
           const r = this.svg.getBoundingClientRect(), s = drag.vb.w / r.width;
           this.userMoved = true;
@@ -113,14 +123,23 @@ export class MapView {
           return;
         }
       }
+      this.showCursorLL(e);
       this.onMove && this.onMove(e);
     });
     this.svg.addEventListener("pointerup", (e) => {
       const was = drag; drag = null;
       if (was && !was.moved) this.onClick && this.onClick(e, was);
     });
-    this.svg.addEventListener("pointerleave", () => this.onLeave && this.onLeave());
+    this.svg.addEventListener("pointerleave", () => { this.cursorLL.hidden = true; this.onLeave && this.onLeave(); });
     this.root.querySelector(".map-reset").addEventListener("click", () => { if (this.flight) return; this.userMoved = false; this.fit(this.fitBox); });
+  }
+
+  /** Latitude and longitude under the pointer, in the bottom-left corner of the map. */
+  showCursorLL(e) {
+    if (this.flight) { this.cursorLL.hidden = true; return; }
+    const [x, y] = this.toMap(e);
+    this.cursorLL.textContent = llText(x, y);
+    this.cursorLL.hidden = false;
   }
 
   /* ---------- labels ---------- */
@@ -144,19 +163,30 @@ export class MapView {
     this.svg.setAttribute("aria-label", "Map of the lunar south pole with the nine Artemis III candidate regions");
     const h = this.homeBasemap, [x0, y0, x1, y1] = h.extent_m;
     svgEl("image", { href: h.href, x: x0, y: -y1, width: x1 - x0, height: y1 - y0, preserveAspectRatio: "none", class: "map-img" }, this.svg);
+    const all = this.regions.map((r) => bbox(r.xy));
+    const box = { xmin: Math.min(...all.map((b) => b.xmin)) - 60000, // room for the "Peak near Cabeus B" label
+       xmax: Math.max(...all.map((b) => b.xmax)) + 25000, ymin: Math.min(...all.map((b) => b.ymin)) - 15000, ymax: Math.max(...all.map((b) => b.ymax)) + 15000 };
+    const inBox = (x, y) => x > box.xmin && x < box.xmax && y > box.ymin && y < box.ymax;
+    // Graticule: dashed parallels and meridians, labelled where they cross into the framed area.
     const g = svgEl("g", { class: "graticule" }, this.svg);
     for (const lat of LAT_RINGS) {
       const rho = 2 * 1737400 * Math.tan(Math.PI / 4 + (lat * Math.PI) / 360);
       svgEl("circle", { cx: 0, cy: 0, r: rho }, g);
-      this.addLabel({ x: rho * Math.SQRT1_2, y: -rho * Math.SQRT1_2, text: `${-lat}° S`, cls: "lat-label", a: "start" });
+      // label on the first of these bearings (between meridians) that falls inside the framed area
+      const at = [15, 345, 45, 315, 75, 285, 105, 255, 135, 225, 165, 195].map((d) => [rho * Math.sin((d * Math.PI) / 180), rho * Math.cos((d * Math.PI) / 180)]).find(([x, y]) => inBox(x, y));
+      if (at) this.addLabel({ x: at[0], y: at[1], text: `${-lat}° S`, cls: "lat-label", a: "middle" });
     }
-    for (const lon of [0, 90, 180, 270]) {
-      const a = (lon * Math.PI) / 180, r = 304000;
-      svgEl("line", { x1: 0, y1: 0, x2: r * Math.sin(a), y2: -r * Math.cos(a) }, g);
+    for (let lon = 0; lon < 360; lon += LON_STEP) {
+      const a = (lon * Math.PI) / 180, dx = Math.sin(a), dy = Math.cos(a), r = 400000;
+      svgEl("line", { x1: 0, y1: 0, x2: r * dx, y2: -r * dy, class: lon % 90 ? "minor" : "" }, g);
+      // label just inside the framed box, where the meridian leaves it
+      const tx = dx > 1e-9 ? box.xmax / dx : dx < -1e-9 ? box.xmin / dx : Infinity;
+      const ty = dy > 1e-9 ? box.ymax / dy : dy < -1e-9 ? box.ymin / dy : Infinity;
+      const t = Math.min(tx, ty) * 0.93;
+      this.addLabel({ x: t * dx, y: t * dy, text: lonText(lon), cls: `lon-label${lon % 90 ? " minor" : ""}`, a: "middle" });
     }
     svgEl("circle", { cx: 0, cy: 0, r: 2500, class: "pole" }, this.svg);
-    this.addLabel({ x: 0, y: -9000, text: "South Pole", cls: "pole-label", a: "middle" });
-    this.addLabel({ x: 0, y: 236000, text: "0° (toward Earth)", cls: "lat-label", a: "middle" });
+    this.addLabel({ x: 0, y: -9000, text: "South Pole · 90° S", cls: "pole-label", a: "middle" });
 
     this.polys = {};
     for (const r of this.regions) {
@@ -176,9 +206,10 @@ export class MapView {
     this.onLeave = () => this.hover(null);
     this.onClick = (e, press) => { const id = (press && press.region) || this.hovered; if (id) this.onRegion(id); };
 
-    const all = this.regions.map((r) => bbox(r.xy));
-    this.fit({ xmin: Math.min(...all.map((b) => b.xmin)) - 25000, xmax: Math.max(...all.map((b) => b.xmax)) + 25000, ymin: Math.min(...all.map((b) => b.ymin)) - 15000, ymax: Math.max(...all.map((b) => b.ymax)) + 15000 }, 0.04);
+    this.fit(box, 0.04);
     this.zoomHint.hidden = true;
+    this.reset.hidden = true; // nothing to reset: the home map doesn't zoom or pan
+    this.homeTitle.hidden = false;
     this.setCrumbs([{ text: "Lunar south pole" }]);
     this.renderHomeCard();
   }
@@ -220,6 +251,8 @@ export class MapView {
     this.endFlight();
     this.mode = "region";
     this.region = r;
+    this.reset.hidden = false;
+    this.homeTitle.hidden = true;
     this.userMoved = false;
     this.polys = null;
     this.svg.replaceChildren();

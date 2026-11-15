@@ -416,6 +416,7 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | At the team's request: a "← back" button at the start of the breadcrumb on the region map and 3D views, Esc goes up one level, and the map-to-3D hand-off no longer pauses (shorter cross-fade, 3D motion starts at once) | `web/src/ui/mapview.js`, `web/src/ui/main.js`, `web/src/ui/patchview.js`, `web/src/ui/map.css` |
 | 2026-11-15 | Claude Code | Region map: Landing Time pane at the top left (back button greyed until hover, calendar and hour/minute pickers, Clear); sites uncoloured until a time is picked; calendar blacks out days with no sunlight anywhere in the region (new dark-days worker job and test) | `web/index.html`, `web/src/ui/mapview.js`, `web/src/ui/map.css`, `web/src/ui/main.js`, `web/src/ui/ranking.js`, `web/src/science/darkness.ts`, `web/src/science/darkness.test.ts`, `web/src/science/{client,worker,protocol}.ts` |
 | 2026-11-15 | Claude Code | Made dark days on the region-map calendar clickable (still shown black and struck through) with a warning note explaining the Sun stays below the terrain horizon at every site all day | `web/src/ui/mapview.js`, `web/src/ui/map.css` |
+| 2026-11-15 | Claude Code | Home map: fixed (no zoom or pan, Reset view hidden); labelled latitude/longitude grid and a cursor lat/lon readout; a "Lunar South Pole" title over the map that scales with its size, and "South Pole" in the header title | `web/index.html`, `web/src/ui/mapview.js`, `web/src/ui/map.css` |
 
 ## Media (images, icons, fonts, video, audio)
 

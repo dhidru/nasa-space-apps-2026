@@ -14,12 +14,18 @@
 
   <section class="mapview" id="mapview" hidden>
     <header class="map-head">
-      <h1>Lunar Landing Site Navigator</h1>
+      <h1>Lunar <span class="sp">South Pole</span> Landing Site Navigator</h1>
       <span class="tagline">Where the Sun and Earth stay in view for a 7-day Artemis landing</span>
       <nav class="map-crumbs crumbs" aria-label="Breadcrumb"></nav>
     </header>
     <div class="map-body">
       <div class="map-stage">
+        <div class="map-title" hidden>
+          <span class="map-title-kicker">Moon · 80°–90° S</span>
+          <h2>Lunar South Pole</h2>
+          <span class="map-title-sub">Nine Artemis III candidate landing regions</span>
+        </div>
+        <p class="map-cursor-ll" hidden aria-hidden="true"></p>
         <aside class="map-filter clears-on-flight" hidden aria-label="Choose a Landing Time">
           <button type="button" class="map-back" title="Back to all regions (Esc)">← All regions</button>
           <div class="filter-body"></div>

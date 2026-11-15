@@ -17,9 +17,10 @@
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
 .map-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
-.map-head h1 { margin: 0; font-size: 17px; font-weight: 700; }
+.map-head h1 { margin: 0; font-size: clamp(16px, 1.1vw + 9px, 22px); font-weight: 700; }
+.map-head h1 .sp { color: var(--sun); }
 .map-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; }
-.map-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--scene-bg); }
+.map-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--scene-bg); container-type: size; }
 .map-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; }
 .map-img { image-rendering: auto; }
 .map-card { border-left: 1px solid var(--line); padding: 12px 16px; gap: 8px; }
@@ -46,7 +47,19 @@
 .region-label { pointer-events: auto; cursor: pointer; background: rgba(7,8,11,.72); border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; font-weight: 600; font-size: 12.5px; color: var(--fg); text-shadow: none; }
 .region-label.hover { border-color: var(--sun); color: var(--sun-ink); background: var(--sun); }
 .pole-label { font-size: 11px; }
-.lat-label { font: 10.5px var(--f-mono); color: rgba(231,228,220,.5); }
+.lat-label { font: 600 11.5px var(--f-mono); color: #fff; background: rgba(7,8,11,.6); padding: 1px 5px; border-radius: 3px; text-shadow: none; }
+.lon-label { font: 600 11.5px var(--f-mono); color: rgba(231,228,220,.8); background: rgba(7,8,11,.6); padding: 1px 5px; border-radius: 3px; }
+.mapview .graticule circle, .mapview .graticule line { stroke: rgba(255,255,255,.62); stroke-width: 1.2; stroke-dasharray: 6 5; }
+.mapview .graticule line.minor { stroke: rgba(255,255,255,.38); stroke-width: 1; }
+.pole-label { font-weight: 700; color: var(--fg); }
+/* home title: scales with the map (container query units), so it stays in proportion at any window size */
+.map-title { position: absolute; z-index: 2; left: 2.2cqw; top: 2.2cqh; pointer-events: none; display: grid; gap: .15em;
+  font-size: clamp(22px, 5.2cqmin, 56px); padding: .3em .5em .35em; border-radius: 8px; background: rgba(7,8,11,.78); border: 1px solid var(--line); }
+.map-title h2 { margin: 0; font: 700 1em/1.05 var(--f-head); color: var(--fg); letter-spacing: .01em; }
+.map-title-kicker { font: 700 .3em var(--f-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--sun); }
+.map-title-sub { font: 500 .34em var(--f-ui); color: #c9c6be; }
+.map-cursor-ll { position: absolute; z-index: 3; left: 12px; bottom: 12px; margin: 0; padding: 5px 10px; border-radius: 4px; pointer-events: none;
+  background: rgba(14,16,21,.88); border: 1px solid var(--line); font: 600 13px var(--f-mono); color: var(--fg); font-variant-numeric: tabular-nums; }
 
 .region-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .region-list button { width: 100%; text-align: left; display: grid; gap: 2px; padding: 8px 10px; background: transparent; border: 1px solid transparent; }
@@ -144,3 +157,5 @@
 @media (max-width: 800px) {
   .map-filter { width: min(296px, calc(100% - 24px)); max-height: 60%; }
 }
+/* small maps: keep only the 0°/90°/180°/270° meridian labels and drop the parallel labels so nothing overlaps */
+@container (max-width: 560px) { .lon-label.minor, .lat-label { display: none; } }
