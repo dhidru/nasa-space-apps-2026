@@ -22,6 +22,7 @@
   --shade: rgba(127, 156, 255, 0.07);
   --f-ui: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --f-head: Merriweather, Georgia, "Times New Roman", serif;
+  --side-w: 340px; /* left pane on every page (map and 3D site view) */
   --f-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; }
@@ -34,11 +35,11 @@ h1, h2, h3 { font-family: var(--f-head); }
   position: fixed; inset: 0;
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 360px;
+  grid-template-columns: var(--side-w) minmax(0, 1fr) 360px;
   grid-template-rows: minmax(0, 1fr) 220px;
   grid-template-areas: "controls stage sites" "controls timeline sites";
 }
-.controls { grid-area: controls; border-right: 1px solid var(--line); }
+.controls { grid-area: controls; border-right: 1px solid var(--line); scrollbar-gutter: stable; }
 .stage { grid-area: stage; position: relative; min-height: 0; }
 .timeline { grid-area: timeline; border-top: 1px solid var(--line); }
 .sites { grid-area: sites; border-left: 1px solid var(--line); }

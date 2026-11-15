@@ -380,14 +380,15 @@ export class MapView {
     if (!r.hasSiteData) { this.filterBody.innerHTML = `<p class="filter-note">Landing Times for ${r.name} are coming soon.</p>`; return; }
     const t = new Date(this.getLanding()), pad = (n) => String(n).padStart(2, "0");
     this.calMonth = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1);
+    this.calView = "days"; // "days" → click the title → "months" → click again → "years"
     this.filterBody.innerHTML = `
       <h2>Landing Time</h2>
-      <p class="filter-note">Pick a day, then a time (UTC). The crew stays 7 days.</p>
+      <p class="filter-note">Pick a day, then type a time (UTC). The crew stays 7 days.</p>
       <div class="cal" role="group" aria-label="Landing date">
         <div class="cal-head">
-          <button type="button" class="cal-nav" data-dm="-1" aria-label="Previous month">‹</button>
-          <span class="cal-month" aria-live="polite"></span>
-          <button type="button" class="cal-nav" data-dm="1" aria-label="Next month">›</button>
+          <button type="button" class="cal-nav" data-dir="-1">‹</button>
+          <button type="button" class="cal-title" aria-live="polite"></button>
+          <button type="button" class="cal-nav" data-dir="1">›</button>
         </div>
         <div class="cal-grid"></div>
       </div>
@@ -396,11 +397,12 @@ export class MapView {
         <span class="cal-status">Checking for dark days…</span>
       </div>
       <div class="time-pick">
-        <label>Hour <select class="t-hour" aria-label="Landing hour (UTC)">${Array.from({ length: 24 }, (_, h) => `<option value="${h}">${pad(h)}</option>`).join("")}</select></label>
+        <label>Hour <input class="t-hour" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Landing hour, 00 to 23 (UTC)" placeholder="00"></label>
         <span class="colon">:</span>
-        <label>Minute <select class="t-min" aria-label="Landing minute (UTC)">${Array.from({ length: 6 }, (_, m) => `<option value="${m * 10}">${pad(m * 10)}</option>`).join("")}</select></label>
+        <label>Minute <input class="t-min" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Landing minute, 00 to 59 (UTC)" placeholder="00"></label>
         <span class="utc">UTC</span>
       </div>
+      <p class="filter-note time-note">Minutes round to the nearest 10. ↑ / ↓ step the value.</p>
       <p class="filter-picked" aria-live="polite"></p>
       <p class="dark-warn" role="note" hidden></p>
       <button type="button" class="filter-clear">Clear selection</button>
@@ -409,20 +411,50 @@ export class MapView {
       <p class="filter-note">Sites at or over this slope are shaded and left out of the top 10.</p>`;
     const limit = this.filterBody.querySelector(".slope-limit select");
     limit.addEventListener("change", () => { this.setSlopeLimit(slopeLimitOf(limit)); if (this.picked) this.loadTopTen(r, grid); });
+
+    // Typed hour and minute: digits only; on Enter, blur or ↑/↓ the value is clamped (minutes to the 10-minute grid).
     const hour = this.filterBody.querySelector(".t-hour"), min = this.filterBody.querySelector(".t-min");
-    hour.value = String(t.getUTCHours());
-    min.value = String(Math.floor(t.getUTCMinutes() / 10) * 10);
+    const time = { h: t.getUTCHours(), m: Math.floor(t.getUTCMinutes() / 10) * 10 };
+    const show = () => { hour.value = pad(time.h); min.value = pad(time.m); };
+    show();
     const dayOf = (ms) => ms - (((ms % DAY_MS) + DAY_MS) % DAY_MS);
     this.pickDay = (day) => {
-      this.setLanding(day + (Number(hour.value) * 60 + Number(min.value)) * 60000);
+      this.setLanding(day + (time.h * 60 + time.m) * 60000);
       this.picked = true; // before drawing, so the calendar marks the chosen day
       this.drawCalendar();
       this.setPicked(true, r, grid);
     };
-    for (const s of [hour, min]) s.addEventListener("change", () => { if (this.picked) this.pickDay(dayOf(this.getLanding())); });
+    const commit = (h, m) => {
+      const nh = Math.min(23, Math.max(0, h)), nm = Math.min(50, Math.max(0, Math.round(m / 10) * 10));
+      const changed = nh !== time.h || nm !== time.m;
+      Object.assign(time, { h: nh, m: nm });
+      show();
+      if (changed && this.picked) this.pickDay(dayOf(this.getLanding()));
+    };
+    const read = (input, fallback) => (input.value.trim() === "" ? fallback : Number(input.value));
+    for (const [input, isHour] of [[hour, true], [min, false]]) {
+      input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, "").slice(0, 2); });
+      input.addEventListener("focus", () => input.select());
+      input.addEventListener("change", () => commit(read(hour, time.h), read(min, time.m)));
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); commit(read(hour, time.h), read(min, time.m)); input.select(); return; }
+        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+        e.preventDefault();
+        const d = e.key === "ArrowUp" ? 1 : -1;
+        // wrap within the day: 23 → 00, 50 → 00
+        if (isHour) commit((time.h + d + 24) % 24, time.m);
+        else commit(time.h, (time.m + d * 10 + 60) % 60);
+        input.select();
+      });
+    }
+
+    this.filterBody.querySelector(".cal-title").addEventListener("click", () => {
+      this.calView = this.calView === "days" ? "months" : "years";
+      this.drawCalendar();
+    });
     for (const b of this.filterBody.querySelectorAll(".cal-nav")) b.addEventListener("click", () => {
-      const d = new Date(this.calMonth);
-      this.calMonth = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + Number(b.dataset.dm), 1);
+      const d = new Date(this.calMonth), k = Number(b.dataset.dir);
+      this.calMonth = this.calView === "days" ? Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, 1) : Date.UTC(d.getUTCFullYear() + k, d.getUTCMonth(), 1);
       this.drawCalendar();
     });
     this.filterBody.querySelector(".filter-clear").addEventListener("click", () => { this.setPicked(false, r, grid); this.drawCalendar(); });
@@ -435,30 +467,72 @@ export class MapView {
       this.drawCalendar();
     }).catch((err) => { console.error(err); status("Couldn't check for dark days"); });
   }
-  /** The month grid. Days outside the Supported Span can't be picked; fully dark days are black but can be, with a warning. */
+  /**
+   * The calendar, in one of three views like a desktop clock: days of a month, the months of a year, or the years.
+   * Clicking the title goes up a level; picking a month or year goes back down. Days outside the Supported Span
+   * can't be picked; fully dark days are black but can be, with a warning.
+   */
   drawCalendar() {
     const gridEl = this.filterBody.querySelector(".cal-grid");
     if (!gridEl) return;
     const m = new Date(this.calMonth), y = m.getUTCFullYear(), mo = m.getUTCMonth();
     const s0 = new Date(SPAN_START), s1 = new Date(SPAN_END - 1);
+    const firstMonth = Date.UTC(s0.getUTCFullYear(), s0.getUTCMonth(), 1), lastMonth = Date.UTC(s1.getUTCFullYear(), s1.getUTCMonth(), 1);
     const fmt = (ms, o) => new Date(ms).toLocaleDateString("en-GB", { ...o, timeZone: "UTC" });
-    this.filterBody.querySelector(".cal-month").textContent = fmt(this.calMonth, { month: "long", year: "numeric" });
-    const [prev, next] = this.filterBody.querySelectorAll(".cal-nav");
-    prev.disabled = this.calMonth <= Date.UTC(s0.getUTCFullYear(), s0.getUTCMonth(), 1);
-    next.disabled = this.calMonth >= Date.UTC(s1.getUTCFullYear(), s1.getUTCMonth(), 1);
-    const lead = (m.getUTCDay() + 6) % 7, nDays = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
     const chosen = this.picked ? new Date(this.getLanding()) : null;
     const chosenDay = chosen && Date.UTC(chosen.getUTCFullYear(), chosen.getUTCMonth(), chosen.getUTCDate());
-    let html = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<span class="cal-dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
-    for (let d = 1; d <= nDays; d++) {
-      const day = Date.UTC(y, mo, d), out = day < SPAN_START || day >= SPAN_END, dark = !out && !!this.dark?.has(day), sel = day === chosenDay;
-      const why = out ? "Outside the supported year" : dark ? "Dark all day: no sunlight anywhere in the region (you can still pick it)" : "";
-      const label = fmt(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-      html += `<button type="button" class="cal-day${dark ? " dark" : ""}${sel ? " sel" : ""}" data-day="${day}"${out ? " disabled" : ""}`
-        + ` aria-label="${label}${why ? `, ${why}` : ""}" title="${why || label}" aria-pressed="${sel}">${d}</button>`;
+    const title = this.filterBody.querySelector(".cal-title"), [prev, next] = this.filterBody.querySelectorAll(".cal-nav");
+    gridEl.className = `cal-grid view-${this.calView}`;
+    let html = "";
+    if (this.calView === "days") {
+      title.textContent = fmt(this.calMonth, { month: "long", year: "numeric" });
+      title.title = "Show the months";
+      prev.disabled = this.calMonth <= firstMonth;
+      next.disabled = this.calMonth >= lastMonth;
+      prev.ariaLabel = "Previous month"; next.ariaLabel = "Next month";
+      const lead = (m.getUTCDay() + 6) % 7, nDays = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+      html = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<span class="cal-dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
+      for (let d = 1; d <= nDays; d++) {
+        const day = Date.UTC(y, mo, d), out = day < SPAN_START || day >= SPAN_END, dark = !out && !!this.dark?.has(day), sel = day === chosenDay;
+        const why = out ? "Outside the supported year" : dark ? "Dark all day: no sunlight anywhere in the region (you can still pick it)" : "";
+        const label = fmt(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        html += `<button type="button" class="cal-day${dark ? " dark" : ""}${sel ? " sel" : ""}" data-day="${day}"${out ? " disabled" : ""}`
+          + ` aria-label="${label}${why ? `, ${why}` : ""}" title="${why || label}" aria-pressed="${sel}">${d}</button>`;
+      }
+    } else if (this.calView === "months") {
+      title.textContent = String(y);
+      title.title = "Show the years";
+      prev.disabled = y <= s0.getUTCFullYear();
+      next.disabled = y >= s1.getUTCFullYear();
+      prev.ariaLabel = "Previous year"; next.ariaLabel = "Next year";
+      for (let k = 0; k < 12; k++) {
+        const ms = Date.UTC(y, k, 1), out = ms < firstMonth || ms > lastMonth;
+        const sel = chosen && chosen.getUTCFullYear() === y && chosen.getUTCMonth() === k;
+        html += `<button type="button" class="cal-cell${sel ? " sel" : ""}${ms === this.calMonth ? " here" : ""}" data-month="${ms}"${out ? " disabled" : ""}`
+          + ` aria-label="${fmt(ms, { month: "long", year: "numeric" })}${out ? ", outside the supported year" : ""}">${fmt(ms, { month: "short" })}</button>`;
+      }
+    } else {
+      const y0 = s0.getUTCFullYear(), y1 = s1.getUTCFullYear();
+      title.textContent = `${y0} – ${y1}`;
+      title.title = "";
+      prev.disabled = next.disabled = true;
+      prev.ariaLabel = "Previous years"; next.ariaLabel = "Next years";
+      for (let yy = y0; yy <= y1; yy++) {
+        const sel = chosen && chosen.getUTCFullYear() === yy;
+        html += `<button type="button" class="cal-cell${sel ? " sel" : ""}${yy === y ? " here" : ""}" data-year="${yy}">${yy}</button>`;
+      }
     }
+    title.disabled = this.calView === "years";
     gridEl.innerHTML = html;
     for (const b of gridEl.querySelectorAll(".cal-day:not([disabled])")) b.addEventListener("click", () => this.pickDay(Number(b.dataset.day)));
+    for (const b of gridEl.querySelectorAll("[data-month]:not([disabled])")) b.addEventListener("click", () => { this.calMonth = Number(b.dataset.month); this.calView = "days"; this.drawCalendar(); });
+    for (const b of gridEl.querySelectorAll("[data-year]")) b.addEventListener("click", () => {
+      // keep the month if it is in that year's part of the span, else the nearest month that is
+      const ms = Date.UTC(Number(b.dataset.year), mo, 1);
+      this.calMonth = Math.min(lastMonth, Math.max(firstMonth, ms));
+      this.calView = "months";
+      this.drawCalendar();
+    });
     this.filterBody.querySelector(".filter-picked").innerHTML = chosen
       ? `Landing <b>${fmt(chosenDay, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</b> at <b>${formatUtc(this.getLanding()).slice(11, 16)} UTC</b>`
       : "No date chosen yet";
