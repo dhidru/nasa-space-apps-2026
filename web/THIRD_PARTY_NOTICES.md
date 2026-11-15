@@ -8,6 +8,8 @@ Third-party software and data used by the web app. The UI files in `src/ui` are 
 |---|---|---|
 | [three.js](https://github.com/mrdoob/three.js) 0.160.0 | MIT | 3D rendering of the site slice. |
 | [Astronomy Engine](https://github.com/cosinekitty/astronomy) 2.1.19 | MIT | Sun, Earth and Moon positions and the Moon's rotation. |
+| [Source Sans 3](https://github.com/adobe-fonts/source-sans) via `@fontsource/source-sans-3` 5.3.1 | OFL-1.1 | Interface text. Licence text and copyright ship in `THIRD-PARTY-NOTICES.txt`. |
+| [Merriweather](https://github.com/SorkinType/Merriweather) via `@fontsource/merriweather` 5.3.0 | OFL-1.1 | Headings. Licence text and copyright ship in `THIRD-PARTY-NOTICES.txt`. |
 
 Run `npm run licenses` to print the current list.
 

@@ -6,6 +6,11 @@
 // Data and science come from src/science (the TypeScript port of the Python pipeline): regions, hillshades, site heights, Horizons,
 // Sun/Earth positions, Clearance (track), rankings, site details and Landing Windows (src/teamdata.js, src/ranking.js).
 // The 3D terrain still comes from NASA tiles built by scripts/prepare-data.mjs.
+// Self-hosted fonts (SIL Open Font License 1.1, see ATTRIBUTIONS.md): Source Sans 3 for text, Merriweather for headings.
+import "@fontsource/source-sans-3/400.css";
+import "@fontsource/source-sans-3/600.css";
+import "@fontsource/source-sans-3/700.css";
+import "@fontsource/merriweather/700.css";
 import "./style.css";
 import "./map.css";
 import { D, ephemeris, latlon, enu, horizontal, phaseName, fromSite, useTeamPositions } from "./ephemeris.js";
