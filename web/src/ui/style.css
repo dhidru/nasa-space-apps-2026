@@ -279,3 +279,15 @@ button.link { background: none; border: none; color: var(--sun); padding: 0; tex
 .steps button { flex: 1; padding: 5px 0; font: 11.5px var(--f-mono); }
 .tagline { font-size: 12px; color: var(--muted); }
 .soon { font-style: normal; font: 10px var(--f-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Site view: the 7-day verdict stays pinned at the top of the right pane (src/ui/stayview.js stayVerdict). */
+.panel header.stay-verdict { position: sticky; top: 0; z-index: 2; background: var(--panel); display: grid; gap: 3px; justify-content: stretch; box-shadow: 0 6px 10px -8px rgba(0,0,0,.8); }
+.stay-verdict .verdict-line { margin: 0; font-size: 13px; color: var(--fg); }
+.stay-verdict .verdict-line:empty { display: none; }
+.stay-verdict .sun { color: var(--sun); }
+.stay-verdict .earth { color: #4ea3ff; }
+.stay-verdict .ok { color: #57c46a; }
+.stay-verdict .bad { color: #e0604a; }
+.site-id { margin: 0 0 -4px; font: 11px var(--f-mono); color: var(--muted); }
+.windows-list tr.best td { background: rgba(87,196,106,.10); }
+.best-badge { display: inline-block; font: 600 10.5px var(--f-ui); color: #0e1015; background: var(--sun); border-radius: 3px; padding: 0 4px; margin-right: 2px; }

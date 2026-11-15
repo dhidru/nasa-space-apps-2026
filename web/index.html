@@ -43,6 +43,7 @@
       </header>
 
       <form id="form" novalidate>
+        <p class="site-id" id="siteId" hidden></p>
         <div class="row">
           <label for="lat">Latitude <span class="unit">° (−S / +N)</span>
             <input id="lat" type="number" step="0.001" min="-90" max="90" required>
@@ -162,7 +163,7 @@
 
     <section class="panel timeline" aria-label="Sun and Earth over a lunar day">
       <header>
-        <h2>Sun &amp; Earth at <span id="tlSite">—</span></h2>
+        <h2>Sun &amp; Earth elevation at <span id="tlSite">—</span></h2>
         <div class="legend">
           <span class="lg lg-sun">Sun</span>
           <span class="lg lg-earth">Earth</span>
@@ -175,8 +176,10 @@
 
     <aside class="panel sites" aria-label="Site comparison">
       <section class="stay" id="stay" hidden aria-label="Surface Stay">
-        <header>
+        <!-- The 7-day verdict stays pinned at the top of the pane while the charts and Landing Windows scroll under it. -->
+        <header class="stay-verdict">
           <h2 id="stayTitle">Surface Stay</h2>
+          <p class="verdict-line" id="stayVerdict"></p>
           <small id="stayRange">—</small>
         </header>
         <div class="stay-body">
