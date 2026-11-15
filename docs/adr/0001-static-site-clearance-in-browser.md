@@ -17,8 +17,11 @@ ranking code. Python stays the reference implementation. There is no server.
   Something has to compute results on demand, either a server or the browser.
 - **The browser is fast enough.** One ranking is 6,400 sites × 1,009 samples ×
   2 bodies, about 13 million azimuth/elevation evaluations plus Horizon lookups.
-  That's well under a second in a Web Worker. Landing Windows for one site cover
-  about 53,600 samples, which is trivial.
+  Measured on 2026-11-14, it takes about 1.5 s in a single thread (Node 24,
+  after tuning the hot loop). That's acceptable with a progress bar. Splitting
+  the sites across several workers is the next step if it needs to be faster.
+  Landing Windows for one site cover about 53,600 samples, which take about
+  0.2 s.
 - **The port is small.** It's about 150 lines of numeric code:
   `local_az_el`, `horizon_elevation_at`, `body_stats`, `rank_sites`, `select_top`
   and `landing_windows` in `src/pipeline/clearance.py` and `scoring.py`.

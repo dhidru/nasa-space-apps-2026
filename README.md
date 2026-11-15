@@ -41,7 +41,11 @@ in [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
 
 ## Tech Stack
 
-_Languages, frameworks, libraries, tools._
+- **Data pipeline:** Python (NumPy, SpiceyPy, Numba), offline. See below.
+- **Web app:** a static site (ADR [0001](docs/adr/0001-static-site-clearance-in-browser.md)) built with
+  React, OpenLayers, TypeScript and Vite. A TypeScript port of the clearance, ranking
+  and Landing Windows code runs in a Web Worker, and tests check it against the
+  Python results.
 
 ## Getting Started
 
@@ -81,13 +85,32 @@ Run these from `src/`:
 
 Tests: `pytest` runs the fast tests (seconds). `pytest -m slow` runs the checks that need the downloaded data.
 
+### Web app
+
+Needs Node.js 24. It reads `data/processed/site-data/` directly. In dev it's served under
+`/data/`, and the build copies it into `web/dist/data/`. The `results/` fixtures are left out
+of the build, because the browser computes its own results.
+
+```bash
+cd web
+npm install
+npm run dev        # http://localhost:5173
+npm test           # TypeScript science vs. the committed Python results (about 10 s)
+npm run typecheck
+npm run build      # static site in web/dist/, including THIRD-PARTY-NOTICES.txt
+```
+
+If the science changes, change the Python first, regenerate `results/`, then port
+the change. The parity tests in `web/src/science/*.test.ts` fail until the two agree.
+
 ## Repository Layout
 
 ```
-src/            Application / analysis source code
+src/            Data pipeline (Python)
+web/            Static web app (React + OpenLayers) and the TypeScript science port
+viewer/         Second app, Lunar Site Viewer (Vite + three.js, 3D terrain), reads site-data; see viewer/README.md
 data/raw/       Original downloaded datasets (large files git-ignored)
 data/processed/ Pipeline output; site-data/ is committed for the front end
-viewer/         Lunar Site Viewer (Vite + three.js, 3D terrain), reads site-data; see viewer/README.md
 .github/        GitHub Pages workflow that builds and publishes viewer/
 notebooks/      Exploration notebooks
 docs/           Write-ups, diagrams, presentation material

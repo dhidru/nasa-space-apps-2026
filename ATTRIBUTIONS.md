@@ -206,19 +206,49 @@ Each dataset below also has a conventions card in
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** Krekel, H. et al. *pytest* [Software, MIT License]. https://github.com/pytest-dev/pytest
 
-### Lunar Site Viewer front end (`web/`), with three.js and Astronomy Engine
+### React and React DOM (with scheduler)
 - **Type:** Code/Library
-- **Used for:** The web front end in `web/` (Vite + three.js + Astronomy Engine), built on the team's
+- **Used for:** The web front end's UI (`web/`). Bundled into the published site.
+- **Source:** https://github.com/facebook/react (npm `react`, `react-dom` 19.3.1; `scheduler` 0.28.0 comes with `react-dom`)
+- **Accessed:** 2026-11-14
+- **License / permission:** MIT ([LICENSE](https://github.com/facebook/react/blob/main/LICENSE)); checked in the installed packages' `package.json` and `LICENSE` files.
+- **Requirements:** Keep the copyright and permission notice with copies. The build writes the full license text to `THIRD-PARTY-NOTICES.txt` (linked from the site footer), because minifying strips notice comments.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Meta Platforms, Inc. and affiliates. *React* [Software, MIT License]. https://react.dev
+
+### OpenLayers (`ol`), with its runtime dependencies
+- **Type:** Code/Library
+- **Used for:** The home and region maps in our polar stereographic x/y (`web/src/app/components/LunarMap.tsx`). Bundled into the published site.
+- **Source:** https://github.com/openlayers/openlayers (npm `ol` 10.11.0)
+- **Accessed:** 2026-11-14
+- **License / permission:** BSD 2-Clause, from the installed `node_modules/ol/LICENSE.md` ("Copyright 2005-present, OpenLayers Contributors"). Its runtime dependencies, from their installed `package.json` files, are all permissive: earcut, quickselect (ISC); fflate, geotiff, numcodecs, parse-headers, protocol-buffers-schema, quick-lru, rbush, reference-spec-reader, resolve-protobuf-schema, unzipit, zarrita (MIT); pako (MIT AND Zlib); pbf (BSD-3-Clause); zstddec (MIT AND BSD-3-Clause); lerc, web-worker (Apache-2.0); xml-utils (CC0-1.0). No GPL/AGPL.
+- **Requirements:** Binary (minified) redistributions must reproduce the copyright notice, conditions and disclaimer in the documentation or other materials. `web/scripts/vite-plugins.ts` writes every runtime package's license text to `THIRD-PARTY-NOTICES.txt` in the build, linked from the footer.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** OpenLayers Contributors. *OpenLayers* [Software, BSD 2-Clause License]. https://openlayers.org
+
+### Vite, @vitejs/plugin-react, Vitest, TypeScript and @types packages (build and test only)
+- **Type:** Tool
+- **Used for:** Building, serving and testing `web/`. Dev dependencies; not shipped in the site.
+- **Source:** https://vite.dev (npm `vite` 8.3.8, `@vitejs/plugin-react` 6.3.0), https://vitest.dev (`vitest` 5.1.0), https://www.typescriptlang.org (`typescript` 7.0.2), https://github.com/DefinitelyTyped/DefinitelyTyped (`@types/react`, `@types/react-dom`, `@types/node`)
+- **Accessed:** 2026-11-14
+- **License / permission:** Vite, plugin-react, Vitest and the @types packages: MIT. TypeScript: Apache-2.0. A scan of every installed package's `package.json` found MIT, Apache-2.0, ISC, BSD-2/3-Clause, CC0-1.0 and Zlib, plus `lightningcss` (MPL-2.0, Vite's CSS tool). MPL-2.0 is file-level copyleft; we run it unmodified and don't ship it, so it puts no terms on our code.
+- **Requirements:** None for running them. We don't redistribute them.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** Vite, Vitest and TypeScript contributors [Software]. https://vite.dev, https://vitest.dev, https://www.typescriptlang.org
+
+### Lunar Site Viewer (`viewer/`), with three.js and Astronomy Engine
+- **Type:** Code/Library
+- **Used for:** A second, separate front end in `viewer/` (Vite + three.js + Astronomy Engine), built on the team's
   `data/processed/site-data` and deployed to GitHub Pages by `.github/workflows/pages.yml`. The viewer code was
-  written by a team member with Claude, started from a Claude design chat; it is MIT-licensed (`web/LICENSE`),
+  written by a team member with Claude, started from a Claude design chat; it is MIT-licensed (`viewer/LICENSE`),
   which is compatible with our Apache 2.0.
 - **Source:** three.js https://github.com/mrdoob/three.js (npm `three@0.160.0`); Astronomy Engine
   https://github.com/cosinekitty/astronomy (npm `astronomy-engine@2.1.19`). Build-time only: Vite `5.4.11`,
   geotiff `2.1.3`, pngjs `7.0.0`.
 - **Accessed:** 2026-11-14
-- **License / permission:** All MIT, from each installed package's `package.json`. `npm run licenses` in `web/`
+- **License / permission:** All MIT, from each installed package's `package.json`. `npm run licenses` in `viewer/`
   lists the shipped tree (3 packages, all MIT).
-- **Requirements:** Keep the MIT notices; the build keeps legal comments. Credits are in `web/THIRD_PARTY_NOTICES.md`.
+- **Requirements:** Keep the MIT notices; the build keeps legal comments. Credits are in `viewer/THIRD_PARTY_NOTICES.md`.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** three.js authors. *three.js* [Software, MIT]. https://threejs.org/ · Cross, D. *Astronomy Engine* [Software, MIT]. https://github.com/cosinekitty/astronomy
 
@@ -244,6 +274,16 @@ Each dataset below also has a conventions card in
 - **Requirements:** None for our use. We only run it and don't redistribute it.
 - **Status:** ✅ (checked by Claude Code, 2026-11-14)
 - **Citation:** GitHub, Inc. *GitHub CLI* [Software]. https://github.com/cli/cli
+
+### Node.js 24 and npm
+- **Type:** Tool
+- **Used for:** Running the web build, dev server and tests. Not distributed with the project.
+- **Source:** https://nodejs.org (v24.22.0, npm 11.19.1)
+- **Accessed:** 2026-11-14
+- **License / permission:** Node.js: MIT ([LICENSE](https://github.com/nodejs/node/blob/main/LICENSE)). npm: Artistic-2.0. We only run them.
+- **Requirements:** None for our use.
+- **Status:** ✅ (checked by Claude Code, 2026-11-14)
+- **Citation:** OpenJS Foundation. *Node.js* [Software]. https://nodejs.org
 
 ### Python 3.12 (CPython)
 - **Type:** Tool
@@ -327,7 +367,10 @@ Each dataset below also has a conventions card in
 | 2026-11-14 | Claude Code | Un-ignored and committed the real pipeline output (`data/processed/site-data/`, ~11 MB) so the design side can use it, and noted it in the README | `.gitignore`, `README.md`, `data/processed/site-data/` |
 | 2026-11-14 | Claude Code | Wrote the Clearance, metrics, ranking (2 km top 10) and Landing Windows code test-first, the results writer, and a real-data cross-check; built and validated the Mons Mouton results for 2027-03-01T00:00Z | `src/pipeline/clearance.py`, `src/pipeline/scoring.py`, `src/pipeline/results.py`, `tests/`, `data/processed/site-data/regions/mons-mouton/results/`, `README.md` |
 | 2026-11-14 | Claude Code | Weighed static site vs. server using measured data sizes and wrote ADR 0001 (static site, clearance in the browser); updated the design doc and data contract to match | `docs/adr/`, `docs/design.md`, `docs/data-contract.md` |
-| 2026-11-14 | Claude Code | Moved the Lunar Site Viewer (started from a Claude design chat, first hosted on Vercel) into `web/`; switched it to the team's site-data (regions, outlines, hillshades, `sites.json` heights, Horizons for Clearance, SPICE positions); fixed the overlapping-region lookup; made the unlicensed CGI Moon Kit colour map opt-in; added the GitHub Pages workflow; checked the viewer's Clearance against the pipeline's golden site detail | `web/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
+| 2026-11-14 | Claude Code | Measured region data sizes, tested a long-term-average site filter on Mons Mouton and recorded the decision to keep Mons Mouton Plateau "coming soon" | `docs/design.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Checked the npm licenses; built the web front end (React + OpenLayers) and the TypeScript port of the clearance, ranking and Landing Windows code, test-first against the committed Python results; added the build plugins for site data and third-party notices | `web/`, `.claude/launch.json`, `docs/`, `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-14 | Claude Code | Moved the Lunar Site Viewer (started from a Claude design chat, first hosted on Vercel) into the repo; switched it to the team's site-data (regions, outlines, hillshades, `sites.json` heights, Horizons for Clearance, SPICE positions); fixed the overlapping-region lookup; made the unlicensed CGI Moon Kit colour map opt-in; added the GitHub Pages workflow; checked the viewer's Clearance against the pipeline's golden site detail | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
+| 2026-11-14 | Claude Code | Moved the Lunar Site Viewer from `web/` to `viewer/` so it sits beside the team's React front end, merged `main` and resolved the attribution conflicts | `viewer/`, `.github/workflows/pages.yml`, `ATTRIBUTIONS.md`, `README.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
@@ -372,6 +415,7 @@ check its license or terms and move it to the right section above.
 | Moon Trek | NASA/JPL (Solar System Treks) | 3D terrain context and topography | https://trek.nasa.gov/moon/ | ⚠️ Not verified |
 | LOLA topography (DEMs) | NASA GSFC / LRO, via PDS | Horizon profiles that include terrain | https://pds-geosciences.wustl.edu/missions/lro/lola.htm | ✅ Adopted: see "Data" above |
 | CSA Moon Exploration | Canadian Space Agency | Background and educational content | https://www.asc-csa.gc.ca/eng/astronomy/moon-exploration/ | ⚠️ Not verified (Government of Canada content, which has its own terms) |
+| PGDA Lunar Polar Illumination (`AVGVISIB_75S_120M_201608`, `..._EARTH`) | NASA GSFC (PGDA) | Considered for pre-filtering Mons Mouton Plateau sites by long-term average Sun/Earth visibility | https://pgda.gsfc.nasa.gov/products/69 | ⚠️ Not used: the page states no license or terms (only "please cite Mazarico et al. 2011", doi:10.1016/j.icarus.2010.10.030), and the filter tested as lossy (design.md §3) |
 
 ## Project License Text
 
