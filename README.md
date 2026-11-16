@@ -140,9 +140,7 @@ web/            Static web app: UI (maps, 3D terrain view) and the TypeScript sc
 data/raw/       Original downloaded datasets (large files git-ignored)
 data/processed/ Pipeline output; site-data/ is committed for the front end
 .github/        GitHub Pages workflow that tests, builds and publishes web/
-notebooks/      Exploration notebooks
-docs/           Write-ups, diagrams, presentation material
-assets/         Images, logos, media for the demo
+docs/           Design doc, data contract, landing criteria, ADRs
 ATTRIBUTIONS.md Licenses, permissions & citations for all external resources
 CLAUDE.md       Project rules for the AI assistant (licensing & attribution)
 ```

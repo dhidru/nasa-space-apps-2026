@@ -366,10 +366,15 @@ Each dataset below also has a conventions card in
   in the AI usage log below.
 - **Source:** https://claude.com/claude-code
 - **Accessed:** 2026-11-14
-- **License / permission:** [Anthropic Terms](https://www.anthropic.com/legal). The team must confirm which terms apply to their account.
-- **Requirements:** Disclose AI use in the Space Apps submission. Commits made
+- **License / permission:** Both team members use paid individual Claude plans, so the
+  [Anthropic Consumer Terms of Service](https://www.anthropic.com/legal/consumer-terms) (effective 2025-10-08)
+  and the [Usage Policy](https://www.anthropic.com/legal/aup) (effective 2026-11-12) apply
+  ([Claude Code legal and compliance](https://code.claude.com/docs/en/legal-and-compliance)).
+  Consumer Terms §4: Anthropic assigns to the user all its right, title and interest, if any, in Outputs.
+  Nothing in either document bars publishing the code under Apache 2.0 or entering it in a competition.
+- **Requirements:** Disclose AI use in the Space Apps submission (the Usage Policy forbids submitting AI-assisted work without proper attribution); don't use outputs to train an AI model. Commits made
   with Claude carry a `Co-Authored-By: Claude` trailer.
-- **Status:** ⚠️ The team should confirm the applicable Anthropic terms for their account.
+- **Status:** ✅ (checked by Claude Code, 2026-11-15; Consumer Terms for paid individual plans, confirmed by the team)
 - **Citation:** Anthropic. *Claude Code* [AI coding assistant], model Claude Opus 5.5. https://claude.com/claude-code
 
 #### AI usage log
@@ -439,6 +444,8 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Site view: removed the Sun & Earth elevation timeline, moved Vertical exaggeration into the 3D view's top bar as a slider, made the left pane fixed-height with no scrolling (scales to fit short windows) | `web/index.html`, `web/src/ui/main.js`, `web/src/ui/metrics.js`, `web/src/ui/style.css`, `web/src/ui/chart.js` (removed), `web/README.md` |
 | 2026-11-15 | Claude Code | At the team's request, moved the distance-to-PSR and visible Sun disk fraction stretch goals to Future development and removed the "prioritize Sun / prioritize Earth" ranking toggle | `docs/design.md`, `docs/landing-criteria.md`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | Added the "check the whole 100 m circle" stretch goal for Clearance, test-first: `pipeline.horizon.compute_site_horizons` stores each site's worst-case Horizon over its center and the four points 100 m N/S/E/W (shared edge points computed once, read in the center's azimuths), with no change to the file format or the browser; rebuilt the Horizons, slopes, Timing Robustness and Mons Mouton results for all 8 regions, updated the TypeScript fixture list and the docs | `src/pipeline/horizon.py`, `src/pipeline/build.py`, `tests/test_horizon.py`, `web/src/science/testing/fixtures.ts`, `data/processed/site-data/`, `GLOSSARY.md`, `docs/`, `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-15 | Claude Code | Rechecked the Featured Landing Times against the worst-case Horizons (all unchanged; the top 10 is still Full in every region) and updated the Full Coverage counts in the comment | `web/src/app/featured.ts` |
+| 2026-11-15 | Claude Code | Checked the Anthropic Consumer Terms and Usage Policy for Claude Code on paid individual plans (status now ✅), logged a missing commit, deleted merged remote branches, and removed the empty `assets/` and `notebooks/` folders | `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-15 | Claude Code | Reviewed what was left for the submission; at the team's request, added the team name and members, the demo video, repository and Space Apps project page links to the README | `README.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
