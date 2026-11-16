@@ -5,3 +5,10 @@ markers = [
     "slow: needs downloaded data in data/raw/ or the built data in data/processed/ (run with -m slow)",
 ]
 addopts = "-m 'not slow'"
+
+[tool.ai-disclosure]
+# NASA Space Apps requires AI use to be disclosed in descriptive text and metadata.
+ai-generated = true
+tool = "Claude Code (Anthropic), model Claude Opus 5.5"
+scope = "Code, tests and data pipeline written with AI assistance at the team's direction. The data it outputs is computed from NASA/USGS sources, not made up by AI."
+details = ["README.md#use-of-ai", "ATTRIBUTIONS.md#ai-usage-log"]

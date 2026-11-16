@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "license": "Apache-2.0",
+  "aiDisclosure": {
+    "aiGenerated": true,
+    "tool": "Claude Code (Anthropic), model Claude Opus 5.5",
+    "scope": "Code written with AI assistance at the team's direction; see README.md 'Use of AI' and ATTRIBUTIONS.md 'AI usage log'."
+  },
   "type": "module",
   "scripts": {
     "data": "node scripts/prepare-data.mjs",

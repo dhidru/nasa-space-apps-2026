@@ -449,6 +449,7 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | At the team's request, wrote the README's "Our Solution" section and the "NASA Data & Resources Used" table from the design doc, the attributions and the current UI | `README.md`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | Rechecked the font licenses (Source Sans 3, Merriweather: OFL 1.1) against the upstream files; the build now adds Adobe's copyright line to the Source Sans 3 notice, which the npm package's LICENSE leaves out | `web/scripts/vite-plugins.ts`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | Reviewed what was left for the submission; at the team's request, added the team name and members, the demo video, repository and Space Apps project page links to the README | `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-15 | Claude Code | At the team's request, checked the repo against the Space Apps AI rules (no NASA branding found) and added AI disclosures: an expanded "Use of AI" section in the README, `AI-DISCLOSURE.txt` in both data folders (published with the site), an `ai-disclosure` meta tag, and AI metadata in `web/package.json` and `pyproject.toml` | `README.md`, `data/processed/site-data/AI-DISCLOSURE.txt`, `contract/mock/data/AI-DISCLOSURE.txt`, `web/index.html`, `web/package.json`, `pyproject.toml`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 

@@ -208,8 +208,28 @@ CLAUDE.md       Project rules for the AI assistant (licensing & attribution)
 
 ## Use of AI
 
-We use Claude Code (Anthropic) as an AI coding assistant. Every AI contribution is
-logged in the [AI usage log](ATTRIBUTIONS.md#ai-usage-log).
+Space Apps allows AI tools but requires us to say where and how we used them.
+Our AI tool was Anthropic's Claude: mostly Claude Code (model Claude Opus 5.5),
+plus a Claude design chat for the first version of the web UI. The team chose
+what to build, made the design and data decisions, and directed each change.
+Every AI contribution is logged in the [AI usage log](ATTRIBUTIONS.md#ai-usage-log).
+
+| Part of the project | AI involvement |
+| ------------------- | -------------- |
+| **Code:** data pipeline (`src/pipeline/`), tests (`tests/`), data contract and mock generator (`contract/`), web app (`web/`), build and deploy workflow (`.github/`) | **AI-generated.** Written by Claude Code at the team's request. The web UI in `web/src/ui/` started as a Claude design chat by a team member. Commits made with Claude Code carry a `Co-Authored-By: Claude` trailer. |
+| **Data:** everything in `data/processed/site-data/` (Horizons, site grids, scores, base-map hillshades, Sun/Earth positions) | **Computed by AI-generated code** from NASA LOLA elevation data, NAIF SPICE kernels and USGS outlines. No values were made up by an AI model. Each data folder has an `AI-DISCLOSURE.txt` that says so, and it's published with the site at `data/AI-DISCLOSURE.txt`. |
+| **Mock data:** `contract/mock/data/` | **AI-generated.** Synthetic test data from `contract/mock/generate_mock.py`, written by Claude Code. Every file is marked `"mock": true` and also has an `AI-DISCLOSURE.txt`. |
+| **Text:** this README, `docs/`, `GLOSSARY.md`, `ATTRIBUTIONS.md` | **AI-generated.** Drafted by Claude Code from the team's decisions and from the cited NASA sources. |
+| **Images:** the base-map PNGs | Hillshades computed from NASA LOLA measurements by the AI-written pipeline. They weren't made by an image-generation model. |
+| **Audio and video** | None in this repository. |
+
+The same disclosure is in the project's metadata: the `ai-disclosure` meta tag in
+`web/index.html`, the `aiDisclosure` field in `web/package.json` and the
+`[tool.ai-disclosure]` table in `pyproject.toml`.
+
+No AI-generated content uses, contains or modifies NASA branding or design elements
+(logos, insignia, flags or mission patches). The app mentions Artemis only in
+plain text, as the name of the program whose candidate regions it shows.
 
 ## License
 
