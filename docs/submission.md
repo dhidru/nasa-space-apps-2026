@@ -36,6 +36,9 @@ Live app: https://dhidru.github.io/nasa-space-apps-2026/ (any browser, nothing t
 Code, data pipeline, tests and full credits: https://github.com/dhidru/nasa-space-apps-2026/
 Challenge: Lunar Landing Site Navigator, https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/
 
+THE NEXT FRONTIER
+This year's theme is The Next Frontier, and humanity's next frontier is Mars. NASA's Artemis program is the path there: in NASA's words, it explores the Moon to "build on our foundation for the first crewed missions to Mars" (https://www.nasa.gov/humans-in-space/artemis/). Crews landing at the lunar south pole will rehearse what Mars demands: choosing safe landing sites from orbital data, keeping power and communications through a long surface stay, and re-planning fast when schedules slip. Our tool helps with that first step on the Moon, and the same method (terrain horizons plus Sun and Earth geometry) carries over to any world with an elevation map.
+
 THE CHALLENGE
 The Lunar Landing Site Navigator challenge asks for an intuitive tool that lets mission planners, educators and the public quickly compare landing sites and dates at the lunar south pole, showing where the Sun and Earth sit relative to the local horizon for power and direct-to-Earth communication. Picture the case the challenge describes: the launch slips by two weeks. Is the chosen site still lit and in radio contact for the whole stay? If not, which nearby site is, or which date works instead? Near the pole the Sun and Earth stay within a few degrees of the horizon, so the answer depends on every ridge and crater rim around the site, and it changes from site to site and from day to day.
 
@@ -59,6 +62,7 @@ HOW IT WORKS, AND HOW WE CHECKED IT
 
 IMPACT
 • For mission planners: when a date or site changes, a whole region can be re-checked in seconds, with the terrain and sky geometry that explain each result, instead of querying one point at a time.
+• For the road to Mars: safe, well-powered, well-connected landings at the lunar south pole are the proving ground for longer missions further out.
 • For educators and the public: anyone can see why the lunar south pole is so hard, why a few hundred meters can decide between power and darkness, and why the landing date matters.
 • Open and reusable: the code, data pipeline and processed data are open source (Apache 2.0), and the method works for any site with LOLA terrain.
 
@@ -66,7 +70,12 @@ WHAT'S NEW
 Existing tools answer "what does the sky look like from this point?". We turn the question around: "which sites in this region work for the whole stay?". We combine a full-stay test, the worst case over the landing circle and a year-wide landing-window search, and pack the precomputed horizons small enough for a static website, so the science runs in any browser.
 
 LIMITS AND NEXT STEPS
-Line of sight is judged at the center of the Sun's and Earth's disks. LOLA terrain can't show boulders or craters smaller than its 20 m grid. Mons Mouton Plateau is still too large for a static site. Next: the visible fraction of the Sun's disk, distance to permanently shadowed regions (likely ice), and hazard checks with meter-scale data.
+Today, line of sight is judged at the center of the Sun's and Earth's disks, LOLA terrain can't show boulders or craters smaller than its 20 m grid, and Mons Mouton Plateau is still too large for a static site. Next we want to add:
+• Lunar eclipses: when Earth passes between the Sun and the Moon, sunlight is cut even at a site with clear terrain. The app doesn't model this yet.
+• Live, newer Moon mapping data, so results update as new elevation maps are released.
+• A user-set equipment height: solar arrays and antennas sit at different heights on different spacecraft, and a higher mast sees over more terrain. Today every site uses 2 m.
+• Landing ellipses: when a spacecraft's trajectory is known, check the whole landing ellipse it could touch down in, instead of a fixed 100 m circle.
+• The visible fraction of the Sun's disk, distance to permanently shadowed regions (likely ice), and hazard checks with meter-scale data.
 
 TOOLS
 Python (NumPy, SpiceyPy, Numba) for the data pipeline; TypeScript and three.js for the web app; GitHub Pages for hosting. Every dataset, library and tool is listed with its license in ATTRIBUTIONS.md and in the resource lists below.
@@ -79,6 +88,8 @@ Built with Anthropic's Claude: Claude Code wrote the code, tests and documents a
 - Merged the two LOLA elevation entries into one, and gave the slope map its own entry:
   - "NASA LRO LOLA polar elevation models, 20 m and 80 m (LDEM_80S_20M, LDEM_80S_80M), PDS Geosciences Node" → https://pds-geosciences.wustl.edu/missions/lro/lola.htm
   - "NASA LRO LOLA polar slope map (LDSM_85S_40M), used to check our landing slopes" → https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/
+
+- Added after the Moon Fact Sheet: "NASA, Moon to Mars: NASA's Artemis Program (Artemis as the path to crewed missions to Mars)" → https://www.nasa.gov/humans-in-space/artemis/
 
 ## Space Agency Partner & Other Data (changes)
 

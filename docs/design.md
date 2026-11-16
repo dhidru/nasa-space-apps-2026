@@ -348,7 +348,18 @@ Not planned for this challenge. We may add these afterwards.
   for any shorter stay that starts at the same Landing Time.
 - **User-set Observer Height.** The Horizons are computed once for the 2 m
   Observer Height (data-contract §6.1), so any other height means computing
-  them again in the pipeline.
+  them again in the pipeline. Spacecraft carry their solar arrays and antennas
+  at different heights, and a higher mast sees over more terrain, so the team
+  would like separate heights for power and communications equipment.
+- **Lunar eclipses.** When Earth passes between the Sun and the Moon, sunlight
+  is cut at every site, even one with a clear terrain horizon. Line of Sight
+  today checks the terrain only, so it doesn't model this.
+- **Live Moon mapping data.** Rebuild the Horizons and slopes as newer or
+  higher-resolution lunar elevation maps are released, instead of the fixed
+  LOLA products we use now.
+- **Landing ellipses from the trajectory.** When a spacecraft's approach
+  trajectory and its landing dispersion are known, test the whole landing
+  ellipse instead of the fixed 100 m Landing Site circle (landing-criteria.md).
 - **Surface roughness and hazards.** The hazards that matter to a lander are
   meter-scale: boulders, small craters and holes. Our 20 m DEM can't see them,
   so a roughness value from it would only repeat what the 100 m Landing Slope

@@ -451,6 +451,7 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Reviewed what was left for the submission; at the team's request, added the team name and members, the demo video, repository and Space Apps project page links to the README | `README.md`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | At the team's request, checked the repo against the Space Apps AI rules (no NASA branding found) and added AI disclosures: an expanded "Use of AI" section in the README, `AI-DISCLOSURE.txt` in both data folders (published with the site), an `ai-disclosure` meta tag, and AI metadata in `web/package.json` and `pyproject.toml` | `README.md`, `data/processed/site-data/AI-DISCLOSURE.txt`, `contract/mock/data/AI-DISCLOSURE.txt`, `web/index.html`, `web/package.json`, `pyproject.toml`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | At the team's request, rewrote the Space Apps project page text against the judging criteria and the form's instructions (summary, project details with the challenge link, validation, impact, limits and AI use; merged the duplicate LOLA entries) and saved it as a draft on the site; kept the old and new text in `docs/submission.md`; then added the challenge page, Git, the GitHub CLI and the Apache 2.0 license text to the resource list (merging Vite and Vitest to fit the 25-entry limit) | `docs/submission.md`, `ATTRIBUTIONS.md` |
+| 2026-11-15 | Claude Code | At the team's request, added a "The Next Frontier" section (Artemis as the path to Mars, citing NASA's Artemis page), a "road to Mars" impact point and the team's future ideas (lunar eclipses, live Moon mapping data, user-set equipment height, landing ellipses) to the Space Apps project text; added the Artemis page to ATTRIBUTIONS.md and the form's NASA Data list; saved it on the form (the team clicked Submit for Judging at 23:55); recorded the ideas in design.md §13 | `docs/submission.md`, `docs/design.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
 
@@ -566,6 +567,17 @@ Each dataset below also has a conventions card in
 - **Requirements:** Cite the authors and the conference.
 - **Status:** ✅ for citing (checked by Claude Code, 2026-11-14)
 - **Citation:** Gracy, S., & Lee, P. (2024). Candidate Landing Sites for Artemis 3 in Two NASA Candidate Landing Regions Nearest the Lunar South Pole. *55th Lunar and Planetary Science Conference*, Abstract #1695. https://www.hou.usra.edu/meetings/lpsc2024/pdf/1695.pdf
+
+### NASA, "Moon to Mars: NASA's Artemis Program" (web page)
+- **Type:** Information
+- **Used for:** The submission's "The Next Frontier" section: Artemis explores the Moon to "build on our foundation for
+  the first crewed missions to Mars" (short quote, linked). No images or branding used.
+- **Source:** https://www.nasa.gov/humans-in-space/artemis/
+- **Accessed:** 2026-11-15
+- **License / permission:** NASA web content; see the [NASA Images and Media Usage Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/).
+- **Requirements:** Credit NASA and link the page; don't imply NASA endorsement; no NASA logos.
+- **Status:** ✅ for citing facts and a short quote (checked by Claude Code, 2026-11-15)
+- **Citation:** NASA. "Moon to Mars: NASA's Artemis Program." https://www.nasa.gov/humans-in-space/artemis/ (accessed 2026-11-15)
 
 ### NASA Moon Fact Sheet (NSSDCA)
 - **Type:** Information
