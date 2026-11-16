@@ -22,7 +22,54 @@ until sunset or Earthset.
 
 ## Our Solution
 
-_What we built, how it works, and why it matters._
+**What we built.** A web dashboard for planners of Artemis crewed south-polar
+landings. It answers one question fast: *if we land here at this time, do the Sun
+(power) and Earth (direct-to-Earth radio) stay above the terrain for the whole
+7-day Surface Stay?* It runs in any browser, with nothing to install.
+
+1. **Pick a Landing Region.** A map of the south pole shows all 9 NASA candidate
+   regions. Eight have full site data. Mons Mouton Plateau is too large for a
+   static site, so it shows its map with a "coming soon" note.
+2. **Pick a Landing Time.** A calendar covers 2026-11-14 to 2027-11-14 and marks
+   the days when no site keeps both the Sun and Earth in view all week. Every
+   Landing Site in the region (a 100 m circle on a 200 m grid, about 6,400–10,000
+   per region) is scored in seconds and shown as a heatmap with a top-10 list.
+   The top 10 are kept at least 2 km apart.
+3. **Inspect a site.** A 3D terrain view of the site, with an orientation map.
+   A sky plot of the site's 360° horizon shows the Sun's and Earth's paths over
+   the stay. Time charts show how far each body sits above the terrain under
+   it, hour by hour. A verdict says whether the site has Full Coverage for the
+   week. The site's slope, walkable ground and Timing Robustness are listed too.
+4. **Find Landing Windows.** For one site, every Landing Time in the year is
+   tested, and the best runs of dates with Full Coverage are listed.
+
+**How it works.**
+- **Horizons.** Offline, a Python pipeline ray-traces the horizon of every site
+  in 1,440 directions (0.25° steps), using NASA LOLA elevation data: 20 m near
+  the site and 80 m out to about 150 km. It takes the worst case over the center
+  and four edge points of the 100 m landing circle, at 2 m above the ground.
+- **Sun and Earth positions.** These come from NASA/JPL SPICE (DE440 ephemeris
+  and the Moon's measured orientation) every 10 minutes. They include libration,
+  light time and Earth parallax.
+- **Ranking.** Sites with **Full Coverage** (Sun and Earth never blocked) come
+  first, ranked by the lowest **Clearance** (how far the body sits above the
+  terrain) of either body. Partial sites follow. There is no hidden combined
+  score.
+- **Slope and robustness.** Each site also gets its Landing Slope (NASA's limit
+  is under 10°, checked against LOLA's own slope map), the share of ground
+  within 2 km under 20° for walking (EVA), and Timing Robustness: how much of
+  the year it has Full Coverage.
+- **In the browser.** The clearance, ranking and Landing Windows code was ported
+  to TypeScript and runs in Web Workers. Tests check it against the Python
+  results, and the Python is checked against SPICE's own azimuth/elevation
+  routine.
+
+**Why it matters.** Near the south pole the Sun and Earth stay within a few
+degrees of the horizon, so one ridge can cut power or communications for days.
+When a launch slips, planners need new sites and dates fast. Tools like JPL
+Horizons and LROC QuickMap can answer this one point at a time. This app
+compares every site in a region at once and explains each result with the
+terrain and sky geometry behind it.
 
 ## Demo
 
@@ -36,7 +83,12 @@ _What we built, how it works, and why it matters._
 
 | Dataset / Resource | Source | How we used it |
 | ------------------ | ------ | -------------- |
-| _TBD_              | _TBD_  | _TBD_          |
+| LRO LOLA Gridded DEMs, south polar stereographic (`LDEM_80S_20M`, `LDEM_80S_80M`) | NASA PDS Geosciences Node ([LOLA](https://pds-geosciences.wustl.edu/missions/lro/lola.htm)) | Terrain for every site's Horizon, site heights, Landing Slope and EVA slope, and the map hillshades |
+| LRO LOLA slope map (`LDSM_85S_40M`) | NASA PDS Geosciences Node | Test that checks our Landing Slope (not shipped) |
+| NAIF SPICE generic kernels (DE440, `moon_pa_de440`, Moon frame, leap seconds) | NASA/JPL NAIF ([generic_kernels](https://naif.jpl.nasa.gov/pub/naif/generic_kernels/)) | Sun and Earth positions over the Supported Span, every 10 minutes |
+| Down Selected Artemis III Candidate Landing Site Navigational Grids | USGS ScienceBase ([doi:10.5066/P1MEQ6UK](https://doi.org/10.5066/P1MEQ6UK)) | Outlines of the 9 candidate Landing Regions |
+| CGI Moon Kit, global LOLA elevation map (`ldem_16.tif`) | NASA Scientific Visualization Studio ([SVS 4720](https://svs.gsfc.nasa.gov/4720)) | Distant terrain in the 3D view |
+| NASA news releases 22-089 and 24-136, the Artemis HLS overview (NTRS 20250009323), LPSC abstracts and the NSSDCA Moon Fact Sheet | NASA, NTRS, LPI | Landing Site size, landing accuracy, slope limits, stay lengths and the candidate regions ([docs/landing-criteria.md](docs/landing-criteria.md)) |
 
 License checks and citations for every dataset, library, tool and source are
 in [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
