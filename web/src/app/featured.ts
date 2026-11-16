@@ -8,16 +8,18 @@
  */
 import { parseUtc } from "../science/time";
 
-// Computed 2026-11-15 from data/processed/site-data. Sites with Full Coverage at that time (the whole top 10 is Full in every region):
+// Computed 2026-11-15 from data/processed/site-data. Rechecked after the Horizons became the worst case over each
+// site's 100 m circle (design.md §5): the times were not searched again, but the whole top 10 is still Full in every
+// region. Sites with Full Coverage at that time:
 const FEATURED: Record<string, string> = {
-  "haworth": "2027-08-19T23:00:00Z",            // 5,214
-  "malapert-massif": "2026-11-20T10:00:00Z",    // 5,131
-  "mons-mouton": "2026-11-20T00:00:00Z",        // 2,292
-  "nobile-rim-1": "2027-11-06T23:00:00Z",       //   842
-  "nobile-rim-2": "2027-11-06T22:00:00Z",       // 3,691
-  "peak-near-cabeus-b": "2026-11-21T21:00:00Z", // 2,611
-  "de-gerlache-rim-2": "2027-10-15T07:00:00Z",  // 6,560
-  "slater-plain": "2027-02-10T09:00:00Z",       // 1,797
+  "haworth": "2027-08-19T23:00:00Z",            // 4,371
+  "malapert-massif": "2026-11-20T10:00:00Z",    // 4,771
+  "mons-mouton": "2026-11-20T00:00:00Z",        // 2,001
+  "nobile-rim-1": "2027-11-06T23:00:00Z",       //   651
+  "nobile-rim-2": "2027-11-06T22:00:00Z",       // 3,265
+  "peak-near-cabeus-b": "2026-11-21T21:00:00Z", // 2,370
+  "de-gerlache-rim-2": "2027-10-15T07:00:00Z",  // 6,064
+  "slater-plain": "2027-02-10T09:00:00Z",       // 1,424
 };
 
 /** The Featured Landing Time (UTC ms) for a region, or undefined if it has none. */
