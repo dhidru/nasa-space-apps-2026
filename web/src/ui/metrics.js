@@ -1,25 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Site metrics over a window of time: terrain-aware Sun and Earth visibility, darkness spells and slope.
-import { D, ephemeris, enu, fromSite, horizontal } from "./ephemeris.js";
+import { D } from "./ephemeris.js";
 
-export const SYNODIC_DAYS = 29.530589;
 const R_MOON = 1737400;
-const SUN_HALF = 0.267 * D;   // angular radius of the Sun
-const EARTH_HALF = 0.95 * D;  // angular radius of Earth seen from the Moon
 const RELIEF_MAX = 11000;
-
-/** Sun and Earth directions (Moon-fixed unit vectors) every `stepHours` across `days`, centred on `center`. */
-export function sampleEphemeris(center, days = SYNODIC_DAYS, stepHours = 2) {
-  const n = Math.floor((days * 24) / stepHours) + 1;
-  const t0 = center.getTime() - (days / 2) * 86400000;
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const t = new Date(t0 + i * stepHours * 3600000);
-    const e = ephemeris(t);
-    out.push({ t, sun: e.sun, earth: e.earth, sunKm: e.sunKm, earthKm: e.earthKm });
-  }
-  return out;
-}
 
 /**
  * Fraction (0..1) of a disc of angular radius `half` in direction `dir` that is above the local
@@ -54,36 +38,6 @@ export function visibility(data, lat, lon, dir, half) {
 
 /** Fraction (0..1) of a disc of angular radius `halfDeg` at elevation `elDeg` above a Horizon at `hzDeg`. */
 export const discAbove = (elDeg, hzDeg, halfDeg) => clamp01(0.5 + (elDeg - hzDeg) / (2 * halfDeg));
-
-/**
- * Per-sample elevations (degrees above a flat horizon) and terrain-aware visibility for one site.
- * With `team` = { h, tracks(vectors) } (src/main.js teamFor) and team positions for every sample, elevation and
- * Clearance come from track() (src/science) against the site's Horizon, as in the pipeline; otherwise
- * visibility is ray-marched over the global terrain.
- */
-export function siteSeries(data, latDeg, lonDeg, samples, team = null) {
-  const lat = latDeg * D, lon = lonDeg * D, f = enu(latDeg, lonDeg);
-  if (team && samples.length && samples.every((s) => s.sunKm)) {
-    const t = team.tracks(samples);
-    return samples.map((s, k) => {
-      const sunClear = t.sun.elevationDeg[k] - t.sun.horizonElevationDeg[k];
-      const earthClear = t.earth.elevationDeg[k] - t.earth.horizonElevationDeg[k];
-      return {
-        t: s.t, sunEl: t.sun.elevationDeg[k], earthEl: t.earth.elevationDeg[k], sunClear, earthClear,
-        sunVis: discAbove(sunClear, 0, SUN_HALF / D), earthVis: discAbove(earthClear, 0, EARTH_HALF / D),
-      };
-    });
-  }
-  return samples.map((s) => {
-    const dir = fromSite(s, latDeg, lonDeg, team ? team.h : 0);
-    const sun = horizontal(dir.sun, f), earth = horizontal(dir.earth, f);
-    return {
-      t: s.t, sunEl: sun.el, earthEl: earth.el,
-      sunVis: visibility(data, lat, lon, dir.sun, SUN_HALF),
-      earthVis: visibility(data, lat, lon, dir.earth, EARTH_HALF),
-    };
-  });
-}
 
 /** Percent of time in sunlight / with Earth in view, and the longest continuous darkness (hours). */
 export function summarize(series, stepHours) {

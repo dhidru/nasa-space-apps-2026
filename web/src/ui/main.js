@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Three views, routed by the URL hash (the site view is a three.js slice of the region's 200 m grid):
-//   (empty)                 2D map of the south pole with the nine Artemis III regions
+//   (empty)                 2D map of the south pole with the nine Artemis IV regions
 //   #<region>               2D map of one region with its 200 m landing-site grid
 //   #<region>/<site>        3D topography of one grid site, with the Sun/Earth dashboard
 // Data and science come from src/science (the TypeScript port of the Python pipeline): regions, hillshades, site heights, Horizons,
@@ -15,37 +15,37 @@ import "./style.css";
 import "./map.css";
 import { D, ephemeris, latlon, enu, horizontal, phaseName, fromSite, useTeamPositions } from "./ephemeris.js";
 import { MoonData } from "./data.js";
-import { SYNODIC_DAYS, sampleEphemeris, siteSeries, summarize, slopeDeg, visibility, discAbove } from "./metrics.js";
-import { regionSites, loadSaved, saveSaved } from "./sites.js";
+import { visibility, discAbove } from "./metrics.js";
+import { regionSites } from "./sites.js";
 import { loadRegions, loadHomeBasemap, loadRegionBasemap, loadTeamRegion, loadAllPositions, siteTracks } from "./teamdata.js";
-import { drawTimeline } from "./chart.js";
 import { siteGrid, loadRegionDem, llToXY } from "./polar.js";
 import { MapView, setBreadcrumbs } from "./mapview.js";
-import { fillTopList, slopeLimitHtml, slopeLimitOf } from "./toplist.js";
+import { fillTopList, slopeLimitHtml, bindSlopeLimit } from "./toplist.js";
 import { PatchView, gridSampler, sunVector } from "./patchview.js";
-import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute } from "./ranking.js";
-import { statsTable, skyPlot, timeCharts, windowsView, stayTitle, stayRange } from "./stayview.js";
+import { ranking, detail, windows, snapLandingTime, formatUtc, parseUtc, coverageLabel, coverageColor, robustnessLabel, ROBUSTNESS_TITLE, slopeLabel, SLOPE_TITLE, walkableLabel, WALKABLE_TITLE, DEFAULT_SLOPE_LIMIT_DEG, topUnderSlope, DEFAULT_LANDING, parseRoute, formatRoute, noFullStayDays, SPAN_START, SPAN_END } from "./ranking.js";
+import { featuredLanding } from "../app/featured.ts";
+import { parseDateTime } from "../app/utctime.ts";
+import { bindViewMenus } from "./viewmenu.js";
+import { Calendar, calendarHtml } from "./calendar.js";
+import { OrientationInset } from "./inset.js";
+import { skyPlot, timeCharts, windowsView, stayTitle, stayVerdict, stayRange } from "./stayview.js";
 
 
 const BASE = `${import.meta.env.BASE_URL}tiles`;
 const START_DATE = "2026-11-18T12:00:00Z";
-const SITE_STEP_H = 2;     // sampling for the region table
-const CHART_STEP_H = 1;    // sampling for the timeline
 
 const $ = (id) => document.getElementById(id);
 const el = {
   app: $("app"), mapview: $("mapview"), crumbs: $("crumbs"),
-  form: $("form"), lat: $("lat"), lon: $("lon"), date: $("date"), time: $("time"),
+  form: $("form"), lat: $("lat"), lon: $("lon"), date: $("date"), dateGhost: $("dateGhost"), time: $("time"), sideSlope: $("sideSlope"),
   now: $("now"), hint: $("hint"), chip: $("chip"), when: $("when"),
   oSunEl: $("oSunEl"), oSunAz: $("oSunAz"), oLst: $("oLst"), oSub: $("oSub"), oEarth: $("oEarth"), oPhase: $("oPhase"),
   oElev: $("oElev"), oSlope: $("oSlope"), oSlopeLabel: $("oSlopeLabel"), oRobust: $("oRobust"), oWalk: $("oWalk"),
   shade: $("shade"), slice: $("slice"), exag: $("exag"), exagOut: $("exagOut"), loading: $("loading"),
   cSun: $("cSun"), cEarth: $("cEarth"),
-  chart: $("chart"), tlSite: $("tlSite"), tlRead: $("tlRead"),
-  sitesBody: $("sitesBody"), sitesWindow: $("sitesWindow"), saveSite: $("saveSite"), sitesTable: $("sitesTable"),
-  oRank: $("oRank"), top10: $("top10"), topWhen: $("topWhen"), topStatus: $("topStatus"), topList: $("topList"),
-  stay: $("stay"), stayTitle: $("stayTitle"), stayRange: $("stayRange"), stayStatus: $("stayStatus"),
-  stayDetail: $("stayDetail"), stayWindows: $("stayWindows"),
+  oRank: $("oRank"), top10: $("top10"), topValue: $("topValue"), topWhen: $("topWhen"), topStatus: $("topStatus"), topList: $("topList"),
+  stay: $("stay"), stayTitle: $("stayTitle"), stayVerdict: $("stayVerdict"), siteId: $("siteId"), stayRange: $("stayRange"), stayStatus: $("stayStatus"),
+  stayDetail: $("stayDetail"), stayWindows: $("stayWindows"), stayWindowsBox: $("stayWindowsBox"),
 };
 $("oRobustLabel").title = ROBUSTNESS_TITLE;
 el.oSlopeLabel.title = SLOPE_TITLE;
@@ -55,17 +55,12 @@ const compass16 = (az) => ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S"
 const fmtLat = (v) => `${Math.abs(v).toFixed(2)}° ${v >= 0 ? "N" : "S"}`;
 const fmtLon = (v) => `${Math.abs(v).toFixed(2)}° ${v >= 0 ? "E" : "W"}`;
 const wrapLon = (v) => ((((v + 180) % 360) + 360) % 360) - 180;
-const fmtUTC = (d) => `${d.toISOString().replace("T", " ").slice(0, 16)} UTC`;
+const fmtUTC = (d) => `${d.toISOString().replace("T", " ").slice(0, 19)} UTC`;
 const fmtDark = (h) => (h >= 48 ? `${(h / 24).toFixed(1)} d` : `${Math.round(h)} h`);
 
 let polarMeta, mapView, data, dataReady, view, curDem;
 let state = null, site = null; // site = {region, cell} in the site view
 const demCache = new Map();        // region id -> Promise<dem>
-let saved = loadSaved();
-const slopeCache = new Map();
-let siteRows = [];
-let sort = { key: null, dir: -1 };
-let chartSeries = [];
 
 let REGIONS = [];                  // the nine regions from the team's regions.json
 // Landing Time (UTC ms, 10-minute grid, inside the Supported Span) shared by the region map and the site view:
@@ -73,7 +68,6 @@ let REGIONS = [];                  // the nine regions from the team's regions.j
 let landingMs = DEFAULT_LANDING;
 /** Top-10 Landing Slope limit in degrees, or null for any slope; shared by the map card and the 3D view. */
 let slopeLimitDeg = DEFAULT_SLOPE_LIMIT_DEG;
-const allSites = () => [...REGIONS, ...saved];
 const regionById = (id) => REGIONS.find((r) => r.id === id);
 
 /* ---------- team site data (sites.json + Horizons) for regions that have it ---------- */
@@ -100,7 +94,6 @@ function teamNow(team, eph) {
   const pick = (b) => ({ az: b.azimuthDeg[0], el: b.elevationDeg[0], clear: b.elevationDeg[0] - b.horizonElevationDeg[0] });
   return { sun: pick(t.sun), earth: pick(t.earth) };
 }
-const siteAt = (lat, lon) => allSites().find((s) => Math.abs(s.lat - lat) < 0.006 && Math.abs(wrapLon(s.lon - lon)) < 0.006);
 
 /* ---------- region terrain (80 m DEM) ---------- */
 function demFor(id) {
@@ -150,6 +143,8 @@ async function route() {
   if (!region) return go("#");
   landingMs = r.landing;
   if (!r.siteId) return showMap(() => mapView.showRegion(region.id, site && site.region.id === region.id ? site.cell.id : null));
+  // Site ids are read against the published sites (see siteGrid), so load them before looking the id up.
+  if (region.hasSiteData) await teamSitesFor(region.id).catch(() => null);
   const cell = siteGrid(region).byId(r.siteId);
   if (!cell) return go(`#${region.id}`);
   await showSite(region, cell);
@@ -189,6 +184,7 @@ async function showSite(region, cell) {
   const fromMap = !el.mapview.hidden && mapView.flying;
   const sameRegion = !!(site && site.region.id === region.id && view);
   site = { region, cell };
+  siteRank = null;
   if (!fromMap) el.mapview.hidden = true;
   el.app.hidden = false;
   renderCrumbs();
@@ -222,12 +218,20 @@ async function showSite(region, cell) {
   await apply();
 }
 
+/**
+ * The site's rank for the current Landing Time, as people say it: "Rank #3" inside the Top 10, else "Rank 1,204".
+ * Null until the ranking arrives. The grid id (r020c046) is shown beside the latitude and longitude instead.
+ */
+let siteRank = null;
+const siteLabel = () => `${site.region.name} · ${siteRank ?? site.cell.id}`;
 function renderCrumbs() {
   setBreadcrumbs(el.crumbs, [
     { text: "Lunar south pole", go: () => go("#") },
     { text: site.region.name, go: () => go(`#${site.region.id}`) },
-    { text: `Site ${site.cell.id}` },
+    { text: siteRank ?? `Site ${site.cell.id}` },
   ]);
+  el.siteId.hidden = false;
+  el.siteId.textContent = `Grid site ${site.cell.id}`;
 }
 /** Esc goes up one level: site view -> region map -> all regions (not while typing in a field). */
 window.addEventListener("keydown", (e) => {
@@ -239,17 +243,60 @@ window.addEventListener("keydown", (e) => {
 /* ---------- inputs ---------- */
 function readInputs() {
   const lat = parseFloat(el.lat.value), lonRaw = parseFloat(el.lon.value);
-  const date = new Date(`${el.date.value}T${el.time.value || "00:00"}:00Z`);
+  const date = parseDateTime(el.date.value, el.time.value);
   const errs = [];
   if (!(lat >= -90 && lat <= 90)) errs.push("Latitude must be between −90 and 90.");
   if (!(lonRaw >= -180 && lonRaw <= 360)) errs.push("Longitude must be between −180 and 360.");
-  if (Number.isNaN(date.getTime())) errs.push("Enter a date and time.");
+  if (Number.isNaN(date.getTime())) errs.push("Enter a date as yyyy-mm-dd and a 24-hour UTC time as hh:mm.");
   return { lat, lon: wrapLon(lonRaw), date, errs };
 }
 function setInputs(lat, lon, date) {
   if (lat !== null) { el.lat.value = lat.toFixed(4); el.lon.value = lon.toFixed(4); }
+  // The Sun and Earth data are every 10 minutes, so the form shows hh:mm on that grid ("Now" rounds to it).
+  if (date && !Number.isNaN(date.getTime())) date = new Date(Math.round(date.getTime() / 600000) * 600000);
   if (date) { const iso = date.toISOString(); el.date.value = iso.slice(0, 10); el.time.value = iso.slice(11, 16); }
+  paintDateMask();
+  if (date && !Number.isNaN(date.getTime())) siteCal.setChosen(date.getTime());
 }
+
+/* ---------- Date: the shared calendar, always open, plus a typed field with a grey yyyy-mm-dd mask ---------- */
+const DATE_FORMAT = "yyyy-mm-dd";
+/** Show the grey format behind the typed part: "2027-0" shows as 2027-0 then a grey "m-dd". */
+function paintDateMask() {
+  const v = el.date.value;
+  el.dateGhost.innerHTML = `<i>${escapeHtml(v)}</i>${DATE_FORMAT.slice(v.length)}`;
+}
+$("siteCal").innerHTML = calendarHtml("Landing date");
+// Picking a day keeps the typed time of day.
+const siteCal = new Calendar($("siteCal"), {
+  onPick: (day) => {
+    const { date } = readInputs();
+    const tod = Number.isNaN(date.getTime()) ? 0 : ((date.getTime() % 86400000) + 86400000) % 86400000;
+    setInputs(null, null, new Date(day + tod));
+    apply();
+  },
+});
+el.date.addEventListener("input", () => {
+  // digits only; the dashes go in by themselves
+  const dg = el.date.value.replace(/\D/g, "").slice(0, 8);
+  el.date.value = dg.slice(0, 4) + (dg.length > 4 ? `-${dg.slice(4, 6)}` : "") + (dg.length > 6 ? `-${dg.slice(6)}` : "");
+  paintDateMask();
+  el.date.classList.remove("bad");
+  if (el.date.value.length < DATE_FORMAT.length) return;
+  const { date } = readInputs();
+  const t = date.getTime();
+  if (Number.isNaN(t)) { el.date.classList.add("bad"); el.hint.textContent = "That date doesn't exist. Use yyyy-mm-dd."; return; }
+  if (t < SPAN_START || t >= SPAN_END) {
+    el.date.classList.add("bad");
+    el.hint.textContent = `Pick a date from ${formatUtc(SPAN_START).slice(0, 10)} to ${formatUtc(SPAN_END - 86400000).slice(0, 10)}.`;
+    return;
+  }
+  siteCal.setChosen(t);
+  apply();
+});
+paintDateMask();
+siteCal.draw();
+
 
 /* ---------- readout ---------- */
 function renderReadout(s) {
@@ -280,14 +327,8 @@ function renderReadout(s) {
   return sunH;
 }
 
-async function slopeFor(lat, lon) {
-  const k = `${lat.toFixed(4)},${lon.toFixed(4)},${data.dems.length}`;
-  if (!slopeCache.has(k)) slopeCache.set(k, await slopeDeg(data, lat, lon));
-  return slopeCache.get(k);
-}
-
 /* ---------- 3D grid slice ---------- */
-const HINT = "Drag to turn · right-drag to pan · scroll to zoom";
+const HINT = "Scroll to zoom · click a site to open it";
 function ensureView() {
   if (view) return;
   view = new PatchView($("globe"), {
@@ -297,6 +338,7 @@ function ensureView() {
         : HINT;
     },
     onPick: (c) => go(`#${site.region.id}/${c.id}`),
+    inset: new OrientationInset($("inset")),
   });
   view.setExag(parseFloat(el.exag.value));
   view.setMode(el.shade.value);
@@ -318,7 +360,6 @@ async function apply() {
   const { cell, team } = site, dem = curDem;
   const eph = ephemeris(date);
   const h = team ? team.h : dem.at(cell.x, cell.y);
-  const windowChanged = !state || state.date.getTime() !== date.getTime();
   state = { lat: cell.lat, lon: cell.lon, date, eph, h };
   const sunH = renderReadout(state);
   el.oElev.textContent = `${Math.round(h).toLocaleString()} m`;
@@ -337,9 +378,25 @@ async function apply() {
   view.setSun(sun, sunH.clear !== undefined ? discAbove(sunH.clear, 0, 0.267)
     : visibility(data, cell.lat * D, cell.lon * D, fromSite(eph, cell.lat, cell.lon, h).sun, 0.267 * D));
   landingMs = snapLandingTime(date.getTime());
+  siteCal.setChosen(date.getTime());
+  markNoStayDays(site.region);
   syncUrl();
   updateTopTen();
-  setTimeout(() => { updateTimeline(); if (windowChanged) updateSites(); else markActive(); }, 30);
+}
+
+/** Cross out the region's No-Full-Stay Days on the site view's calendar (once per region). */
+let noStayRegion = null;
+function markNoStayDays(region) {
+  if (noStayRegion === region.id) return;
+  noStayRegion = region.id;
+  siteCal.noStay = null;
+  siteCal.draw();
+  if (!region.hasSiteData) return;
+  noFullStayDays(region.id).then((days) => {
+    if (noStayRegion !== region.id) return;
+    siteCal.noStay = new Set(days);
+    siteCal.draw();
+  }).catch((e) => console.error(e));
 }
 
 /* ---------- top 10 Landing Sites (team ranking, computed in a worker) ---------- */
@@ -348,13 +405,16 @@ async function updateTopTen() {
   const token = ++topToken, cur = site;
   if (!cur || !cur.region.hasSiteData) {
     el.top10.hidden = true;
+    el.sideSlope.hidden = true;
     el.stay.hidden = true;
     el.oRank.textContent = "— (no team site data)";
     if (view) view.setMarks([]);
     return;
   }
   el.top10.hidden = false;
-  el.topWhen.textContent = `from ${formatUtc(landingMs).slice(0, 16).replace("T", " ")} UTC`;
+  el.sideSlope.hidden = false;
+  el.topWhen.textContent = `Ranked for a stay from ${formatUtc(landingMs).slice(0, 19).replace("T", " ")} UTC · ${slopeLimitDeg === null ? "no slope filter" : `max slope ${slopeLimitDeg}°`}`;
+  el.topValue.textContent = "…";
   el.topStatus.textContent = "Scoring sites…";
   el.oRank.textContent = "…";
   try {
@@ -367,6 +427,9 @@ async function updateTopTen() {
     const grid = siteGrid(cur.region);
     renderTopList(top, cur, tr);
     const me = r.byId.get(cur.cell.id);
+    const k = top.findIndex((e) => e.site_id === cur.cell.id);
+    siteRank = k >= 0 ? `Rank #${k + 1}` : me ? `Rank ${me.rank.toLocaleString()}` : null;
+    renderCrumbs();
     el.oRank.textContent = me ? `${me.rank.toLocaleString()} of ${r.doc.sites.length.toLocaleString()}${top.some((e) => e.site_id === me.site_id) ? " · top 10" : ""} · ${coverageLabel(me)}` : "—";
     view.setMarks(top.map((e, i) => ({ cell: grid.byId(e.site_id), color: coverageColor(e), rank: i + 1 })).filter((m) => m.cell));
     updateStay(cur, me, token);
@@ -381,7 +444,8 @@ async function updateTopTen() {
 let windowsKey = null;
 async function updateStay(cur, entry, token) {
   el.stay.hidden = false;
-  el.stayTitle.innerHTML = stayTitle(cur.cell.id, entry);
+  el.stayTitle.innerHTML = stayTitle(siteLabel(), entry);
+  el.stayVerdict.textContent = "";
   el.stayStatus.textContent = "Working out the week…";
   const key = `${cur.region.id}|${cur.cell.id}`;
   if (key !== windowsKey) { windowsKey = key; resetWindows(); } else refreshWindows();
@@ -390,7 +454,8 @@ async function updateStay(cur, entry, token) {
     if (token !== topToken) return;
     el.stayStatus.textContent = "";
     el.stayRange.textContent = stayRange(doc);
-    el.stayDetail.innerHTML = `<h3>Over the 7-day stay</h3>${statsTable(doc)}<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth above the terrain</h3>${timeCharts(doc)}`;
+    el.stayVerdict.innerHTML = stayVerdict(doc);
+    el.stayDetail.innerHTML = `<h3>Sky plot</h3>${skyPlot(doc)}<h3>Sun and Earth above the terrain</h3>${timeCharts(doc)}`;
   } catch (e) {
     if (token !== topToken) return;
     console.error(e);
@@ -398,12 +463,14 @@ async function updateStay(cur, entry, token) {
   }
 }
 let windowsShown = false;
+// Landing Windows stay folded until the user opens them; each new site starts folded again.
 function resetWindows() {
   windowsShown = false;
-  el.stayWindows.innerHTML = `<button type="button" class="go" id="findWindows">Find Landing Windows</button>`;
-  el.stayWindows.querySelector("#findWindows").addEventListener("click", () => showWindows());
+  el.stayWindowsBox.open = false;
+  el.stayWindows.replaceChildren();
 }
 function refreshWindows() { if (windowsShown) showWindows(); }
+el.stayWindowsBox.addEventListener("toggle", () => { if (el.stayWindowsBox.open && !windowsShown) showWindows(); });
 async function showWindows() {
   const cur = site, key = windowsKey;
   if (!cur) return;
@@ -413,10 +480,12 @@ async function showWindows() {
     const doc = await windows(cur.region.id, cur.cell.id);
     if (key !== windowsKey) return;
     el.stayWindows.innerHTML = windowsView(doc, landingMs);
-    el.stayWindows.querySelectorAll("tr[data-t]").forEach((tr) => tr.addEventListener("click", () => {
-      setInputs(null, null, new Date(parseUtc(tr.dataset.t)));
-      apply();
-    }));
+    // Table rows and the green Full Coverage runs on the strip both set the Landing Time.
+    el.stayWindows.querySelectorAll("[data-t]").forEach((n) => {
+      const land = () => { setInputs(null, null, new Date(parseUtc(n.dataset.t))); apply(); };
+      n.addEventListener("click", land);
+      if (n.matches(".seg-full")) n.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); land(); } });
+    });
   } catch (e) {
     if (key !== windowsKey) return;
     console.error(e);
@@ -427,115 +496,11 @@ function renderTopList(top, cur, tr) {
   fillTopList(el.topList, top, {
     team: tr,
     activeId: cur.cell.id,
-    onPick: (e) => go(`#${cur.region.id}/${e.site_id}`),
+    onPick: (e) => { openTop(false); go(`#${cur.region.id}/${e.site_id}`); },
   });
+  const k = top.findIndex((e) => e.site_id === cur.cell.id);
+  el.topValue.textContent = k >= 0 ? `#${k + 1} of ${top.length}` : `${top.length} sites`;
 }
-
-/* ---------- timeline ---------- */
-function updateTimeline() {
-  if (!state) return;
-  el.tlSite.textContent = (site ? `${site.region.name} · ${site.cell.id}` : `${fmtLat(state.lat)}, ${fmtLon(state.lon)}`)
-    + (site && site.team ? " · team Horizon" : "");
-  const samples = sampleEphemeris(state.date, SYNODIC_DAYS, CHART_STEP_H);
-  chartSeries = siteSeries(data, state.lat, state.lon, samples, site && site.team);
-  renderChart();
-}
-function renderChart() {
-  if (!state || el.app.hidden) return;
-  drawTimeline(el.chart, chartSeries, state.date, {
-    onPick: (t) => { setInputs(null, null, t); apply(); },
-    onHover: (p) => {
-      el.tlRead.textContent = p
-        ? `${fmtUTC(p.t)} · Sun ${p.sunEl.toFixed(1)}°${p.sunVis < 0.5 ? " (hidden)" : ""} · Earth ${p.earthEl.toFixed(1)}°${p.earthVis < 0.5 ? " (hidden)" : ""}`
-        : "Hover to read · click to jump";
-    },
-  });
-}
-
-/* ---------- region comparison ---------- */
-async function updateSites() {
-  if (!state) return;
-  const t0 = new Date(state.date.getTime() - (SYNODIC_DAYS / 2) * 86400000);
-  const t1 = new Date(state.date.getTime() + (SYNODIC_DAYS / 2) * 86400000);
-  const short = (d) => `${d.toLocaleString("en", { month: "short", timeZone: "UTC" })} ${d.getUTCDate()}`;
-  el.sitesWindow.textContent = `${short(t0)} – ${short(t1)}`;
-  const samples = sampleEphemeris(state.date, SYNODIC_DAYS, SITE_STEP_H);
-  siteRows = allSites().map((s) => ({ site: s, metrics: { ...summarize(siteSeries(data, s.lat, s.lon, samples), SITE_STEP_H), slope: null } }));
-  renderSites();
-  await Promise.all(siteRows.map(async (r) => { r.metrics.slope = await slopeFor(r.site.lat, r.site.lon); }));
-  renderSites();
-}
-
-function renderSites() {
-  const rows = [...siteRows];
-  if (sort.key) {
-    rows.sort((a, b) => {
-      const va = sort.key === "name" ? a.site.name : a.metrics[sort.key];
-      const vb = sort.key === "name" ? b.site.name : b.metrics[sort.key];
-      if (va === null) return 1;
-      if (vb === null) return -1;
-      return (typeof va === "string" ? va.localeCompare(vb) : va - vb) * sort.dir;
-    });
-  }
-  el.sitesTable.querySelectorAll("th button").forEach((b) => {
-    if (b.dataset.sort === sort.key) b.setAttribute("aria-sort", sort.dir > 0 ? "ascending" : "descending");
-    else b.removeAttribute("aria-sort");
-  });
-  el.sitesBody.replaceChildren(...rows.map(({ site: s, metrics: m }) => {
-    const tr = document.createElement("tr");
-    tr.dataset.id = s.id;
-    tr.tabIndex = 0;
-    tr.innerHTML = `
-      <td><div class="site-name"><span>${escapeHtml(s.name)}${s.size ? `<small class="site-size">${s.size[0].toFixed(0)} × ${s.size[1].toFixed(0)} km</small>` : ""}</span>${s.custom ? `<button type="button" class="remove" aria-label="Remove ${escapeHtml(s.name)}">×</button>` : ""}</div></td>
-      <td class="num">${m.sunPct.toFixed(0)}%<span class="bar bar-sun"><i style="width:${m.sunPct.toFixed(0)}%"></i></span></td>
-      <td class="num">${m.earthPct.toFixed(0)}%<span class="bar bar-earth"><i style="width:${m.earthPct.toFixed(0)}%"></i></span></td>
-      <td class="num">${fmtDark(m.longestDarkH)}</td>
-      <td class="num">${m.slope === null ? '<span class="pending">…</span>' : `${m.slope.toFixed(1)}°`}</td>`;
-    const open = () => {
-      if (s.region) { go(`#${s.id}`); return; }
-      const f = cellFor(s.lat, s.lon);
-      if (f) go(`#${f.region.id}/${f.cell.id}`);
-    };
-    tr.addEventListener("click", (e) => {
-      if (e.target.closest(".remove")) { removeSite(s.id); return; }
-      open();
-    });
-    tr.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
-    return tr;
-  }));
-  markActive();
-}
-
-function markActive() {
-  const r = site && site.region;
-  el.sitesBody.querySelectorAll("tr").forEach((tr) => tr.classList.toggle("active", !!r && tr.dataset.id === r.id));
-}
-
-function removeSite(id) {
-  saved = saved.filter((s) => s.id !== id);
-  saveSaved(saved);
-  siteRows = siteRows.filter((r) => r.site.id !== id);
-  renderSites();
-}
-
-el.saveSite.addEventListener("click", () => {
-  const { lat, lon, errs } = readInputs();
-  if (errs.length) { el.hint.textContent = errs.join(" "); return; }
-  if (siteAt(lat, lon)) { el.hint.textContent = "That spot is already in the list."; return; }
-  const name = site ? `${site.region.name} · ${site.cell.id}` : `${fmtLat(lat)}, ${fmtLon(lon)}`;
-  saved.push({ id: `saved-${Date.now()}`, name, lat, lon, custom: true });
-  saveSaved(saved);
-  updateSites();
-  el.hint.textContent = "Saved to this browser's list.";
-});
-
-el.sitesTable.querySelector("thead").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-sort]");
-  if (!b) return;
-  const key = b.dataset.sort;
-  sort = sort.key === key ? { key, dir: -sort.dir } : { key, dir: key === "name" || key === "longestDarkH" || key === "slope" ? 1 : -1 };
-  renderSites();
-});
 
 /* ---------- boot ---------- */
 async function boot() {
@@ -546,19 +511,29 @@ async function boot() {
   REGIONS = regionSites(regions);
   // Team SPICE positions (2026-2027) replace Astronomy Engine's Sun/Earth vectors once they arrive.
   loadAllPositions().then((p) => { useTeamPositions(p); if (site && !el.app.hidden) apply(); }).catch((e) => console.error(e));
-  const topSlope = $("topSlope");
-  const showSlopeLimit = () => { topSlope.innerHTML = slopeLimitHtml(slopeLimitDeg); };
+  // The site view's Max slope sits in the left pane; the region map has its own copy in the Landing Time picker.
+  const showSlopeLimit = () => {
+    el.sideSlope.innerHTML = slopeLimitHtml(slopeLimitDeg);
+    bindSlopeLimit(el.sideSlope, (limit) => { slopeLimitDeg = limit; updateTopTen(); });
+  };
   showSlopeLimit();
-  topSlope.addEventListener("change", (ev) => { slopeLimitDeg = slopeLimitOf(ev.target); updateTopTen(); });
   mapView = new MapView(el.mapview, {
     homeBasemap, regionBasemap: loadRegionBasemap, teamSites: teamSitesFor, regions: REGIONS,
     ranking, getLanding: () => landingMs, setLanding: (t) => { landingMs = snapLandingTime(t); syncUrl(); },
     getSlopeLimit: () => slopeLimitDeg, setSlopeLimit: (deg) => { slopeLimitDeg = deg; showSlopeLimit(); },
-    onRegion: (id) => go(`#${id}`),
+    // Opening a region from the home map starts at its Featured Landing Time (src/app/featured.ts), already scored, so
+    // the first thing a visitor sees is sites that keep the Sun and Earth all week. A region without one starts unpicked.
+    onRegion: (id) => {
+      const f = featuredLanding(id);
+      if (f !== undefined) landingMs = f;
+      mapView.picked = f !== undefined;
+      go(`#${id}`);
+    },
     onSite: (rid, cid) => flyToSite(rid, cid),
     onHome: () => go("#"),
     demFor,
   });
+  mapView.picked = /[?&]t=/.test(location.hash); // a shared link names its Landing Time
   dataReady = MoonData.load(BASE).then((d) => { data = d; return d; });
   dataReady.catch((e) => { console.error(e); el.loading.hidden = false; el.loading.textContent = `Couldn't load the 3D terrain: ${e?.message ?? e}`; });
   el.loading.hidden = true;
@@ -572,7 +547,7 @@ el.form.addEventListener("submit", (e) => {
   const { lat, lon, errs } = readInputs();
   if (errs.length) { el.hint.textContent = errs.join(" "); return; }
   const f = cellFor(lat, lon);
-  if (!f) { el.hint.textContent = `${fmtLat(lat)}, ${fmtLon(lon)} is outside the nine Artemis III regions.`; return; }
+  if (!f) { el.hint.textContent = `${fmtLat(lat)}, ${fmtLon(lon)} is outside the nine Artemis IV regions.`; return; }
   if (site && f.cell.id === site.cell.id && f.region.id === site.region.id) apply();
   else go(`#${f.region.id}/${f.cell.id}`);
 });
@@ -584,9 +559,22 @@ for (const b of document.querySelectorAll("#form .steps button")) b.addEventList
   apply();
 });
 el.now.addEventListener("click", () => {
-  const d = new Date(); d.setUTCSeconds(0, 0);
+  const d = new Date(); d.setUTCMilliseconds(0);
   setInputs(null, null, d);
   apply();
+});
+bindViewMenus(el.app);
+// The site view's Top 10 is a menu in the 3D view's top bar: hover or click opens it, Esc or leaving closes it.
+const topBtn = $("topToggle");
+function openTop(on) { el.top10.classList.toggle("open", on); topBtn.setAttribute("aria-expanded", String(on)); }
+let topHoverAt = 0; // a click right after the hover opened the menu keeps it open instead of closing it
+el.top10.addEventListener("pointerenter", () => { topHoverAt = performance.now(); openTop(true); });
+el.top10.addEventListener("pointerleave", () => openTop(false));
+topBtn.addEventListener("click", () => openTop(performance.now() - topHoverAt < 500 || !el.top10.classList.contains("open")));
+el.top10.addEventListener("focusout", (e) => { if (!el.top10.contains(e.relatedTarget)) openTop(false); });
+el.top10.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.preventDefault(); openTop(false); topBtn.focus(); }
+  if (e.key === "ArrowDown" && !el.top10.classList.contains("open")) { e.preventDefault(); openTop(true); el.topList.querySelector("button")?.focus(); }
 });
 el.shade.addEventListener("change", () => { if (view) view.setMode(el.shade.value); });
 el.slice.addEventListener("change", () => { if (view && curDem) loadPatch(curDem); });
@@ -595,8 +583,26 @@ el.exag.addEventListener("input", () => {
   el.exagOut.textContent = `${v}×`;
   if (view) view.setExag(v);
 });
-let resizeTimer;
-window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderChart, 150); });
+
+// The site view's left pane has a fixed height and doesn't scroll: when a short window can't fit it, scale its
+// contents down (--fit, see style.css). Below 1100 px the page stacks and scrolls instead, so it stays at 1.
+const controls = document.querySelector(".controls");
+const stacked = matchMedia("(max-width: 1100px)");
+function fitControls() {
+  controls.style.setProperty("--fit", "1");
+  if (el.app.hidden || stacked.matches) return;
+  // Zoom doesn't shrink borders and rounding exactly in proportion, so correct a few times.
+  let fit = 1;
+  for (let k = 0; k < 4 && controls.scrollHeight > controls.clientHeight && fit > 0.6; k++) {
+    fit = Math.max(0.6, (fit * controls.clientHeight) / controls.scrollHeight - 0.002);
+    controls.style.setProperty("--fit", String(fit));
+  }
+}
+let fitFrame = 0;
+const queueFit = () => { clearTimeout(fitFrame); fitFrame = setTimeout(fitControls, 0); };
+const fitObserver = new ResizeObserver(queueFit);
+fitObserver.observe(controls);
+for (const c of controls.children) fitObserver.observe(c);
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);

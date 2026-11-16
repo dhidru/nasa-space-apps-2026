@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-/* Layout: dashboard grid. Controls left, 3D view centre with the timeline under it, site comparison right.
+/* Layout: dashboard grid. Controls left (fixed height, no scrolling), 3D view centre, site comparison right.
    Below 1100 px everything stacks and the page scrolls. Deliberately one dark theme; system fonts only. */
 :root {
   color-scheme: dark;
@@ -19,9 +19,12 @@
   --night-dim: rgba(127, 156, 255, 0.14);
   --dusk: #e98a5f;
   --dusk-dim: rgba(233, 138, 95, 0.16);
+  --stay: #3fa7a0;          /* the 7-day Surface Stay on the calendar */
+  --stay-dim: rgba(63, 167, 160, 0.28);
   --shade: rgba(127, 156, 255, 0.07);
   --f-ui: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --f-head: Merriweather, Georgia, "Times New Roman", serif;
+  --side-w: 340px; /* left pane on every page (map and 3D site view) */
   --f-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; }
@@ -34,13 +37,12 @@ h1, h2, h3 { font-family: var(--f-head); }
   position: fixed; inset: 0;
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 360px;
-  grid-template-rows: minmax(0, 1fr) 220px;
-  grid-template-areas: "controls stage sites" "controls timeline sites";
+  grid-template-columns: var(--side-w) minmax(0, 1fr) 360px;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "controls stage sites";
 }
-.controls { grid-area: controls; border-right: 1px solid var(--line); }
+.controls { grid-area: controls; border-right: 1px solid var(--line); overflow: hidden; }
 .stage { grid-area: stage; position: relative; min-height: 0; }
-.timeline { grid-area: timeline; border-top: 1px solid var(--line); }
 .sites { grid-area: sites; border-left: 1px solid var(--line); }
 
 #globe { position: absolute; inset: 0; }
@@ -82,13 +84,47 @@ dt { font-size: 12px; color: var(--muted); }
 dd { margin: 0; font: 12.5px var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
 dd b { font-weight: 500; color: var(--sun); }
 
-.view { padding: 12px 16px 14px; display: grid; gap: 10px; }
 .toggle { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--fg); }
 .toggle input { width: auto; accent-color: var(--sun); }
 .range-head { display: flex; justify-content: space-between; }
 .range-head output { font-family: var(--f-mono); color: var(--fg); letter-spacing: 0; }
 
 /* compass */
+/* Hover menus over the 3D view (src/ui/viewmenu.js): Shading and Slice around the site */
+.view-bar { position: absolute; z-index: 6; left: 14px; top: 14px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 122px); }
+.view-menu { position: relative; }
+.view-menu-btn { display: flex; align-items: baseline; gap: 6px; padding: 7px 12px; border-radius: 6px; background: rgba(14,16,21,.9); border: 1px solid var(--line-strong);
+  font: 600 13.5px var(--f-ui); color: var(--fg); }
+.view-menu-name { color: var(--muted); font-weight: 400; }
+.view-menu-caret { font-size: 11px; color: var(--muted); }
+.view-menu.open .view-menu-btn, .view-menu-btn:focus-visible { border-color: var(--sun); }
+.view-menu-list { display: none; position: absolute; left: 0; top: 100%; min-width: 100%; margin: 0; padding: 6px 0 4px; list-style: none; }
+.view-menu.open .view-menu-list { display: grid; }
+.view-menu-list li { background: rgba(14,16,21,.96); border-left: 1px solid var(--line-strong); border-right: 1px solid var(--line-strong); }
+.view-menu-list li:first-child { border-top: 1px solid var(--line-strong); border-radius: 6px 6px 0 0; padding-top: 4px; }
+.view-menu-list li:last-child { border-bottom: 1px solid var(--line-strong); border-radius: 0 0 6px 6px; padding-bottom: 4px; }
+.view-menu-item { width: 100%; text-align: left; white-space: nowrap; padding: 7px 14px; border: 0; border-radius: 0; background: transparent; font: 13.5px var(--f-ui); color: var(--fg); }
+.view-menu-item:hover, .view-menu-item:focus-visible { background: var(--sun-dim); color: var(--sun); outline: none; }
+.view-menu-item[aria-checked="true"] { color: var(--sun); font-weight: 600; }
+.view-menu-item[aria-checked="true"]::before { content: "✓ "; }
+/* Vertical exaggeration: a slider styled like the menu buttons beside it. */
+.view-range { display: flex; flex-direction: row; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 6px; background: rgba(14,16,21,.9);
+  border: 1px solid var(--line-strong); font: 13.5px var(--f-ui); letter-spacing: 0; text-transform: none; color: var(--fg); }
+.view-range:focus-within { border-color: var(--sun); }
+.view-range input { width: 70px; accent-color: var(--sun); }
+.view-range output { font-family: var(--f-mono); font-size: 12.5px; min-width: 3ch; text-align: right; }
+.view-menu-select { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+/* Orientation window over the 3D view (src/ui/inset.js) */
+.inset { position: absolute; z-index: 5; right: 14px; bottom: 14px; margin: 0; padding: 6px; border-radius: 8px; background: rgba(10,11,14,.88);
+  border: 1px solid var(--line-strong); pointer-events: none; }
+.inset figcaption { display: flex; align-items: center; justify-content: center; gap: 2px; margin-bottom: 5px; font: 700 10.5px var(--f-mono); letter-spacing: .04em; color: #8ec9ff; }
+.inset .earth-dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; background: #3d7dd8; box-shadow: 0 0 0 1px #8ec9ff; }
+.inset-frame { position: relative; border-radius: 4px; overflow: hidden; background: #000; }
+.inset-frame canvas { display: block; }
+.inset-view { position: absolute; inset: 0; }
+.inset-key { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 5px 0 0; font: 10px var(--f-mono); color: var(--muted); }
+.inset-key i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-left: 4px; }
+@media (max-width: 1100px) { .inset-frame canvas { width: 120px !important; height: 120px !important; } }
 .compass { position: absolute; z-index: 5; pointer-events: none; width: 92px; height: 92px; right: 16px; top: 16px; }
 .c-ring { fill: rgba(14, 16, 21, .75); stroke: var(--line); }
 .c-mid { fill: none; stroke: #1f232b; stroke-dasharray: 2 3; }
@@ -96,25 +132,6 @@ dd b { font-weight: 500; color: var(--sun); }
 .compass .c-n { fill: var(--muted); font-size: 9px; }
 .c-sun { fill: var(--sun); }
 .c-earth { fill: var(--night); }
-
-/* timeline */
-.timeline header { padding: 10px 16px 6px; border-bottom: 0; }
-.legend { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 11.5px; color: var(--muted); }
-.lg { display: inline-flex; align-items: center; gap: 6px; }
-.lg::before { content: ""; width: 14px; height: 3px; border-radius: 2px; background: currentColor; }
-.lg-sun { color: var(--sun); }
-.lg-earth { color: var(--night); }
-.lg-dark::before { height: 10px; background: var(--night-dim); }
-.tl-read { font-family: var(--f-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-#chart { flex: 1; min-height: 120px; width: 100%; display: block; cursor: crosshair; touch-action: pan-y; }
-.tl-dark { fill: var(--shade); }
-.tl-grid { stroke: #1d2028; stroke-width: 1; }
-.tl-zero { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; }
-.tl-label { fill: var(--faint); font: 10px var(--f-mono); }
-.tl-sun { fill: none; stroke: var(--sun); stroke-width: 1.8; }
-.tl-earth { fill: none; stroke: var(--night); stroke-width: 1.5; }
-.tl-now { stroke: var(--fg); stroke-width: 1.5; }
-.tl-hover { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; }
 
 /* sites */
 .table-wrap { overflow-x: auto; padding: 4px 8px 0; }
@@ -150,10 +167,9 @@ tbody tr.active td:first-child { box-shadow: inset 2px 0 0 var(--sun); }
   body { overflow: auto; }
   .app { position: static; display: flex; flex-direction: column; }
   .stage { order: 1; height: 62vh; min-height: 340px; }
-  .timeline { order: 3; height: 240px; }
   .sites { order: 4; border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
   .controls { order: 2; border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
-  .panel header, form, .readout, .view, .sites-actions, .sites .hint {
+  .panel header, form, .readout, .sites-actions, .sites .hint {
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
   .compass { width: 72px; height: 72px; }
@@ -161,10 +177,14 @@ tbody tr.active td:first-child { box-shadow: inset 2px 0 0 var(--sun); }
 
 
 /* top 10 Landing Sites (site view and region card) */
-.top10 { border-bottom: 1px solid var(--line); }
-.top10 .hint { padding: 0 16px; }
-.top10 #topStatus:empty { display: none; }
-.top10 #topStatus { padding-top: 10px; }
+/* In the site view the Top 10 is a menu in the 3D view's top bar (.view-pop), opened by hover or click. */
+.view-pop { position: relative; }
+.view-pop-panel { display: none; position: absolute; left: 0; top: 100%; padding-top: 6px; width: 440px; max-width: calc(100vw - 40px); }
+.view-pop.open .view-pop-panel { display: block; }
+.view-pop.open .view-menu-btn { border-color: var(--sun); }
+.view-pop-inner { background: rgba(14,16,21,.97); border: 1px solid var(--line-strong); border-radius: 6px; padding: 10px 0 8px; max-height: min(60vh, 520px); overflow-y: auto; display: grid; gap: 6px; }
+.view-pop .hint { padding: 0 17px; }
+#topStatus:empty { display: none; }
 .top-list { list-style: none; margin: 0; padding: 6px 8px 8px; display: grid; gap: 2px; }
 /* Fixed site and number columns, so every row and the header (src/ui/toplist.js) line up. */
 .top-list, .top-head { --top-cols: 22px 10px 62px minmax(0, 1fr) 50px 40px 40px 40px; }
@@ -179,14 +199,50 @@ tbody tr.active td:first-child { box-shadow: inset 2px 0 0 var(--sun); }
 .top-list .lb { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top-list .cl { font: 12px var(--f-mono); text-align: right; }
 .top-list .robust, .top-list .slope, .top-list .walk { font: 12px var(--f-mono); color: var(--muted); text-align: right; }
-.slope-limit { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-.slope-limit select { font-size: 12px; }
-.top10 .slope-limit { padding: 0 17px 6px; }
+/* Landing Slope limit (src/ui/toplist.js slopeLimitHtml): slider + "No slope filter" checkbox */
+.slope-ctl { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.slope-row { display: flex; align-items: baseline; justify-content: space-between; }
+.slope-row label { color: var(--fg); font-weight: 600; }
+.slope-row output { font: 700 18px var(--f-mono); color: var(--sun); }
+.slope-track input[type=range] { width: 100%; margin: 4px 0 0; accent-color: var(--sun); }
+.slope-ticks { position: relative; height: 16px; font: 10.5px var(--f-mono); color: var(--faint); margin: 0 8px; }
+.slope-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.slope-ticks .nasa { color: var(--sun); transform: translateX(-100%); } /* at the right end, so it reads leftward */
+.slope-ticks span:first-child { transform: none; }
+.slope-ticks .nasa::before { content: ""; position: absolute; right: 0; top: -5px; height: 4px; border-left: 1.5px solid var(--sun); }
+.slope-off { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--fg); cursor: pointer; text-transform: none; letter-spacing: normal; font-weight: 400; }
+.slope-off input { width: 16px; height: 16px; margin: 0; accent-color: var(--sun); }
+.slope-note { margin: 0; font-size: 12.5px; color: var(--muted); }
+.slope-ctl.off .slope-track { opacity: .3; filter: grayscale(1); }
+.slope-ctl.off .slope-row output { color: var(--faint); }
+.side-slope { padding: 12px 16px 14px; border-bottom: 1px solid var(--line); }
+.side-slope:empty { display: none; }
+
+/* Site view Date field: the grey yyyy-mm-dd behind the input shows what is still to type. */
+.masked { position: relative; display: block; background: var(--field); border-radius: 4px; text-transform: none; letter-spacing: 0; }
+.masked input { position: relative; background: transparent; }
+.mask-ghost { position: absolute; inset: 0; padding: 7px 8px; border: 1px solid transparent; font: 500 13px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--faint); white-space: pre; overflow: hidden; pointer-events: none; }
+.mask-ghost i { font-style: normal; color: transparent; }
+.masked input.bad { border-color: var(--dusk); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+#siteCal .cal-day { aspect-ratio: 1.2; font-size: 13px; }
+#siteCal .cal-title { font-size: 14px; }
 
 /* Surface Stay panel: charts and tables ported from the team web app (web/src/app/styles.css) */
 .stay { border-bottom: 1px solid var(--line); }
 .stay-body { padding: 10px 16px 14px; display: grid; gap: 10px; }
 .stay h3 { margin: 6px 0 0; font-size: 12.5px; font-weight: 700; }
+/* Landing Windows: folded until pressed */
+.stay-windows summary { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px;
+  cursor: pointer; list-style: none; background: #15181f; }
+.stay-windows summary::-webkit-details-marker { display: none; }
+.stay-windows summary::before { content: "▸"; color: var(--sun); transition: transform .15s; }
+.stay-windows[open] summary::before { transform: rotate(90deg); }
+.stay-windows summary:hover, .stay-windows summary:focus-visible { border-color: var(--sun); outline: none; }
+.stay-windows summary h3 { margin: 0; font-size: 13px; }
+.stay-windows summary::after { content: "Show"; margin-left: auto; font-size: 12px; color: var(--muted); }
+.stay-windows[open] summary::after { content: "Hide"; }
+.stay-windows > div { padding-top: 10px; }
 .stay .sub { font-weight: 400; color: var(--muted); font-size: 12px; }
 .stay .fine, .map-card .fine { color: var(--muted); font-size: 11.5px; margin: 0; }
 .stay .status { color: var(--muted); font-size: 12px; margin: 0; }
@@ -211,10 +267,42 @@ button.link { background: none; border: none; color: var(--sun); padding: 0; tex
 .legend { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); }
 .legend i { display: inline-block; width: 11px; height: 11px; margin-right: 2px; vertical-align: -1px; }
 .legend i.outlined { border: 2px solid #fff; }
-.legend i.steep { background: rgba(0, 0, 0, .55); border: 1px solid var(--line); }
+.legend i.steep { background: repeating-linear-gradient(-45deg, rgba(8, 9, 12, .8) 0 2px, #8a8a86 2px 4.5px); border: 1px solid var(--line); }
 
 /* time steps (from the web app's Landing Time picker), tagline, "coming soon" */
 .steps { display: flex; gap: 6px; }
 .steps button { flex: 1; padding: 5px 0; font: 11.5px var(--f-mono); }
 .tagline { font-size: 12px; color: var(--muted); }
 .soon { font-style: normal; font: 10px var(--f-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Site view: the 7-day verdict stays pinned at the top of the right pane (src/ui/stayview.js stayVerdict). */
+.panel header.stay-verdict { position: sticky; top: 0; z-index: 2; background: var(--panel); display: grid; gap: 3px; justify-content: stretch; box-shadow: 0 6px 10px -8px rgba(0,0,0,.8); }
+.stay-verdict .verdict-line { margin: 0; font-size: 13px; color: var(--fg); }
+.stay-verdict .verdict-line:empty { display: none; }
+.stay-verdict .sun { color: var(--sun); }
+.stay-verdict .earth { color: #4ea3ff; }
+.stay-verdict .ok { color: #57c46a; }
+.stay-verdict .bad { color: #e0604a; }
+.site-id { margin: 0 0 -4px; font: 11px var(--f-mono); color: var(--muted); }
+.windows-list tr.best td { background: rgba(87,196,106,.10); }
+.best-badge { display: inline-block; font: 600 10.5px var(--f-ui); color: #0e1015; background: var(--sun); border-radius: 3px; padding: 0 4px; margin-right: 2px; }
+
+/* Site view left pane: a fixed height with no scrolling, so it is packed tighter than the map's pane.
+   If a short window still can't fit it, src/ui/main.js (fitControls) scales the pane down to fit. */
+.controls > header { padding: 10px 16px 8px; }
+.controls form { padding: 10px 16px; gap: 7px; }
+.controls input:not([type=range]):not([type=checkbox]), .controls select { padding-top: 6px; padding-bottom: 6px; }
+.controls > * { zoom: var(--fit, 1); }
+.controls .hint { line-height: 1.25; }
+#siteCal .cal-day { aspect-ratio: 1.5; }
+#siteCal .cal-day.sel::after { bottom: 1px; font-size: 7px; }
+.controls .steps button { padding: 4px 0; }
+.controls .actions button { padding: 6px 12px; }
+.controls .side-slope { padding: 8px 16px 10px; }
+.controls .readout { padding: 10px 16px 12px; gap: 6px; border-bottom: 0; }
+.controls dl { row-gap: 2px; }
+.controls label { gap: 3px; }
+.controls label .unit { text-transform: none; letter-spacing: 0; white-space: nowrap; }
+@media (min-width: 1101px) { .panel.controls { overflow: hidden; } }
+.controls .row label { grid-template-columns: auto 1fr; column-gap: 4px; align-items: baseline; }
+.controls .row label > :is(input, .masked) { grid-column: 1 / -1; }

@@ -9,7 +9,7 @@ import {
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const deg = (v) => `${v.toFixed(2)}°`;
-const utc = (s) => s.replace("T", " ").slice(0, 16) + " UTC";
+const utc = (s) => s.replace("T", " ").slice(0, 19) + " UTC";
 
 /* ---------- stats over the Surface Stay (StatsTable.tsx) ---------- */
 export function statsTable(doc) {
@@ -104,20 +104,37 @@ export function windowsView(doc, landing) {
   const months = Array.from({ length: 13 }, (_, i) => Date.UTC(2026, 11 + i, 1)).filter((t) => t < SPAN_END);
   const strip = `<svg viewBox="0 0 ${W} ${H}" class="chart strip" role="img" aria-label="Coverage of every Landing Time in the Supported Span">
     <rect x="${PAD}" y="4" width="${W - 2 * PAD}" height="22" fill="#555"/>
-    ${doc.strip.runs.map((r) => `<rect x="${x(parseUtc(r.start_utc))}" y="4" height="22" width="${Math.max(x(parseUtc(r.end_utc)) - x(parseUtc(r.start_utc)), 0.5)}" fill="${r.coverage === "full" ? "#2fae4a" : "#e0a030"}"/>`).join("")}
-    <line x1="${x(landing)}" x2="${x(landing)}" y1="0" y2="30" stroke="#fff" stroke-width="2"/>
+    ${doc.strip.runs.map((r) => {
+      const s = parseUtc(r.start_utc), e = parseUtc(r.end_utc), geo = `x="${x(s)}" y="4" height="22" width="${Math.max(x(e) - x(s), 0.5)}"`;
+      if (r.coverage !== "full") return `<rect ${geo} fill="#e0a030"/>`;
+      // A green run is a button: it lands at the Best Landing Time of the window it belongs to, else at its start.
+      const w = doc.windows.find((w) => parseUtc(w.start_utc) <= s && e <= parseUtc(w.end_utc));
+      const t = w ? w.best_landing_time_utc : r.start_utc, when = utc(t);
+      const what = `Full Coverage ${utc(r.start_utc)} to ${utc(r.end_utc)}. Land at ${when}`;
+      return `<rect ${geo} fill="#2fae4a" class="seg-full" data-t="${esc(t)}" tabindex="0" role="button" aria-label="${esc(what)}"><title>${esc(what)}</title></rect>`;
+    }).join("")}
+    <line x1="${x(landing)}" x2="${x(landing)}" y1="0" y2="30" stroke="#fff" stroke-width="2" pointer-events="none"/>
     ${months.map((t) => `<text x="${x(t)}" y="42" class="tick" text-anchor="middle">${new Date(t).toLocaleString("en", { month: "short", timeZone: "UTC" })}</text>`).join("")}
-  </svg><p class="fine">Green: Full Coverage. Amber: Partial. Gray: outside the Supported Span. White line: current Landing Time.</p>`;
+  </svg><p class="fine">Green: Full Coverage (click to land there). Amber: Partial. Gray: outside the Supported Span. White line: current Landing Time.</p>`;
   if (!doc.windows.length) return strip + `<p class="status">This site has no Landing Time with Full Coverage in the Supported Span.</p>`;
   const dur = (h) => (h < 48 ? `${h.toFixed(1)} h` : `${(h / 24).toFixed(1)} d`);
-  return strip + `<table class="windows-list"><thead><tr><th>#</th><th>Window (UTC)</th><th>Length</th><th>Best Landing Time</th><th>Worst-case</th></tr></thead><tbody>
-    ${doc.windows.map((w) => `<tr data-t="${esc(w.best_landing_time_utc)}" title="Set this Landing Time"><td>${w.rank}</td>
-      <td>${w.start_utc.slice(0, 16).replace("T", " ")} → ${w.end_utc.slice(0, 16).replace("T", " ")}${w.contains_partial_gaps ? " *" : ""}</td>
-      <td>${dur(w.duration_h)}</td><td><button type="button" class="link">${w.best_landing_time_utc.slice(0, 16).replace("T", " ")}</button></td>
+  // In date order; the window ranked first (highest worst-case Clearance) gets a Best badge.
+  const byDate = [...doc.windows].sort((a, b) => parseUtc(a.start_utc) - parseUtc(b.start_utc));
+  const best = doc.windows.reduce((m, w) => (w.rank < m.rank ? w : m));
+  return strip + `<table class="windows-list"><thead><tr><th>Window (UTC)</th><th>Length</th><th>Best Landing Time</th><th>Worst-case</th></tr></thead><tbody>
+    ${byDate.map((w) => `<tr data-t="${esc(w.best_landing_time_utc)}" title="Set this Landing Time"${w === best ? ' class="best"' : ""}>
+      <td>${w === best ? '<span class="best-badge" title="Highest worst-case Clearance">★ Best</span> ' : ""}${w.start_utc.slice(0, 19).replace("T", " ")} → ${w.end_utc.slice(0, 19).replace("T", " ")}${w.contains_partial_gaps ? " *" : ""}</td>
+      <td>${dur(w.duration_h)}</td><td><button type="button" class="link">${w.best_landing_time_utc.slice(0, 19).replace("T", " ")}</button></td>
       <td>${w.best_worst_case_min_clearance_deg.toFixed(2)}°</td></tr>`).join("")}
   </tbody></table>${doc.windows.some((w) => w.contains_partial_gaps) ? `<p class="fine">* Includes short Partial gaps (under ${doc.merge_gap_h} h) that were merged into the window.</p>` : ""}`;
 }
 
-/** Header line for the panel: site, rank and coverage. */
-export const stayTitle = (siteId, entry) => `Landing Site ${esc(siteId)}${entry ? ` <span class="sub">· rank ${entry.rank.toLocaleString()} · ${esc(coverageLabel(entry))}</span>` : ""}`;
-export const stayRange = (doc) => `Surface Stay ${formatUtc(parseUtc(doc.landing_time_utc)).slice(0, 16).replace("T", " ")} to ${doc.stay_end_utc.slice(0, 16).replace("T", " ")} UTC`;
+/** Header line for the panel: region and rank (e.g. "Haworth · Rank #1"), then coverage. */
+export const stayTitle = (label, entry) => `${esc(label)}${entry ? ` <span class="sub">· ${esc(coverageLabel(entry))}</span>` : ""}`;
+/** The 7-day verdict in one line: how much of the stay the Sun and Earth are in view, and the worst-case Clearance. */
+export const stayVerdict = (doc) => {
+  const w = doc.worst_case_min_clearance_deg;
+  return `<span class="sun">Sun ${pct(doc.stats.sun.los_fraction)}</span> · <span class="earth">Earth ${pct(doc.stats.earth.los_fraction)}</span> in view`
+    + ` · min clearance <b class="${w > 0 ? "ok" : "bad"}">${w > 0 ? "+" : ""}${w.toFixed(2)}°</b>`;
+};
+export const stayRange = (doc) => `Surface Stay ${formatUtc(parseUtc(doc.landing_time_utc)).slice(0, 19).replace("T", " ")} to ${doc.stay_end_utc.slice(0, 19).replace("T", " ")} UTC`;

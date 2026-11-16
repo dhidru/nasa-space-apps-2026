@@ -2,6 +2,7 @@
 import { dataRootFromPage } from "./fetchSiteData";
 import type { WorkerRequest, WorkerResponse } from "./protocol";
 import type { LandingWindowsDoc, RankingDoc, SiteDetailDoc } from "./results";
+import type { DayBest } from "./fullstay";
 
 type Pending = { resolve: (v: any) => void; reject: (e: Error) => void; progress?: (f: number) => void };
 
@@ -44,6 +45,26 @@ class ScienceClient {
   windows(regionId: string, siteId: string): Promise<LandingWindowsDoc> {
     return this.call({ type: "windows", regionId, siteId });
   }
+
+  /** Start (UTC ms) of each day in the Supported Span with no sunlight anywhere in the region. */
+  darkDays(regionId: string): Promise<number[]> {
+    return this.call({ type: "darkDays", regionId });
+  }
+
+  /** The Landing Time on a UTC day (ms) at which the most sites look Full (src/science/fullstay.ts bestLandingOnDay). */
+  bestOnDay(regionId: string, day: number): Promise<DayBest | null> {
+    return this.call({ type: "bestOnDay", regionId, day });
+  }
+
+  /** Start (UTC ms) of each day in the Supported Span with no Full Coverage Landing Time at any site (src/science/fullstay.ts). */
+  noFullStayDays(regionId: string, progress?: (f: number) => void): Promise<number[]> {
+    return this.call({ type: "noFullStayDays", regionId }, progress);
+  }
 }
 
 export const science = new ScienceClient();
+/**
+ * A second worker for the long whole-year scans (No-Full-Stay Days, ~30-60 s per region). A worker runs one
+ * request at a time, so on the main worker a scan would hold back the ranking the user is waiting for.
+ */
+export const scanner = new ScienceClient();
