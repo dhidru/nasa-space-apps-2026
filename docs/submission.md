@@ -82,6 +82,9 @@ Built with Anthropic's Claude: Claude Code wrote the code, tests and documents a
 
 ## Space Agency Partner & Other Data (changes)
 
+- Added at the end: "NASA Space Apps Challenge 2026: "Lunar Landing Site Navigator" challenge statement (the problem we solved)" →
+  https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/
+
 - "Claude Code (Anthropic), AI coding assistant; every use is logged in ATTRIBUTIONS.md" →
   "Claude Code and Claude (Anthropic), AI assistants for code, text and UI design; every use is logged in ATTRIBUTIONS.md"
 
