@@ -78,7 +78,7 @@ Run these from `src/`:
 3. `python -m pipeline.fetch lola80`: LOLA 80 m DEM (116 MB).
 4. `python -m pipeline.fetch lola20 REGION_ID`, once for each of the 8 regions with site data (every region in
    `SITE_REGIONS` in `src/pipeline/build.py`): only the rows of the LOLA 20 m DEM around that region (~110 MB each).
-5. `python -m pipeline.build`: regions, outlines, base maps, sites and Horizons into `data/processed/site-data/` (about an hour on an 8-region run; Haworth alone is about 15 min).
+5. `python -m pipeline.build`: regions, outlines, base maps, sites and Horizons into `data/processed/site-data/` (about 4 hours on an 8-region run, most of it Horizons for each site's center and edge points; Haworth alone is about 65 min).
 6. `python -m pipeline.ephemeris ../data/processed/site-data/ephemeris 2026 2027`: Sun and Earth positions for the Supported Span.
 7. `python -m pipeline.robustness`: Timing Robustness of every site, added to each region's `sites.json`
    (about 35 min for all 8 regions; `--region ID` for one). Rerun it after step 5, which rewrites `sites.json`.

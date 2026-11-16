@@ -16,8 +16,8 @@ export async function readJson<T = any>(path: string): Promise<T> {
 }
 
 /** Site ids of the committed site-detail and Landing Windows fixtures (the top 10). */
-export const FIXTURE_SITES = ["r025c004", "r034c040", "r035c003", "r035c017", "r041c026",
-  "r044c042", "r054c051", "r058c063", "r068c066", "r077c071"];
+export const FIXTURE_SITES = ["r000c000", "r021c000", "r029c006", "r037c000", "r039c020",
+  "r044c031", "r044c042", "r053c060", "r067c067", "r077c071"];
 
 /**
  * The agreement we can check, by field-name suffix. Fixtures round angles to 3 decimals, so 0.001°.

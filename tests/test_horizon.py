@@ -105,3 +105,54 @@ def test_encoding_is_delta_along_azimuth():
 def test_encoding_is_byte_for_byte_repeatable():
     q = np.arange(2 * 1440, dtype="<i2").reshape(2, 1440)
     assert encode_horizons(q) == encode_horizons(q)  # no timestamp in the gzip header, so rebuilds diff cleanly
+
+
+# ---- worst-case Horizon over the 100 m circle (design.md §5)
+
+def run_site(near, far, x=SITE_X, y=SITE_Y, h=SITE_H, n_az=8, **kw):
+    from pipeline.horizon import compute_site_horizons
+    kw.setdefault("near_max_m", 5_000.0)
+    kw.setdefault("far_max_m", 35_000.0)
+    return compute_site_horizons(np.array([x]), np.array([y]), np.array([h]), near, far, n_azimuths=n_az, **kw)[0]
+
+
+def test_site_horizon_on_flat_ground_is_the_geometric_dip_everywhere():
+    np.testing.assert_allclose(run_site(flat(), flat()), DIP_2M_DEG, atol=0.002)
+
+
+def test_site_horizon_takes_the_horizon_of_an_edge_point_in_a_pit():
+    # A 50 m deep, 30 m radius pit centred on the east edge point (100 m east of the center).
+    # Standing in it, the pit walls rise about atan(50 / 30) = 59 deg in every direction;
+    # from the center the pit lies below the horizon, so the center sees flat ground.
+    def pit(X, Y):
+        return np.where(np.hypot(X - (SITE_X + 100.0), Y - SITE_Y) < 30.0, -50.0, 0.0)
+
+    near = grid(pit, half_width_m=6_000.0, pixel=5.0)
+    center = run(near, flat())
+    assert center.max() < 0.0
+    site = run_site(near, flat())
+    assert (site > 40.0).all()
+
+
+def test_site_horizon_lines_up_directions_of_edge_points_near_the_pole():
+    # A site 15 km from the pole at lon 0 (x = 0): its local north is +y. The east and west
+    # edge points sit 100 m to the side, so their local north is turned by atan(100 / 15000)
+    # = 0.38 deg, more than one 0.25 deg azimuth step. A narrow 2 km pillar 30 km due north
+    # stands at azimuth 0 from the center and, with parallax, at -0.19 / +0.19 deg (in the
+    # center's directions) from the east / west edge points. Read in each point's own
+    # directions without turning them, it would show at -0.57 / +0.57 deg instead.
+    cx, cy = 0.0, 15_000.0
+    pixel, half = 25.0, 40_000.0
+    n = int(2 * half / pixel) + 1
+    xs = cx - half + pixel * np.arange(n)
+    ys = cy + half - pixel * np.arange(n)
+    X, Y = np.meshgrid(xs, ys)
+    pillar = (np.abs(X - cx) < 75.0) & (np.abs(Y - (cy + 30_000.0)) < 75.0)
+    dem = DemGrid(heights_m=np.where(pillar, 2_000.0, 0.0).astype(np.float32),
+                  x0_m=float(xs[0]), y0_m=float(ys[0]), pixel_m=pixel)
+
+    site = run_site(dem, dem, x=cx, y=cy, h=0.0, n_az=1440)
+    assert site[0] > 3.0  # the pillar, about 3.3 deg up
+    # Only columns -0.25, 0 and +0.25 deg hold the pillar. Unturned (or wrongly turned) edge
+    # points would put it at +/-0.5 deg (or +/-0.75 to 1 deg) as well.
+    assert set(np.nonzero(site > 0.0)[0].tolist()) == {1439, 0, 1}

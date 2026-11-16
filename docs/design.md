@@ -67,8 +67,8 @@ a specific Artemis mission number.
 - Site centers sit on a **200 m grid** inside the region, so neighboring circles
   touch but don't overlap. That's about 6,400 sites for Mons Mouton and about
   10,000 for a 20 km region.
-- MVP: each site is scored at its center point, at an **Observer Height of 2 m**
-  above the terrain.
+- Each site is scored against its worst-case **Horizon** over the circle (§5),
+  at an **Observer Height of 2 m** above the terrain.
 
 ## 5. Science model
 
@@ -76,6 +76,18 @@ a specific Artemis mission number.
 
 - The Horizon is precomputed offline once per site. It depends only on the
   terrain, not on time.
+- It's the **worst case over the 100 m circle**, because the lander can touch
+  down anywhere in it: in each azimuth, the highest Horizon Elevation seen
+  from the center or from the four points 100 m north, south, east and west
+  of it, each 2 m above its own terrain. The Sun and Earth are far enough away
+  that their direction is the same from all five points, so Clearance against
+  this Horizon is the lowest Clearance over the five. Each edge point's
+  Horizon is read in the center's directions (near the pole, local north turns
+  by up to about 0.14° over 100 m in our regions). Edge points are shared with
+  the neighbouring sites, so this costs about 3× the ray tracing of the center
+  alone, offline, and nothing extra in the download or the browser. The site
+  view's sky plot shows this worst-case Horizon. Five points are a sample of
+  the circle, not every point in it.
 - It has **1,440 azimuths (0.25° steps)**. The Sun moves about 0.5° of azimuth
   per hour, so 0.25° keeps narrow terrain features (for example, a 200 m ridge
   50 km away subtends about 0.23°) from being missed.
@@ -320,9 +332,11 @@ the design work doesn't wait on the pipeline.
   Coverage (landing-criteria.md §2).~~ Done: `pipeline.robustness` stores it in
   `sites.json` (data-contract §5.3); the map readout, the site overview and both
   top-10 lists show it.
-- Check every point in the 100 m circle, not just the center (the lander can
-  touch down anywhere within 100 m of the target). Landing Slope already does
-  this; Clearance is still judged at the center only.
+- ~~Check every point in the 100 m circle, not just the center (the lander can
+  touch down anywhere within 100 m of the target).~~ Done: Landing Slope is the
+  worst over the circle, and the Horizon is the worst case over the center and
+  four edge points (§5), so Clearance is too
+  (`pipeline.horizon.compute_site_horizons`).
 
 ## 13. Future development
 

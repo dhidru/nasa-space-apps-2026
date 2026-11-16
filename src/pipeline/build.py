@@ -20,7 +20,7 @@ from typing import Callable
 
 import numpy as np
 
-from .horizon import compute_horizons, encode_horizons, quantize_horizons
+from .horizon import compute_site_horizons, encode_horizons, quantize_horizons
 from .lola import DemGrid, lines_covering, open_lola
 from .projection import xy_to_lonlat
 from .regions import NASA_SOURCE, REGIONS, Outline, load_outlines
@@ -138,8 +138,8 @@ def write_region_sites(folder: Path, outline: Outline, near: DemGrid, far: DemGr
                    "lon_deg": _r(s.lon_deg, 6), "terrain_height_m": _r(s.terrain_height_m, 1)} for s in sites],
     })
     kw = {"n_azimuths": N_AZIMUTHS, **horizon_kw}
-    hz = compute_horizons([s.x_m for s in sites], [s.y_m for s in sites], [s.terrain_height_m for s in sites],
-                          near, far, observer_height_m=OBSERVER_HEIGHT_M, **kw)
+    hz = compute_site_horizons([s.x_m for s in sites], [s.y_m for s in sites], [s.terrain_height_m for s in sites],
+                               near, far, radius_m=SITE_RADIUS_M, observer_height_m=OBSERVER_HEIGHT_M, **kw)
     q = quantize_horizons(hz)
     (folder / "horizons.bin.gz").write_bytes(encode_horizons(q))
     _write_json(folder / "horizons.json", {

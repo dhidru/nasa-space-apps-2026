@@ -212,9 +212,13 @@ Optional sidecar fields for packed files (only the Horizons use them):
 | `compression`, `delta_axis` | `gzip`, `azimuth` |
 
 - Rows follow the order of `sites.json`.
+- Each row is the site's worst-case Horizon over its 100 m circle (design.md §5):
+  in each azimuth, the highest Horizon Elevation seen from the center or the four
+  points 100 m north, south, east and west of it, in the center's azimuths.
+  Readers use it exactly like a single-point Horizon.
 - Between columns, use linear interpolation. It wraps, so column 1439 is next
   to column 0.
-- Size: 18.4 MB unpacked for Mons Mouton's 6,400 sites, about 3.7 MB as stored
+- Size: 18.4 MB unpacked for Mons Mouton's 6,400 sites, about 3.3 MB as stored
   (gzip alone would give 10.1 MB).
 - **Reading it in the browser:** `fetch` the file as bytes, unpack it with the
   built-in `DecompressionStream("gzip")`, view it as an `Int16Array`, then take

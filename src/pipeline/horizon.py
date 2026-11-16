@@ -106,6 +106,80 @@ def compute_horizons(x_m, y_m, terrain_height_m, near: DemGrid, far: DemGrid, *,
     return out
 
 
+def compute_site_horizons(x_m, y_m, terrain_height_m, near: DemGrid, far: DemGrid, *,
+                          radius_m: float = 100.0, **kw) -> np.ndarray:
+    """Worst-case Horizon of each Landing Site, float32 [n_sites, n_azimuths] (design.md §5).
+
+    The lander can touch down anywhere in the site's circle, so each azimuth keeps the highest
+    Horizon Elevation seen from the center and from the four edge points `radius_m` north, south,
+    east and west of it on the map, each at Observer Height above its own terrain. Edge points are
+    shared with the neighbouring sites on the 200 m grid and are computed once.
+
+    The Sun and Earth are far enough away that their direction is the same from all five points,
+    so the lowest Clearance over the five is a body's elevation minus this Horizon. Each edge
+    point's Horizon is read in the center's directions: near the pole, local north turns over
+    100 m (by up to about 0.14 deg for our regions' sites). kw goes to compute_horizons.
+    """
+    x = np.atleast_1d(np.asarray(x_m, float))
+    y = np.atleast_1d(np.asarray(y_m, float))
+    offsets = np.array([[radius_m, 0.0], [-radius_m, 0.0], [0.0, radius_m], [0.0, -radius_m]])
+    edge_x = x[:, None] + offsets[:, 0]  # [n_sites, 4]
+    edge_y = y[:, None] + offsets[:, 1]
+    # Neighbouring sites share edge points; compute each one once.
+    keys = np.round(np.column_stack([edge_x.ravel(), edge_y.ravel()]) / _POINT_KEY_M).astype(np.int64)
+    unique_keys, edge_row = np.unique(keys, axis=0, return_inverse=True)
+    point_x, point_y = unique_keys[:, 0] * _POINT_KEY_M, unique_keys[:, 1] * _POINT_KEY_M
+    point_h = near.height_at(point_x, point_y)
+    point_h = np.where(np.isnan(point_h), far.height_at(point_x, point_y), point_h)
+    if np.isnan(point_h).any():
+        raise ValueError("some site edge points are outside both DEMs")
+    centers = compute_horizons(x, y, terrain_height_m, near, far, **kw)
+    edges = compute_horizons(point_x, point_y, point_h, near, far, **kw)
+    # Column shift that reads each edge point's Horizon in its center's directions.
+    shift = _azimuth_turn_deg(x[:, None], y[:, None], edge_x, edge_y) / (360.0 / centers.shape[1])
+    _merge_worst(centers, edges, edge_row.reshape(x.size, 4).astype(np.int64), shift)
+    return centers
+
+
+_POINT_KEY_M = 0.1  # edge points closer than this on the map are the same point
+
+
+def _unit_frame(x_m, y_m):
+    lon, lat = xy_to_lonlat(x_m, y_m)
+    lon, lat = np.radians(lon), np.radians(lat)
+    north = np.stack([-np.sin(lat) * np.cos(lon), -np.sin(lat) * np.sin(lon), np.cos(lat)], axis=-1)
+    east = np.stack([-np.sin(lon), np.cos(lon), np.zeros_like(lon)], axis=-1)
+    return north, east
+
+
+def _azimuth_turn_deg(x0, y0, x1, y1):
+    """Azimuth, at point 1, of point 0's local north: add it to an azimuth at point 0 to get the
+    same direction in space as an azimuth at point 1. For points d apart, the two local horizontal
+    planes tilt by d / R against each other (0.003 deg for 100 m), so the turn is the same for
+    every azimuth."""
+    n0, _ = _unit_frame(np.broadcast_to(x0, np.shape(x1)), np.broadcast_to(y0, np.shape(y1)))
+    n1, e1 = _unit_frame(x1, y1)
+    return np.degrees(np.arctan2((n0 * e1).sum(-1), (n0 * n1).sum(-1)))
+
+
+@numba.njit(parallel=True, cache=True)
+def _merge_worst(centers, edges, rows, shift):
+    """centers[i] = max(centers[i], each edge Horizon read at column k + shift), in place; wraps."""
+    n_sites, n_az = centers.shape
+    for i in numba.prange(n_sites):
+        for j in range(rows.shape[1]):
+            e = edges[rows[i, j]]
+            s = shift[i, j]
+            k0 = math.floor(s)
+            f = s - k0
+            for k in range(n_az):
+                a = (k + k0) % n_az
+                b = (a + 1) % n_az
+                v = e[a] * (1.0 - f) + e[b] * f
+                if v > centers[i, k]:
+                    centers[i, k] = v
+
+
 def quantize_horizons(horizons_deg: np.ndarray) -> np.ndarray:
     """To the horizons.bin encoding: little-endian int16 hundredths of a degree (data-contract §6.1)."""
     return np.round(np.asarray(horizons_deg, dtype=np.float64) * 100.0).astype("<i2")

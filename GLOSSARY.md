@@ -47,7 +47,7 @@ The angle of the body's center above the flat local horizontal plane (the plane 
 _Avoid_: Altitude, height, "elevation" on its own
 
 **Horizon**:
-The terrain skyline seen from a Landing Site; its **Horizon Elevation** is the skyline's angle above the flat local horizontal plane in a given azimuth.
+The terrain skyline seen from a Landing Site; its **Horizon Elevation** is the skyline's angle above the flat local horizontal plane in a given azimuth. Because the lander can touch down anywhere in the site's 100 m circle, it is the worst case over the circle: in each azimuth, the highest Horizon Elevation seen from the center or from the four points 100 m north, south, east and west of it.
 _Avoid_: Skyline, terrain mask
 
 **Clearance**:
