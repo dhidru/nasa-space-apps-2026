@@ -27,8 +27,10 @@ _What we built, how it works, and why it matters._
 ## Demo
 
 - **Live demo:** https://dhidru.github.io/nasa-space-apps-2026/
-- **Video (30s max for judging):** _TBD_
-- **Project page:** _TBD_
+- **Project demo (video):** https://www.youtube.com/watch?v=kCesRBWED-E
+- **Project repository:** https://github.com/dhidru/nasa-space-apps-2026/
+- **Space Apps project page:** https://www.spaceappschallenge.org/2026/find-a-team/no-shade-with-a-side-of-ice/
+  (the team's earlier name was "No Shade, With a Side of Ice")
 
 ## NASA Data & Resources Used
 
@@ -147,9 +149,12 @@ CLAUDE.md       Project rules for the AI assistant (licensing & attribution)
 
 ## Team
 
-| Name | Role |
-| ---- | ---- |
-| _TBD_ | _TBD_ |
+**Hidden Planners**
+
+| Name |
+| ---- |
+| Tsegai Hidru |
+| Daniel Hidru |
 
 ## Use of AI
 
