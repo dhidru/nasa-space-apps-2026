@@ -47,6 +47,17 @@ export function siteData(dir: string): Plugin {
   };
 }
 
+/**
+ * Upstream copyright lines for packages whose own LICENSE file names the wrong holder. @fontsource/source-sans-3
+ * 5.3.1 says only "Google Inc."; OFL 1.1 condition 2 needs the font's real notice, from adobe-fonts/source-sans
+ * LICENSE.md (ATTRIBUTIONS.md).
+ */
+const UPSTREAM_COPYRIGHT: Record<string, string> = {
+  "@fontsource/source-sans-3":
+    "Copyright 2010-2024 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'. All Rights Reserved.\n" +
+    "Source is a trademark of Adobe in the United States and/or other countries.",
+};
+
 /** Writes THIRD-PARTY-NOTICES.txt with the license text of every runtime npm package (BSD/MIT notice terms). */
 export function thirdPartyNotices(): Plugin {
   return {
@@ -59,7 +70,8 @@ export function thirdPartyNotices(): Plugin {
       for (const d of dirs) {
         const pkg = JSON.parse(readFileSync(join(d, "package.json"), "utf-8"));
         const lic = readdirSync(d).find((f) => /^(licen[cs]e|copying|notice)/i.test(f));
-        const text = lic ? readFileSync(join(d, lic), "utf-8").trim() : `License: ${pkg.license} (no license file in the package)`;
+        let text = lic ? readFileSync(join(d, lic), "utf-8").trim() : `License: ${pkg.license} (no license file in the package)`;
+        if (UPSTREAM_COPYRIGHT[pkg.name]) text = `${UPSTREAM_COPYRIGHT[pkg.name]}\n\n${text}`;
         parts.push(`${"=".repeat(78)}\n${pkg.name}@${pkg.version} (${pkg.license})\n${"=".repeat(78)}\n${text}\n`);
       }
       this.emitFile({ type: "asset", fileName: "THIRD-PARTY-NOTICES.txt", source: parts.join("\n") });

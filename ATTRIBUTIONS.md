@@ -447,6 +447,7 @@ Each dataset below also has a conventions card in
 | 2026-11-15 | Claude Code | Rechecked the Featured Landing Times against the worst-case Horizons (all unchanged; the top 10 is still Full in every region) and updated the Full Coverage counts in the comment | `web/src/app/featured.ts` |
 | 2026-11-15 | Claude Code | Checked the Anthropic Consumer Terms and Usage Policy for Claude Code on paid individual plans (status now ✅), logged a missing commit, deleted merged remote branches, and removed the empty `assets/` and `notebooks/` folders | `ATTRIBUTIONS.md`, `README.md` |
 | 2026-11-15 | Claude Code | At the team's request, wrote the README's "Our Solution" section and the "NASA Data & Resources Used" table from the design doc, the attributions and the current UI | `README.md`, `ATTRIBUTIONS.md` |
+| 2026-11-15 | Claude Code | Rechecked the font licenses (Source Sans 3, Merriweather: OFL 1.1) against the upstream files; the build now adds Adobe's copyright line to the Source Sans 3 notice, which the npm package's LICENSE leaves out | `web/scripts/vite-plugins.ts`, `ATTRIBUTIONS.md` |
 | 2026-11-15 | Claude Code | Reviewed what was left for the submission; at the team's request, added the team name and members, the demo video, repository and Space Apps project page links to the README | `README.md`, `ATTRIBUTIONS.md` |
 
 ## Media (images, icons, fonts, video, audio)
@@ -461,7 +462,8 @@ Each dataset below also has a conventions card in
 - **License / permission:** [SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/)
   (upstream `LICENSE.md` in adobe-fonts/source-sans; the package's `license` field is `OFL-1.1`). The package has no dependencies.
 - **Requirements:** Ship the copyright notice and licence text with the font files: the build writes both into
-  `THIRD-PARTY-NOTICES.txt`. Don't sell the font by itself; a modified version can't use the reserved name "Source"
+  `THIRD-PARTY-NOTICES.txt` (the package's LICENSE names only "Google Inc.", so the build adds Adobe's upstream
+  copyright line). Don't sell the font by itself; a modified version can't use the reserved name "Source"
   (we don't modify it). OFL covers only the font files, so it doesn't affect the project's Apache-2.0 licence.
 - **Status:** ✅ (checked by Claude Code, 2026-11-15)
 - **Citation:** Adobe. *Source Sans 3* [typeface], with Reserved Font Name "Source". SIL Open Font License 1.1. https://github.com/adobe-fonts/source-sans
