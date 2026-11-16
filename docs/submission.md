@@ -84,6 +84,11 @@ Built with Anthropic's Claude: Claude Code wrote the code, tests and documents a
 
 - Added at the end: "NASA Space Apps Challenge 2026: "Lunar Landing Site Navigator" challenge statement (the problem we solved)" →
   https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/
+- Added "Git (version control)" → https://git-scm.com/
+- The form allows at most 25 entries in this list, so to fit the rest:
+  - "Vite (build tool)" and "Vitest (tests)" became one entry, "Vite and Vitest (build tool and tests)" → https://vite.dev
+  - The freed row is now "Apache License 2.0 text (our LICENSE file)" → https://www.apache.org/licenses/LICENSE-2.0
+  - The GitHub entry now also covers the GitHub CLI: "GitHub, GitHub CLI, GitHub Actions and GitHub Pages (repo, hosting, CI and the live demo)" → https://github.com
 
 - "Claude Code (Anthropic), AI coding assistant; every use is logged in ATTRIBUTIONS.md" →
   "Claude Code and Claude (Anthropic), AI assistants for code, text and UI design; every use is logged in ATTRIBUTIONS.md"
